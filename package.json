@@ -1,0 +1,27 @@
+{
+  "name": "hisaab",
+  "version": "1.0.0",
+  "private": true,
+  "packageManager": "pnpm@10.15.1",
+  "engines": {
+    "node": ">=20.9.0"
+  },
+  "scripts": {
+    "dev": "turbo dev --filter=@hisaab/web --filter=@hisaab/gateway",
+    "build": "turbo build",
+    "lint": "turbo lint",
+    "typecheck": "turbo typecheck",
+    "test": "turbo test",
+    "test:e2e": "pnpm --filter @hisaab/web test:e2e",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "db:generate": "pnpm --filter @hisaab/database db:generate",
+    "db:migrate:local": "pnpm --filter @hisaab/auth db:migrate:local",
+    "db:seed:local": "pnpm --filter @hisaab/auth db:seed:local"
+  },
+  "devDependencies": {
+    "prettier": "3.6.2",
+    "turbo": "2.5.6",
+    "typescript": "5.9.2"
+  }
+}

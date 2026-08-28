@@ -1,0 +1,30 @@
+{
+  "name": "@hisaab/transactions",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev:isolated": "wrangler dev --persist-to ../../.wrangler/state",
+    "build": "wrangler deploy --dry-run --env=\"\" --outdir dist",
+    "lint": "eslint .",
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "vitest run --passWithNoTests"
+  },
+  "dependencies": {
+    "@hisaab/database": "workspace:*",
+    "@hisaab/validation": "workspace:*",
+    "@hisaab/worker-lib": "workspace:*",
+    "drizzle-orm": "0.45.2",
+    "hono": "4.13.5",
+    "zod": "4.1.5"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "4.20250828.0",
+    "@hisaab/eslint-config": "workspace:*",
+    "@hisaab/typescript-config": "workspace:*",
+    "eslint": "9.34.0",
+    "typescript": "5.9.2",
+    "vitest": "3.2.4",
+    "wrangler": "4.33.1"
+  }
+}

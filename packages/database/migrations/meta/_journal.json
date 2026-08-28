@@ -1,0 +1,34 @@
+{
+  "version": "7",
+  "dialect": "sqlite",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "6",
+      "when": 1787898488277,
+      "tag": "0000_lumpy_miss_america",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1787898976371,
+      "tag": "0001_left_tomorrow_man",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1787900000000,
+      "tag": "0002_better_auth_canonical_columns",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "6",
+      "when": 1787900400000,
+      "tag": "0003_premium_auth_and_future",
+      "breakpoints": true
+    }
+  ]
+}

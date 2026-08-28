@@ -1,0 +1,47 @@
+{
+  "name": "@hisaab/web",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build --webpack",
+    "build:cloudflare": "HISAAB_STATIC_EXPORT=1 next build --webpack",
+    "start": "next start",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run --passWithNoTests",
+    "test:e2e": "playwright test"
+  },
+  "dependencies": {
+    "@fontsource-variable/inter": "5.2.6",
+    "@hisaab/types": "workspace:*",
+    "@hisaab/ui": "workspace:*",
+    "@hisaab/validation": "workspace:*",
+    "@hookform/resolvers": "5.2.1",
+    "@tanstack/react-query": "5.102.8",
+    "better-auth": "1.6.26",
+    "lucide-react": "1.34.0",
+    "next": "16.3.3",
+    "next-themes": "0.4.6",
+    "react": "19.2.8",
+    "react-dom": "19.2.8",
+    "react-hook-form": "7.86.0",
+    "recharts": "3.10.1",
+    "sonner": "2.0.7",
+    "zod": "4.1.5"
+  },
+  "devDependencies": {
+    "@hisaab/eslint-config": "workspace:*",
+    "@hisaab/typescript-config": "workspace:*",
+    "@playwright/test": "1.55.0",
+    "@tailwindcss/postcss": "4.3.3",
+    "@types/node": "22.18.0",
+    "@types/react": "19.1.12",
+    "@types/react-dom": "19.1.9",
+    "eslint": "9.34.0",
+    "tailwindcss": "4.3.3",
+    "typescript": "5.9.2",
+    "vitest": "3.2.4"
+  }
+}

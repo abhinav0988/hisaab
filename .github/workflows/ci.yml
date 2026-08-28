@@ -1,0 +1,51 @@
+name: CI
+on:
+  pull_request:
+  push:
+    branches: [main, develop]
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with: { version: 10.15.1 }
+      - uses: actions/setup-node@v4
+        with: { node-version: 20.20.1, cache: pnpm }
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Check formatting
+        run: pnpm format:check
+      - name: Lint
+        run: pnpm lint
+      - name: Type check
+        run: pnpm typecheck
+      - name: Unit and integration tests
+        run: pnpm test
+        env:
+          BETTER_AUTH_SECRET: ci-secret-used-only-inside-isolated-tests
+          XDG_CONFIG_HOME: /tmp/hisaab-wrangler-ci
+      - name: Production build
+        run: pnpm build
+        env:
+          NEXT_PUBLIC_API_URL: http://127.0.0.1:8787
+          BETTER_AUTH_SECRET: ci-build-secret-not-used-in-production
+
+  e2e:
+    runs-on: ubuntu-latest
+    needs: verify
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with: { version: 10.15.1 }
+      - uses: actions/setup-node@v4
+        with: { node-version: 20.20.1, cache: pnpm }
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @hisaab/web exec playwright install --with-deps chromium
+      - run: pnpm --filter @hisaab/web test:e2e --project=chromium
+# Production deployment is deliberately separate. Add an environment-protected
+# workflow after provisioning real D1 IDs and Wrangler secrets.

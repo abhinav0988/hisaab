@@ -1,0 +1,31 @@
+{
+  "name": "@hisaab/ui",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.tsx"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "lint": "eslint .",
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "vitest run --passWithNoTests"
+  },
+  "peerDependencies": {
+    "react": ">=19"
+  },
+  "dependencies": {
+    "clsx": "2.1.1",
+    "tailwind-merge": "3.3.1"
+  },
+  "devDependencies": {
+    "@hisaab/eslint-config": "workspace:*",
+    "@hisaab/typescript-config": "workspace:*",
+    "@types/react": "19.1.12",
+    "eslint": "9.34.0",
+    "react": "19.2.8",
+    "typescript": "5.9.2",
+    "vitest": "3.2.4"
+  }
+}

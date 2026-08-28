@@ -1,0 +1,25 @@
+{
+  "name": "@hisaab/validation",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "lint": "eslint .",
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "zod": "4.1.5"
+  },
+  "devDependencies": {
+    "@hisaab/eslint-config": "workspace:*",
+    "@hisaab/typescript-config": "workspace:*",
+    "eslint": "9.34.0",
+    "typescript": "5.9.2",
+    "vitest": "3.2.4"
+  }
+}

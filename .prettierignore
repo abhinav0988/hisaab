@@ -1,0 +1,11 @@
+node_modules
+.next
+.turbo
+dist
+coverage
+pnpm-lock.yaml
+worker-configuration.d.ts
+.env
+.env.*
+.dev.vars
+.dev.vars.*

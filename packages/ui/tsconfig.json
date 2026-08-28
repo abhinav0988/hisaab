@@ -1,0 +1,5 @@
+{
+  "extends": "@hisaab/typescript-config/base.json",
+  "compilerOptions": { "jsx": "react-jsx", "lib": ["DOM", "ES2022"] },
+  "include": ["src/**/*.tsx"]
+}

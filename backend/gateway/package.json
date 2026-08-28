@@ -1,0 +1,26 @@
+{
+  "name": "@hisaab/gateway",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev --port 8787 --persist-to ../../.wrangler/state -c wrangler.jsonc -c ../auth/wrangler.jsonc -c ../profile/wrangler.jsonc -c ../accounts/wrangler.jsonc -c ../categories/wrangler.jsonc -c ../transactions/wrangler.jsonc -c ../budgets/wrangler.jsonc -c ../reports/wrangler.jsonc -c ../recurring/wrangler.jsonc",
+    "build": "wrangler deploy --dry-run --env=\"\" --outdir dist",
+    "lint": "eslint .",
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "vitest run --passWithNoTests"
+  },
+  "dependencies": {
+    "@hisaab/worker-lib": "workspace:*",
+    "hono": "4.13.5"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "4.20250828.0",
+    "@hisaab/eslint-config": "workspace:*",
+    "@hisaab/typescript-config": "workspace:*",
+    "eslint": "9.34.0",
+    "typescript": "5.9.2",
+    "vitest": "3.2.4",
+    "wrangler": "4.33.1"
+  }
+}

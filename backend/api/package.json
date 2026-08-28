@@ -1,0 +1,38 @@
+{
+  "name": "@hisaab/api",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev --port 8787",
+    "build": "wrangler deploy --dry-run --env=\"\" --outdir dist",
+    "lint": "eslint .",
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "vitest run",
+    "cf-typegen": "wrangler types worker-configuration.d.ts",
+    "db:migrate:local": "wrangler d1 migrations apply hisaab --local",
+    "db:seed:local": "wrangler d1 execute hisaab --local --file ../../packages/database/seed.sql",
+    "db:migrate:remote": "wrangler d1 migrations apply hisaab --remote",
+    "db:seed:remote": "wrangler d1 execute hisaab --remote --file ../../packages/database/seed.sql"
+  },
+  "dependencies": {
+    "@hisaab/database": "workspace:*",
+    "@hisaab/types": "workspace:*",
+    "@hisaab/validation": "workspace:*",
+    "better-auth": "1.6.26",
+    "drizzle-orm": "0.45.2",
+    "hono": "4.13.5",
+    "zod": "4.1.5"
+  },
+  "devDependencies": {
+    "@cloudflare/vitest-pool-workers": "0.8.68",
+    "@cloudflare/workers-types": "4.20250828.0",
+    "@types/node": "22.18.0",
+    "@hisaab/eslint-config": "workspace:*",
+    "@hisaab/typescript-config": "workspace:*",
+    "eslint": "9.34.0",
+    "typescript": "5.9.2",
+    "vitest": "3.2.4",
+    "wrangler": "4.33.1"
+  }
+}

@@ -1,0 +1,9 @@
+{
+  "extends": "@hisaab/typescript-config/worker.json",
+  "compilerOptions": {
+    "baseUrl": ".",
+    "types": ["@cloudflare/workers-types"],
+    "paths": { "@/*": ["src/*"] }
+  },
+  "include": ["src/**/*.ts"]
+}

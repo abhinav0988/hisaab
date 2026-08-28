@@ -1,0 +1,28 @@
+{
+  "name": "@hisaab/worker-lib",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "lint": "eslint .",
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@hisaab/database": "workspace:*",
+    "hono": "4.13.5",
+    "zod": "4.1.5"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "4.20250828.0",
+    "@hisaab/eslint-config": "workspace:*",
+    "@hisaab/typescript-config": "workspace:*",
+    "eslint": "9.34.0",
+    "typescript": "5.9.2",
+    "vitest": "3.2.4"
+  }
+}

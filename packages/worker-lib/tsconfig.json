@@ -1,0 +1,5 @@
+{
+  "extends": "@hisaab/typescript-config/worker.json",
+  "include": ["src/**/*.ts"],
+  "exclude": ["src/**/*.test.ts"]
+}

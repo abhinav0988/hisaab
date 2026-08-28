@@ -1,0 +1,9 @@
+packages:
+  - backend/*
+  - frontend
+  - packages/*
+
+onlyBuiltDependencies:
+  - esbuild
+  - sharp
+  - workerd

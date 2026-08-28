@@ -1,0 +1,19 @@
+{
+  "$schema": "../../node_modules/wrangler/config-schema.json",
+  "account_id": "3ee25fc8fe5e195ebf2e54da536e2d62",
+  "name": "hisaab-recurring",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-08-28",
+  "compatibility_flags": ["nodejs_compat"],
+  "workers_dev": false,
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "hisaab",
+      "database_id": "ec0df364-b3f9-4214-975f-7e75c9cba14f",
+      "migrations_dir": "../../packages/database/migrations",
+    },
+  ],
+  "observability": { "enabled": true, "head_sampling_rate": 1 },
+  "triggers": { "crons": ["*/15 * * * *"] },
+}

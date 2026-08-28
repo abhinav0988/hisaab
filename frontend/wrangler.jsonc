@@ -1,0 +1,13 @@
+{
+  "$schema": "../node_modules/wrangler/config-schema.json",
+  "account_id": "3ee25fc8fe5e195ebf2e54da536e2d62",
+  "name": "hisaab",
+  "compatibility_date": "2026-08-28",
+  "workers_dev": true,
+  "assets": {
+    "directory": "./out",
+    "html_handling": "auto-trailing-slash",
+    "not_found_handling": "404-page",
+  },
+  "observability": { "enabled": true, "head_sampling_rate": 1 },
+}
