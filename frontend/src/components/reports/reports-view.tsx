@@ -74,7 +74,7 @@ export function ReportsView() {
         description="Clear insights without complicated finance language."
         actions={
           <>
-            <Select className="w-44 text-[11px]" value={period} onChange={(event) => setPeriod(event.target.value)}>
+            <Select className="w-full sm:w-44" value={period} onChange={(event) => setPeriod(event.target.value)}>
               <option value="6">Last 6 months</option>
               <option value="12">Last 12 months</option>
               <option value="year">This year</option>
@@ -88,7 +88,7 @@ export function ReportsView() {
           </>
         }
       />
-      <section className="grid gap-3.5 sm:grid-cols-2 xl:grid-cols-4">
+      <section className="grid gap-[18px] sm:grid-cols-2 xl:grid-cols-4">
         <KpiCard
           label="Average monthly spend"
           value={money(report.data.averageDailySpending * 30, currency)}
@@ -116,14 +116,15 @@ export function ReportsView() {
           icon="↻"
         />
       </section>
-      <section className="mt-3.5 grid gap-3.5 xl:grid-cols-[minmax(0,1.3fr)_minmax(280px,.7fr)]">
-        <Card className="p-[18px]">
+      <section className="mt-[18px] grid gap-[18px] xl:grid-cols-[minmax(0,1.3fr)_minmax(280px,.7fr)]">
+        <Card className="p-[22px]">
           <CardHead
             title="Income vs expenses"
             description="Six-month comparison"
             action={<ProLabel />}
           />
-          <div className="flex h-[220px] items-end gap-3 border-b px-2 pb-6 pt-4">
+          <div className="min-w-0 overflow-x-auto">
+            <div className="flex h-[270px] min-w-[280px] items-end gap-[17px] border-b px-3 pb-[30px] pt-5">
             {months.length ? (
               months.map((item) => (
                 <div key={item.month} className="relative flex h-full flex-1 items-end justify-center gap-1">
@@ -135,7 +136,7 @@ export function ReportsView() {
                     className="w-[13px] rounded-t-md bg-[#e0a267]"
                     style={{ height: `${Math.max(4, (item.expense / maxBar) * 100)}%` }}
                   />
-                  <span className="absolute -bottom-5 text-[8px] text-[var(--subtle)]">{item.month}</span>
+                  <span className="absolute -bottom-5 text-[11px] text-[var(--subtle)]">{item.month}</span>
                 </div>
               ))
             ) : (
@@ -143,8 +144,9 @@ export function ReportsView() {
                 Not enough history yet.
               </p>
             )}
+            </div>
           </div>
-          <div className="mt-3 flex gap-4 text-[9px] text-[var(--muted-foreground)]">
+          <div className="mt-3 flex flex-wrap gap-4 text-[11px] text-[var(--muted-foreground)]">
             <span>
               <i className="mr-1 inline-block size-2 rounded-full bg-[#77c795]" />
               Income
@@ -155,14 +157,14 @@ export function ReportsView() {
             </span>
           </div>
         </Card>
-        <Card className="p-[18px]">
+        <Card className="p-[22px]">
           <CardHead title="Top categories" description="Share of total spending" />
           <div className="grid gap-3">
             {categories.data.slice(0, 5).map((item) => {
               const max = categories.data[0]?.value || 1;
               return (
                 <div key={item.id}>
-                  <div className="flex justify-between text-[10px]">
+                  <div className="flex flex-wrap justify-between gap-2 text-[11px]">
                     <b>{item.name}</b>
                     <span>{money(item.value, currency)}</span>
                   </div>
@@ -176,8 +178,8 @@ export function ReportsView() {
           </div>
         </Card>
       </section>
-      <section className="mt-3.5 grid gap-3.5 md:grid-cols-2">
-        <Card className="p-[18px]">
+      <section className="mt-[18px] grid gap-[18px] md:grid-cols-2">
+        <Card className="p-[22px]">
           <CardHead
             title="Smart insights"
             description="Personal observations based on your patterns"
@@ -201,7 +203,7 @@ export function ReportsView() {
             />
           </div>
         </Card>
-        <Card className="p-[18px]">
+        <Card className="p-[22px]">
           <CardHead title="Cash-flow forecast" description="Next 30 days" action={<ProLabel />} />
           <div className="text-2xl font-black tracking-tight">{money(projected, currency)}</div>
           <p className="mt-2 text-xs text-[var(--muted-foreground)]">

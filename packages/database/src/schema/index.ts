@@ -117,6 +117,20 @@ export const userPreferences = sqliteTable("user_preferences", {
   ...timestamps,
 });
 
+export const accountCatalog = sqliteTable(
+  "account_catalog",
+  {
+    id: text("id").primaryKey(),
+    type: text("type").notNull(),
+    name: text("name").notNull(),
+    description: text("description"),
+    sortOrder: integer("sort_order").notNull().default(0),
+    isActive: integer("is_active", { mode: "boolean" }).notNull().default(true),
+    ...timestamps,
+  },
+  (table) => [uniqueIndex("account_catalog_type_unique").on(table.type)],
+);
+
 export const accounts = sqliteTable(
   "accounts",
   {
@@ -124,6 +138,7 @@ export const accounts = sqliteTable(
     userId: text("user_id")
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
+    catalogId: text("catalog_id").references(() => accountCatalog.id, { onDelete: "set null" }),
     name: text("name").notNull(),
     type: text("type").notNull(),
     institutionName: text("institution_name"),
@@ -132,7 +147,10 @@ export const accounts = sqliteTable(
     isActive: integer("is_active", { mode: "boolean" }).notNull().default(true),
     ...timestamps,
   },
-  (table) => [index("accounts_user_idx").on(table.userId)],
+  (table) => [
+    index("accounts_user_idx").on(table.userId),
+    uniqueIndex("accounts_user_catalog_unique").on(table.userId, table.catalogId),
+  ],
 );
 
 export const categories = sqliteTable(

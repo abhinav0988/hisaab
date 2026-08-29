@@ -19,9 +19,9 @@ import {
   ProLabel,
   ProgressBar,
 } from "@/components/layout/chrome";
-import { PageHeader } from "@/components/layout/page-header";
 import { ErrorState, PageSkeleton } from "@/components/layout/states";
 import { dateTime, greetingForHour, longDate, money, signedMoney } from "@/lib/format";
+import { tidyAccountLabel } from "@/lib/accounts";
 import { authService } from "@/services/auth.service";
 import { dashboardService } from "@/services/dashboard.service";
 import { recurringService } from "@/services/recurring.service";
@@ -74,73 +74,126 @@ export function DashboardView() {
       return due >= 0 && due <= 7 * 24 * 60 * 60 * 1000;
     })
     .slice(0, 4);
+  const upcomingTotal = upcoming.reduce((sum, item) => sum + item.amountMinor, 0);
   const chartData =
     range === "week"
       ? data.sevenDaySpending.map((item) => ({ label: item.date, amount: item.amount }))
       : data.monthlyComparison.map((item) => ({ label: item.month, amount: item.expense }));
   return (
     <div>
-      <PageHeader
-        eyebrow={longDate()}
-        title={`${greetingForHour()}${firstName ? `, ${firstName}` : ""}`}
-        description="Here’s how your money is looking this month."
-        actions={
-          <>
+      <section className="overview-hero">
+        <div>
+          <div className="eyebrow">{longDate()}</div>
+          <h1>
+            {greetingForHour()}
+            {firstName ? `, ${firstName}` : ""}
+          </h1>
+          <p>
+            Your Hisaab overview is cleaner, smarter, and easier to scan. Track spending, savings,
+            budgets, and key trends from one premium dashboard.
+          </p>
+          <div className="hero-actions">
             <Button
               variant="secondary"
+              className="border-white/12 bg-white/10 text-[#f3fff7] hover:bg-white/15"
               onClick={() => toast.info("Receipt scan is a Premium feature.")}
             >
               ▣ Scan receipt <ProLabel />
             </Button>
-            <Button variant="secondary" onClick={() => router.push("/reports")}>
-              View insights →
+            <Button
+              variant="secondary"
+              className="border-white/12 bg-white/10 text-[#f3fff7] hover:bg-white/15"
+              onClick={() => router.push("/transactions?action=add")}
+            >
+              ＋ Add transaction
             </Button>
-          </>
-        }
-      />
-      <section className="grid gap-3.5 sm:grid-cols-2 xl:grid-cols-4">
+            <Button
+              variant="ghost"
+              className="text-[#f3fff7] hover:bg-white/15"
+              onClick={() => router.push("/reports")}
+            >
+              Go to analytics →
+            </Button>
+          </div>
+        </div>
+        <div className="hero-panel">
+          <div className="mb-3.5 flex items-center justify-between">
+            <b className="text-[13px]">This month snapshot</b>
+            <small className="text-[#d1e7d8]">Live from your accounts</small>
+          </div>
+          <div className="hero-mini-grid">
+            <div className="hero-mini">
+              <small>Monthly saving</small>
+            <b className="break-words">{money(data.netSavings, currency)}</b>
+              <span className="positive">{rate >= 20 ? "↑ Strong savings pace" : "Keep building this month"}</span>
+            </div>
+            <div className="hero-mini">
+              <small>Budget left</small>
+              <b>{money(data.budgetRemaining, currency)}</b>
+              <span className="positive">
+                {data.budgetTotal ? `${Math.round(data.budgetPercentage)}% used so far` : "Add a monthly budget"}
+              </span>
+            </div>
+            <div className="hero-mini">
+              <small>Income</small>
+              <b>{money(data.incomeThisMonth, currency)}</b>
+              <span className="positive">{data.incomeThisMonth ? "On track this month" : "Add income to start"}</span>
+            </div>
+            <div className="hero-mini">
+              <small>Upcoming bills</small>
+              <b>{money(upcomingTotal, currency)}</b>
+              <span className="positive">
+                {upcoming.length ? `${upcoming.length} due in next 7 days` : "No bills in the next week"}
+              </span>
+            </div>
+          </div>
+        </div>
+      </section>
+      <section className="grid gap-[18px] sm:grid-cols-2 xl:grid-cols-4">
         <KpiCard
           label="Safe to spend"
           value={money(data.budgetRemaining, currency)}
-          note={
-            perDay
-              ? `${money(perDay, currency)} per remaining day`
-              : data.budgetTotal
-                ? "Set a limit to pace spending"
-                : "Add a monthly budget"
-          }
+          note="Money available after your current budget planning."
+          foot={perDay ? "+ remaining days paced" : data.budgetTotal ? "Set a limit to pace spending" : "Add a monthly budget"}
+          footNote={perDay ? `${money(perDay, currency)} per remaining day` : "After planned budgets"}
           tone="positive"
           icon="₹"
         />
         <KpiCard
           label="Spent this month"
           value={money(data.spentThisMonth, currency)}
-          note={
+          note="Your overall expense total for the current month."
+          foot={
             spendDelta
               ? `${Math.abs(spendDelta)}% ${spendDelta > 0 ? "higher" : "lower"} than last month`
               : "This month so far"
           }
+          footNote={topCategory ? `${topCategory.name} remains a top category` : "Add expenses to compare"}
           tone={spendDelta > 0 ? "warning" : "muted"}
           icon="↘"
         />
         <KpiCard
           label="Income"
           value={money(data.incomeThisMonth, currency)}
-          note={data.incomeThisMonth ? "On track this month" : "Add income to see the picture"}
+          note="All salary and other credits captured this month."
+          foot={data.incomeThisMonth ? "On track this month" : "Add income to see the picture"}
+          footNote="Credits captured in Hisaab"
           tone="positive"
           icon="↗"
         />
         <KpiCard
           label="Savings rate"
           value={`${rate}%`}
-          note={rate >= 20 ? "Excellent progress" : rate > 0 ? "Keep going" : "Add income to measure"}
+          note="Percentage of income currently staying saved."
+          foot={rate >= 20 ? "Excellent progress" : rate > 0 ? "Keep going" : "Add income to measure"}
+          footNote="Income minus spending"
           tone={rate >= 20 ? "positive" : "muted"}
           icon="◎"
         />
       </section>
-      <section className="mt-3.5 grid gap-3.5 xl:grid-cols-[minmax(0,1.45fr)_minmax(300px,.75fr)]">
-        <div className="grid gap-3.5">
-          <Card className="p-[18px]">
+      <section className="mt-[18px] grid gap-[18px] xl:grid-cols-[minmax(0,1.48fr)_minmax(310px,.72fr)]">
+        <div className="grid gap-[18px]">
+          <Card className="p-[22px]">
             <CardHead
               title="Spending trend"
               description={range === "week" ? "Last 7 days" : "Recent months"}
@@ -155,7 +208,7 @@ export function DashboardView() {
                 </div>
               }
             />
-            <div className="h-[240px]">
+            <div className="h-[300px] min-w-0">
               {chartData.length ? (
                 <ResponsiveContainer width="100%" height="100%">
                   <AreaChart data={chartData}>
@@ -166,7 +219,14 @@ export function DashboardView() {
                       </linearGradient>
                     </defs>
                     <CartesianGrid vertical={false} stroke="var(--border)" />
-                    <XAxis dataKey="label" tickLine={false} axisLine={false} fontSize={9} />
+                    <XAxis
+                      dataKey="label"
+                      tickLine={false}
+                      axisLine={false}
+                      fontSize={11}
+                      interval="preserveStartEnd"
+                      minTickGap={16}
+                    />
                     <Tooltip
                       formatter={(value) => money(Number(value), currency)}
                       contentStyle={{ borderRadius: 8, background: "var(--foreground)", color: "var(--surface)", border: 0 }}
@@ -187,7 +247,7 @@ export function DashboardView() {
               )}
             </div>
           </Card>
-          <Card className="p-[18px]">
+          <Card className="p-[22px]">
             <CardHead
               title="Recent activity"
               description="Your latest transactions"
@@ -202,7 +262,7 @@ export function DashboardView() {
                 data.recentTransactions.slice(0, 5).map((item) => (
                   <div
                     key={item.id}
-                    className="grid grid-cols-[42px_minmax(0,1fr)_auto] items-center gap-2.5 border-b border-[var(--border)] py-3 last:border-0"
+                    className="grid grid-cols-[42px_minmax(0,1fr)_auto] items-center gap-3.5 border-b border-[var(--border)] py-3.5 last:border-0"
                   >
                     <span className="grid size-[38px] place-items-center rounded-xl bg-[var(--muted)] text-[var(--primary)]">
                       {item.categoryIcon ?? (item.type === "INCOME" ? "₹" : "↘")}
@@ -212,11 +272,11 @@ export function DashboardView() {
                         {item.merchant || item.categoryName || "Transaction"}
                       </b>
                       <small className="mt-0.5 block truncate text-[var(--muted-foreground)]">
-                        {item.categoryName} · {item.accountName} · {dateTime(item.transactionAt)}
+                        {item.categoryName} · {tidyAccountLabel(item.accountName)} · {dateTime(item.transactionAt)}
                       </small>
                     </div>
                     <span
-                      className={`text-xs font-extrabold ${item.type === "INCOME" ? "text-[var(--primary)]" : ""}`}
+                      className={`shrink-0 text-xs font-extrabold ${item.type === "INCOME" ? "text-[var(--primary)]" : ""}`}
                     >
                       {signedMoney(item.amountMinor, item.currency, item.type)}
                     </span>
@@ -230,8 +290,8 @@ export function DashboardView() {
             </div>
           </Card>
         </div>
-        <div className="grid gap-3.5">
-          <Card className="p-[18px]">
+        <div className="grid gap-[18px]">
+          <Card className="p-[22px]">
             <CardHead
               title="Monthly budget"
               description={new Intl.DateTimeFormat(undefined, { month: "long", year: "numeric" }).format(new Date())}
@@ -245,7 +305,7 @@ export function DashboardView() {
               <>
                 <Gauge value={data.budgetPercentage} />
                 <ProgressBar value={data.budgetPercentage} />
-                <div className="mt-1.5 flex justify-between text-[10px]">
+                <div className="mt-1.5 flex justify-between gap-2 text-[11px]">
                   <b>{money(data.spentThisMonth, currency)} used</b>
                   <span className="text-[var(--muted-foreground)]">
                     {money(data.budgetRemaining, currency)} left
@@ -261,7 +321,7 @@ export function DashboardView() {
               </p>
             )}
           </Card>
-          <Card className="p-[18px]">
+          <Card className="p-[22px]">
             <CardHead
               title={
                 <>
@@ -292,7 +352,7 @@ export function DashboardView() {
               />
             </div>
           </Card>
-          <Card className="p-[18px]">
+          <Card className="p-[22px]">
             <CardHead
               title="Upcoming bills"
               description="Next 7 days"
@@ -344,7 +404,7 @@ function ChipBtn({
     <button
       type="button"
       onClick={onClick}
-      className={`rounded-full border px-2.5 py-1.5 text-[10px] font-bold ${
+      className={`min-h-11 rounded-full border px-[13px] py-2 text-[11px] font-bold ${
         active
           ? "border-[color-mix(in_srgb,var(--primary)_40%,var(--border))] bg-[var(--mint)] text-[var(--primary)]"
           : "border-[var(--border)] text-[var(--muted-foreground)]"

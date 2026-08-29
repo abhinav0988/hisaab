@@ -62,30 +62,30 @@ export function GoalsView() {
           description="The savings goals tables are in the schema. Once they are applied, you can create goals here."
         />
       ) : list.length ? (
-        <div className="grid gap-3.5 md:grid-cols-2 xl:grid-cols-3">
+        <div className="grid gap-[18px] md:grid-cols-2 xl:grid-cols-3">
           {list.map((goal) => {
             const pct = Math.round((goal.savedAmountMinor / goal.targetAmountMinor) * 100);
             return (
-              <Card key={goal.id} className="p-[18px]">
+              <Card key={goal.id} className="interactive-card p-[22px]">
                 <span className="grid size-[43px] place-items-center rounded-[14px] bg-[var(--mint)] text-lg text-[var(--primary)]">
                   {goal.icon}
                 </span>
-                <h3 className="mb-1 mt-3.5 text-sm font-semibold">{goal.name}</h3>
+                <h3 className="mb-1 mt-[18px] text-sm font-semibold">{goal.name}</h3>
                 <div className="text-xs text-[var(--muted-foreground)]">
                   Target · {goal.targetDate ?? "No target date"}
                 </div>
-                <div className="my-3 text-lg font-black">
+                <div className="my-3 text-lg font-black [overflow-wrap:anywhere]" aria-live="polite">
                   {money(goal.savedAmountMinor, goal.currency)}{" "}
                   <span className="text-xs font-medium text-[var(--muted-foreground)]">
                     of {money(goal.targetAmountMinor, goal.currency)}
                   </span>
                 </div>
                 <ProgressBar value={pct} />
-                <div className="mt-1.5 flex justify-between text-[9px] text-[var(--muted-foreground)]">
+                <div className="mt-1.5 flex flex-wrap justify-between gap-2 text-[11px] text-[var(--muted-foreground)]">
                   <span>{pct}% complete</span>
                   <span>{goal.notes ?? "Choose a target date for a plan"}</span>
                 </div>
-                <Button className="mt-3.5 w-full" variant="secondary" onClick={() => setContribute(goal)}>
+                <Button className="mt-[18px] w-full" variant="secondary" onClick={() => setContribute(goal)}>
                   Add money
                 </Button>
               </Card>
@@ -99,8 +99,8 @@ export function GoalsView() {
           action={<Button onClick={() => setOpen(true)}>Create goal</Button>}
         />
       )}
-      <div className="mt-3.5 grid gap-3.5 xl:grid-cols-[minmax(0,1.45fr)_minmax(300px,.75fr)]">
-        <Card className="p-[18px]">
+      <div className="mt-[18px] grid gap-[18px] xl:grid-cols-[minmax(0,1.45fr)_minmax(300px,.75fr)]">
+        <Card className="p-[22px]">
           <CardHead
             title="Goal contribution history"
             description="Small deposits create momentum."
@@ -141,7 +141,7 @@ export function GoalsView() {
             </p>
           )}
         </Card>
-        <Card className="p-[18px]">
+        <Card className="p-[22px]">
           <CardHead title="Goal coach" description="Premium planning assistant" action={<ProLabel />} />
           <Insight
             gold

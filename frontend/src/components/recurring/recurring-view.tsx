@@ -2,13 +2,14 @@
 import type { Account, Category, RecurringFrequency, TransactionType } from "@hisaab/types";
 import { Badge, Button, Card, Field, Input, Select } from "@hisaab/ui";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { CalendarClock, Pause, Play, Plus, Trash2 } from "lucide-react";
+import { CalendarClock, Pause, Pencil, Play, Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
-import { Modal } from "@/components/layout/modal";
+import { ConfirmDialog, Modal } from "@/components/layout/modal";
 import { PageHeader } from "@/components/layout/page-header";
 import { EmptyState, ErrorState, PageSkeleton } from "@/components/layout/states";
 import { dateTime, money } from "@/lib/format";
+import { uniqueCatalogAccounts, accountDisplayName } from "@/lib/accounts";
 import { accountService } from "@/services/account.service";
 import { categoryService } from "@/services/category.service";
 import { profileService } from "@/services/profile.service";
@@ -31,6 +32,8 @@ type Recurring = {
 export function RecurringView() {
   const client = useQueryClient();
   const [open, setOpen] = useState(false);
+  const [editing, setEditing] = useState<Recurring | null>(null);
+  const [deleting, setDeleting] = useState<Recurring | null>(null);
   const rows = useQuery({
     queryKey: ["recurring"],
     queryFn: () => recurringService.list<Recurring>(),
@@ -54,8 +57,9 @@ export function RecurringView() {
         : operation === "pause"
           ? recurringService.pause(id)
           : recurringService.resume(id),
-    onSuccess: () => {
-      toast.success("Schedule updated");
+    onSuccess: (_, variables) => {
+      toast.success(variables.operation === "delete" ? "Schedule deleted" : "Schedule updated");
+      if (variables.operation === "delete") setDeleting(null);
       void client.invalidateQueries({ queryKey: ["recurring"] });
     },
   });
@@ -80,7 +84,7 @@ export function RecurringView() {
         {rows.data.length ? (
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
             {rows.data.map((item) => (
-              <Card key={item.id} className="p-5">
+              <Card key={item.id} className="interactive-card p-5">
                 <div className="flex items-start justify-between">
                   <span className="grid size-11 place-items-center rounded-xl bg-[var(--mint)] text-[var(--primary)]">
                     <CalendarClock size={21} />
@@ -113,15 +117,17 @@ export function RecurringView() {
                   </Button>
                   <Button
                     variant="ghost"
+                    className="px-3"
+                    onClick={() => setEditing(item)}
+                    aria-label={`Edit ${item.merchant || "schedule"}`}
+                  >
+                    <Pencil size={16} />
+                  </Button>
+                  <Button
+                    variant="ghost"
                     className="px-3 hover:text-[var(--danger)]"
-                    onClick={() => {
-                      if (
-                        confirm(
-                          "Delete this recurring schedule? Generated transactions will remain.",
-                        )
-                      )
-                        action.mutate({ id: item.id, operation: "delete" });
-                    }}
+                    onClick={() => setDeleting(item)}
+                    aria-label={`Delete ${item.merchant || "schedule"}`}
                   >
                     <Trash2 size={16} />
                   </Button>
@@ -149,6 +155,34 @@ export function RecurringView() {
           }}
         />
       </Modal>
+      <Modal
+        open={Boolean(editing)}
+        onClose={() => setEditing(null)}
+        title="Edit recurring transaction"
+      >
+        {editing ? (
+          <RecurringForm
+            key={editing.id}
+            currency={profile.data.defaultCurrency}
+            accounts={accounts.data}
+            categories={categories.data}
+            initial={editing}
+            onSaved={() => {
+              setEditing(null);
+              toast.success("Schedule updated");
+              void client.invalidateQueries({ queryKey: ["recurring"] });
+            }}
+          />
+        ) : null}
+      </Modal>
+      <ConfirmDialog
+        open={Boolean(deleting)}
+        title="Delete recurring schedule?"
+        description="Future automatic entries will stop. Transactions already created by this schedule will remain in your history."
+        busy={action.isPending}
+        onClose={() => setDeleting(null)}
+        onConfirm={() => deleting && action.mutate({ id: deleting.id, operation: "delete" })}
+      />
     </div>
   );
 }
@@ -156,25 +190,32 @@ function RecurringForm({
   currency,
   accounts,
   categories,
+  initial,
   onSaved,
 }: {
   currency: string;
   accounts: Account[];
   categories: Category[];
+  initial?: Recurring;
   onSaved: () => void;
 }) {
-  const [type, setType] = useState<TransactionType>("EXPENSE");
-  const [amount, setAmount] = useState("");
-  const [accountId, setAccount] = useState(accounts[0]?.id ?? "");
-  const [categoryId, setCategory] = useState(
-    categories.find((item) => item.type === "EXPENSE")?.id ?? "",
+  const [type, setType] = useState<TransactionType>(initial?.type ?? "EXPENSE");
+  const [amount, setAmount] = useState(initial ? String(initial.amountMinor / 100) : "");
+  const accountOptions = uniqueCatalogAccounts(accounts, initial?.accountId);
+  const [accountId, setAccount] = useState(
+    initial?.accountId ?? accountOptions[0]?.id ?? "",
   );
-  const [frequency, setFrequency] = useState<RecurringFrequency>("MONTHLY");
-  const [startAt, setStart] = useState(new Date().toISOString().slice(0, 16));
-  const [merchant, setMerchant] = useState("");
+  const [categoryId, setCategory] = useState(
+    initial?.categoryId ?? categories.find((item) => item.type === "EXPENSE")?.id ?? "",
+  );
+  const [frequency, setFrequency] = useState<RecurringFrequency>(initial?.frequency ?? "MONTHLY");
+  const [startAt, setStart] = useState(
+    initial ? localDateTimeValue(initial.nextRunAt) : localDateTimeValue(new Date().toISOString()),
+  );
+  const [merchant, setMerchant] = useState(initial?.merchant ?? "");
   const mutation = useMutation({
-    mutationFn: () =>
-      recurringService.create({
+    mutationFn: () => {
+      const body = {
         type,
         amountMinor: Math.round(Number(amount) * 100),
         currency,
@@ -184,7 +225,9 @@ function RecurringForm({
         startAt: new Date(startAt).toISOString(),
         merchant: merchant || null,
         notes: null,
-      }),
+      };
+      return initial ? recurringService.update(initial.id, body) : recurringService.create(body);
+    },
     onSuccess: onSaved,
   });
   return (
@@ -240,14 +283,22 @@ function RecurringForm({
       </div>
       <div className="grid grid-cols-2 gap-4">
         <Field label="Account">
-          <Select value={accountId} onChange={(event) => setAccount(event.target.value)}>
-            {accounts
-              .filter((item) => item.isActive)
-              .map((item) => (
-                <option key={item.id} value={item.id}>
-                  {item.name}
-                </option>
-              ))}
+          <Select
+            required
+            aria-label="Account"
+            value={accountId}
+            onChange={(event) => setAccount(event.target.value)}
+          >
+            {!accountId ? (
+              <option value="" disabled>
+                Select an account
+              </option>
+            ) : null}
+            {accountOptions.map((item) => (
+              <option key={item.id} value={item.id}>
+                {accountDisplayName(item)}
+              </option>
+            ))}
           </Select>
         </Field>
         <Field label="Category">
@@ -268,7 +319,14 @@ function RecurringForm({
       {mutation.error ? (
         <p className="text-sm text-[var(--danger)]">{mutation.error.message}</p>
       ) : null}
-      <Button disabled={mutation.isPending || !accountId || !categoryId}>Create schedule</Button>
+      <Button disabled={mutation.isPending || !accountId || !categoryId}>
+        {mutation.isPending ? "Saving…" : initial ? "Save schedule" : "Create schedule"}
+      </Button>
     </form>
   );
+}
+
+function localDateTimeValue(value: string) {
+  const date = new Date(value);
+  return new Date(date.getTime() - date.getTimezoneOffset() * 60_000).toISOString().slice(0, 16);
 }

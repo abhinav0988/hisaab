@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { AuthTrust, AuthWelcome } from "@/components/auth/auth-chrome";
+import { AuthStatus, AuthTrust, AuthWelcome } from "@/components/auth/auth-chrome";
 
 export function VerifyEmailView() {
   return (
@@ -7,6 +7,11 @@ export function VerifyEmailView() {
       <AuthWelcome
         title="Verify your email"
         subtitle="Open the verification link we sent. You can keep using Hisaab while email delivery is configured."
+      />
+      <AuthStatus
+        icon="✉"
+        title="Check your inbox"
+        description="Use the newest verification email. Older links may expire after a new one is requested."
       />
       <Link
         href="/dashboard"

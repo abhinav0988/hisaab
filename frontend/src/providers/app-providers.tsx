@@ -3,6 +3,8 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ThemeProvider } from "next-themes";
 import { useState } from "react";
 import { Toaster } from "sonner";
+import { LocaleDir } from "@/components/layout/locale-dir";
+
 export function AppProviders({ children }: { children: React.ReactNode }) {
   const [client] = useState(
     () =>
@@ -13,8 +15,9 @@ export function AppProviders({ children }: { children: React.ReactNode }) {
   return (
     <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
       <QueryClientProvider client={client}>
+        <LocaleDir />
         {children}
-        <Toaster richColors position="top-right" />
+        <Toaster richColors position="top-center" closeButton />
       </QueryClientProvider>
     </ThemeProvider>
   );

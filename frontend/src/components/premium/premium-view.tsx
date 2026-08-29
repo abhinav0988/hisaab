@@ -21,10 +21,10 @@ export function PremiumView() {
   const [compare, setCompare] = useState(false);
   return (
     <div>
-      <div className="grid items-center gap-6 rounded-[26px] bg-[radial-gradient(circle_at_85%_20%,rgba(235,203,135,.24),transparent_28%),linear-gradient(135deg,#0d3725,#226a47)] p-[30px] text-[#f2fff6] shadow-[0_25px_70px_rgba(8,55,34,.25)] lg:grid-cols-[1.1fr_.9fr]">
+      <div className="grid items-center gap-[30px] rounded-[30px] bg-[radial-gradient(circle_at_85%_20%,rgba(235,203,135,.24),transparent_28%),linear-gradient(135deg,#0d3725,#226a47)] p-6 text-[#f2fff6] shadow-[0_25px_70px_rgba(8,55,34,.25)] sm:p-9 lg:grid-cols-[1.1fr_.9fr]">
         <div>
           <ProLabel>◆ HISAAB PREMIUM</ProLabel>
-          <h1 className="my-3 text-[30px] font-semibold tracking-[-0.05em] lg:text-[38px]">
+          <h1 className="my-3 text-[clamp(28px,8vw,46px)] font-semibold tracking-[-0.05em]">
             Deeper clarity.
             <br />
             Smarter decisions.
@@ -49,39 +49,39 @@ export function PremiumView() {
             </Button>
           </div>
         </div>
-        <div className="rounded-[20px] border border-white/16 bg-white/[.09] p-[22px] backdrop-blur-[10px]">
+        <div className="rounded-3xl border border-white/16 bg-white/[.09] p-[26px] backdrop-blur-[10px]">
           <div className="text-[11px] text-[#cae7d4]">Premium plan</div>
-          <div className="text-4xl font-black">
+          <div className="text-[clamp(28px,10vw,42px)] font-black [overflow-wrap:anywhere]">
             ₹149 <small className="text-xs font-semibold text-[#d4eadb]">/ month</small>
           </div>
-          <p className="mt-2 text-sm text-[#cae8d4]">
-            Or ₹1,499 yearly. Local pricing available for Nepal, Pakistan, and Bangladesh.
+          <p className="mt-2 text-sm leading-relaxed text-[#cae8d4]">
+            INR ₹149 · NPR रु 239 · PKR Rs 499 · BDT ৳ 199 per month. Yearly from ₹1,499. Cancel anytime.
           </p>
           <ProgressBar className="mt-4 bg-white/12" value={100} tone="gold" />
           <small className="mt-2 block text-[#d5eadc]">Cancel anytime · No lock-in</small>
         </div>
       </div>
-      <div className="mt-4 grid gap-3.5 sm:grid-cols-2 xl:grid-cols-3">
+      <div className="mt-[18px] grid gap-[18px] sm:grid-cols-2 xl:grid-cols-3">
         {features.map(([icon, title, body]) => (
-          <Card key={title} className="p-[18px]">
-            <span className="grid size-10 place-items-center rounded-[13px] bg-[var(--gold-soft)] text-[var(--gold)]">
+          <Card key={title} className="interactive-card p-[22px]">
+            <span className="grid size-[46px] place-items-center rounded-[15px] bg-[var(--gold-soft)] text-[var(--gold)]">
               {icon}
             </span>
-            <h3 className="mb-1 mt-3 text-[13px] font-semibold">{title}</h3>
-            <p className="m-0 text-[10px] leading-relaxed text-[var(--muted-foreground)]">{body}</p>
+            <h3 className="mb-1 mt-[15px] text-[15px] font-semibold">{title}</h3>
+            <p className="m-0 text-[11px] leading-[1.65] text-[var(--muted-foreground)]">{body}</p>
           </Card>
         ))}
       </div>
       <Modal open={compare} onClose={() => setCompare(false)} title="Compare plans">
         <div className="grid gap-3 sm:grid-cols-2">
-          <Card className="p-[18px]">
+          <Card className="p-[22px]">
             <h3 className="text-sm font-semibold">Free</h3>
             <div className="mt-2 text-2xl font-black">₹0</div>
             <p className="mt-2 text-xs text-[var(--muted-foreground)]">
               Core tracking, budgets and goals.
             </p>
           </Card>
-          <Card className="border-[var(--gold)] p-[18px]">
+          <Card className="border-[var(--gold)] p-[22px]">
             <ProLabel>RECOMMENDED</ProLabel>
             <h3 className="mt-2 text-sm font-semibold">Premium</h3>
             <div className="mt-2 text-2xl font-black">₹149</div>

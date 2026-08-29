@@ -6,7 +6,7 @@ import { Pencil, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { CardHead, Insight, ProLabel, ProgressBar } from "@/components/layout/chrome";
-import { Modal } from "@/components/layout/modal";
+import { ConfirmDialog, Modal } from "@/components/layout/modal";
 import { PageHeader } from "@/components/layout/page-header";
 import { EmptyState, ErrorState, PageSkeleton } from "@/components/layout/states";
 import { money } from "@/lib/format";
@@ -22,6 +22,7 @@ export function BudgetsView() {
   const [period, setPeriod] = useState<"monthly" | "weekly">("monthly");
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Budget | null>(null);
+  const [deleting, setDeleting] = useState<Budget | null>(null);
   const [forecastOpen, setForecastOpen] = useState(false);
   const budgets = useQuery({
     queryKey: ["budgets", month],
@@ -39,6 +40,7 @@ export function BudgetsView() {
     mutationFn: (id: string) => budgetService.remove(id),
     onSuccess: () => {
       toast.success("Budget deleted");
+      setDeleting(null);
       void client.invalidateQueries({ queryKey: ["budgets"] });
     },
   });
@@ -81,16 +83,16 @@ export function BudgetsView() {
           </>
         }
       />
-      <div className="grid gap-3.5 md:grid-cols-[1.1fr_.9fr]">
-        <Card className="p-[18px]">
-          <div className="mb-3.5 flex items-start justify-between gap-3">
-            <div className="inline-flex rounded-[11px] bg-[var(--muted)] p-1">
+      <div className="grid gap-[18px] md:grid-cols-[1.1fr_.9fr]">
+        <Card className="p-[22px]">
+          <div className="mb-3.5 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <div className="inline-flex w-full rounded-[11px] bg-[var(--muted)] p-1 sm:w-auto" role="group" aria-label="Limit period">
               {(["monthly", "weekly"] as const).map((value) => (
                 <button
                   key={value}
                   type="button"
                   onClick={() => setPeriod(value)}
-                  className={`rounded-lg px-3 py-1.5 text-[10px] font-extrabold capitalize ${
+                  className={`min-h-11 flex-1 rounded-lg px-3 py-1.5 text-[11px] font-extrabold capitalize sm:flex-none ${
                     period === value
                       ? "bg-[var(--surface)] text-[var(--foreground)] shadow-sm"
                       : "text-[var(--muted-foreground)]"
@@ -100,15 +102,21 @@ export function BudgetsView() {
                 </button>
               ))}
             </div>
-            <Input className="w-40" type="month" value={month} onChange={(event) => setMonth(event.target.value)} />
+            <Input
+              className="w-full sm:w-40"
+              type="month"
+              aria-label="Budget month"
+              value={month}
+              onChange={(event) => setMonth(event.target.value)}
+            />
           </div>
           <div className="text-xs text-[var(--muted-foreground)]">
             Total {period} limit
           </div>
-          <div className="mt-2.5 text-[31px] font-black tracking-[-0.04em]">
+          <div className="mt-2.5 text-[clamp(26px,8vw,36px)] font-black tracking-[-0.04em] [overflow-wrap:anywhere]" aria-live="polite">
             {overall ? money(totalLimit, currency) : "—"}
           </div>
-          <p className="mt-1 text-xs text-[var(--muted-foreground)]">
+          <p className="mt-1 text-xs leading-relaxed text-[var(--muted-foreground)]">
             {overall ? (
               <>
                 <b>{money(totalSpent, currency)}</b> spent · <b>{money(Math.max(0, totalLeft), currency)}</b>{" "}
@@ -120,7 +128,7 @@ export function BudgetsView() {
           </p>
           <ProgressBar className="mt-4" value={used} tone={used > 90 ? "danger" : used > 75 ? "warn" : "ok"} />
         </Card>
-        <Card className="p-[18px]">
+        <Card className="p-[22px]">
           <CardHead
             title={
               <>
@@ -146,7 +154,7 @@ export function BudgetsView() {
           </Button>
         </Card>
       </div>
-      <Card className="mt-3.5 p-[18px]">
+      <Card className="mt-[18px] p-[22px]">
         <CardHead
           title="Category limits"
           description="Tap a category to review spending history."
@@ -164,9 +172,9 @@ export function BudgetsView() {
               const pct = limit > 0 ? Math.round((spent / limit) * 100) : 0;
               return (
                 <div key={budget.id}>
-                  <div className="mb-2 flex justify-between text-[11px]">
-                    <b>{budget.categoryName ?? "Overall monthly budget"}</b>
-                    <span>
+                  <div className="mb-2 flex flex-wrap justify-between gap-2 text-[11px]">
+                    <b className="min-w-0 break-words">{budget.categoryName ?? "Overall monthly budget"}</b>
+                    <span className="shrink-0">
                       {money(spent, currency)} / {money(limit, currency)}
                     </span>
                   </div>
@@ -174,20 +182,23 @@ export function BudgetsView() {
                     value={pct}
                     tone={pct > 90 ? "danger" : pct > 75 ? "warn" : "ok"}
                   />
-                  <div className="mt-1.5 flex items-center justify-between text-[9px] text-[var(--muted-foreground)]">
+                  <div className="mt-1.5 flex items-center justify-between gap-2 text-[11px] text-[var(--muted-foreground)]">
                     <span>{pct}% used</span>
                     <span className="flex items-center gap-1">
                       {money(Math.max(0, limit - spent), currency)} left
-                      <button className="rounded-lg p-1 hover:bg-[var(--muted)]" onClick={() => setEditing(budget)}>
-                        <Pencil size={12} />
+                      <button
+                        className="grid size-11 place-items-center rounded-lg hover:bg-[var(--muted)]"
+                        aria-label={`Edit ${budget.categoryName ?? "overall"} budget`}
+                        onClick={() => setEditing(budget)}
+                      >
+                        <Pencil size={14} />
                       </button>
                       <button
-                        className="rounded-lg p-1 hover:bg-[var(--danger-soft)] hover:text-[var(--danger)]"
-                        onClick={() => {
-                          if (confirm("Delete this budget?")) remove.mutate(budget.id);
-                        }}
+                        className="grid size-11 place-items-center rounded-lg hover:bg-[var(--danger-soft)] hover:text-[var(--danger)]"
+                        aria-label={`Delete ${budget.categoryName ?? "overall"} budget`}
+                        onClick={() => setDeleting(budget)}
                       >
-                        <Trash2 size={12} />
+                        <Trash2 size={14} />
                       </button>
                     </span>
                   </div>
@@ -234,6 +245,14 @@ export function BudgetsView() {
           month-end forecast.
         </p>
       </Modal>
+      <ConfirmDialog
+        open={Boolean(deleting)}
+        title={`Delete ${deleting?.categoryName ?? "overall"} budget?`}
+        description="This removes the limit for the selected month. Your transactions and spending history will not be changed."
+        busy={remove.isPending}
+        onClose={() => setDeleting(null)}
+        onConfirm={() => deleting && remove.mutate(deleting.id)}
+      />
     </div>
   );
 }
@@ -287,7 +306,7 @@ function BudgetForm({
           </Select>
         </Field>
       ) : null}
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid gap-4 sm:grid-cols-2">
         <Field label="Budget amount">
           <Input
             required
@@ -308,7 +327,9 @@ function BudgetForm({
         </Field>
       </div>
       {mutation.error ? (
-        <p className="text-sm text-[var(--danger)]">{mutation.error.message}</p>
+        <p className="text-sm text-[var(--danger)]" role="alert">
+          {mutation.error.message}
+        </p>
       ) : null}
       <div className="flex justify-end gap-2">
         <Button disabled={mutation.isPending}>

@@ -22,8 +22,17 @@ export interface ApiFailure {
 }
 export type ApiResponse<T> = ApiSuccess<T> | ApiFailure;
 
+export interface AccountCatalogItem {
+  id: string;
+  type: AccountType;
+  name: string;
+  description: string | null;
+  sortOrder: number;
+  isActive: boolean;
+}
 export interface Account {
   id: string;
+  catalogId?: string | null;
   name: string;
   type: AccountType;
   institutionName: string | null;

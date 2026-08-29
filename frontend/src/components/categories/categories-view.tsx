@@ -5,7 +5,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Pencil, Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
-import { Modal } from "@/components/layout/modal";
+import { ConfirmDialog, Modal } from "@/components/layout/modal";
 import { PageHeader } from "@/components/layout/page-header";
 import { EmptyState, ErrorState, PageSkeleton } from "@/components/layout/states";
 import { categoryService } from "@/services/category.service";
@@ -18,6 +18,16 @@ export function CategoriesView() {
   });
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Category | null>(null);
+  const [deleting, setDeleting] = useState<Category | null>(null);
+  const remove = useMutation({
+    mutationFn: (id: string) => categoryService.delete(id),
+    onSuccess: () => {
+      toast.success("Category deleted");
+      setDeleting(null);
+      void client.invalidateQueries({ queryKey: ["categories"] });
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
   if (categories.isLoading) return <PageSkeleton />;
   if (!categories.data) return <ErrorState retry={() => void categories.refetch()} />;
   const refresh = () => void client.invalidateQueries({ queryKey: ["categories"] });
@@ -74,15 +84,7 @@ export function CategoriesView() {
                           <Button
                             variant="ghost"
                             className="px-2"
-                            onClick={() => {
-                              void categoryService
-                                .delete(item.id)
-                                .then(() => {
-                                  toast.success("Category deleted");
-                                  refresh();
-                                })
-                                .catch((error: Error) => toast.error(error.message));
-                            }}
+                            onClick={() => setDeleting(item)}
                             aria-label={`Delete ${item.name}`}
                           >
                             <Trash2 size={15} />
@@ -128,6 +130,14 @@ export function CategoriesView() {
           }}
         />
       </Modal>
+      <ConfirmDialog
+        open={Boolean(deleting)}
+        title={`Delete ${deleting?.name ?? "category"}?`}
+        description="Existing transactions keep their history, but this category will no longer be available for new entries."
+        busy={remove.isPending}
+        onClose={() => setDeleting(null)}
+        onConfirm={() => deleting && remove.mutate(deleting.id)}
+      />
     </div>
   );
 }

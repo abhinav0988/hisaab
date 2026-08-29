@@ -2,9 +2,26 @@
 import type { Account, Category, Transaction } from "@hisaab/types";
 import { Button, Field, Input, Select, Textarea } from "@hisaab/ui";
 import { majorToMinor } from "@hisaab/validation";
-import { useState } from "react";
+import Link from "next/link";
+import { Calendar, Clock } from "lucide-react";
+import { useMemo, useState } from "react";
 import { ApiError } from "@/lib/api-client";
+import { accountDisplayName, uniqueCatalogAccounts } from "@/lib/accounts";
 import { transactionService } from "@/services/transaction.service";
+
+function localParts(iso: string) {
+  const date = new Date(iso);
+  const local = new Date(date.getTime() - date.getTimezoneOffset() * 60_000)
+    .toISOString()
+    .slice(0, 16);
+  return { date: local.slice(0, 10), time: local.slice(11, 16) };
+}
+
+function shiftDate(value: string, days: number) {
+  const next = new Date(`${value}T00:00:00`);
+  next.setDate(next.getDate() + days);
+  return next.toISOString().slice(0, 10);
+}
 
 export function TransactionForm({
   accounts,
@@ -21,16 +38,22 @@ export function TransactionForm({
   defaultType?: "INCOME" | "EXPENSE";
   onSaved: () => void;
 }) {
+  const options = useMemo(
+    () => uniqueCatalogAccounts(accounts, initial?.accountId),
+    [accounts, initial?.accountId],
+  );
   const [type, setType] = useState<"INCOME" | "EXPENSE">(initial?.type ?? defaultType);
   const [amount, setAmount] = useState(initial ? String(initial.amountMinor / 100) : "");
-  const [accountId, setAccountId] = useState(initial?.accountId ?? accounts[0]?.id ?? "");
+  const [accountId, setAccountId] = useState(
+    initial?.accountId ?? options[0]?.id ?? "",
+  );
   const relevant = categories.filter((item) => item.type === type);
   const [categoryId, setCategoryId] = useState(initial?.categoryId ?? relevant[0]?.id ?? "");
   const [merchant, setMerchant] = useState(initial?.merchant ?? "");
   const [notes, setNotes] = useState(initial?.notes ?? "");
-  const [transactionAt, setTransactionAt] = useState(
-    (initial?.transactionAt ?? new Date().toISOString()).slice(0, 16),
-  );
+  const initialStamp = localParts(initial?.transactionAt ?? new Date().toISOString());
+  const [date, setDate] = useState(initialStamp.date);
+  const [time, setTime] = useState(initialStamp.time);
   const [tags, setTags] = useState(initial?.tags?.join(", ") ?? "");
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
@@ -46,6 +69,20 @@ export function TransactionForm({
     if (match) setCategoryId(match.id);
     setMerchant(merchantValue);
   };
+  const setDatePreset = (kind: "today" | "yesterday" | "tomorrow" | "salary") => {
+    const now = new Date();
+    const stamp = localParts(now.toISOString());
+    if (kind === "today") {
+      setDate(stamp.date);
+      setTime(stamp.time);
+    }
+    if (kind === "yesterday") setDate(shiftDate(stamp.date, -1));
+    if (kind === "tomorrow") setDate(shiftDate(stamp.date, 1));
+    if (kind === "salary") {
+      const salary = new Date(now.getFullYear(), now.getMonth(), 25);
+      setDate(localParts(salary.toISOString()).date);
+    }
+  };
   const submit = async (event: React.FormEvent) => {
     event.preventDefault();
     setError("");
@@ -59,7 +96,7 @@ export function TransactionForm({
         categoryId,
         merchant: merchant || null,
         notes: notes || null,
-        transactionAt: new Date(transactionAt).toISOString(),
+        transactionAt: new Date(`${date}T${time || "00:00"}`).toISOString(),
         tags: tags
           .split(",")
           .map((tag) => tag.trim())
@@ -69,9 +106,15 @@ export function TransactionForm({
       else await transactionService.create(body);
       onSaved();
     } catch (cause) {
+      const details =
+        cause instanceof ApiError
+          ? Object.values(cause.fieldErrors ?? {})
+              .flat()
+              .join(" ")
+          : "";
       setError(
         cause instanceof ApiError
-          ? cause.message
+          ? [cause.message, details].filter(Boolean).join(" ")
           : cause instanceof Error
             ? cause.message
             : "Unable to save transaction.",
@@ -81,124 +124,233 @@ export function TransactionForm({
     }
   };
   return (
-    <form onSubmit={submit} className="grid gap-4">
+    <form onSubmit={submit} className="transaction-form">
       {!initial ? (
-        <div className="rounded-[18px] border border-[color-mix(in_srgb,var(--primary)_12%,var(--border))] bg-gradient-to-br from-[color-mix(in_srgb,var(--mint)_90%,white)] to-[var(--surface)] p-4">
-          <b className="block text-[13px]">Create a new money entry</b>
-          <p className="mt-1 text-[11px] leading-relaxed text-[var(--muted-foreground)]">
-            Add an expense or income with the right category, payment account, date, and note so
-            your analytics, budgets, and goals stay accurate.
+        <div className="transaction-hero">
+          <b>Add a new transaction</b>
+          <p>
+            Maintain every expense and income properly with a clean layout, better spacing, and a
+            simple calendar section.
           </p>
         </div>
       ) : null}
-      <div className="grid gap-3.5 lg:grid-cols-[1.3fr_.7fr]">
-        <div className="grid gap-4">
-          <div className="grid grid-cols-2 gap-2 rounded-xl bg-[var(--muted)] p-1">
-            <button
-              type="button"
-              onClick={() => setKind("EXPENSE")}
-              className={`rounded-lg py-2 text-sm font-semibold ${type === "EXPENSE" ? "bg-[var(--surface)] shadow-sm" : "text-[var(--muted-foreground)]"}`}
-            >
-              Expense
-            </button>
-            <button
-              type="button"
-              onClick={() => setKind("INCOME")}
-              className={`rounded-lg py-2 text-sm font-semibold ${type === "INCOME" ? "bg-[var(--surface)] shadow-sm" : "text-[var(--muted-foreground)]"}`}
-            >
-              Income
-            </button>
-          </div>
-          <div className="grid gap-3 sm:grid-cols-2">
-            <Field label={type === "EXPENSE" ? "Merchant" : "Source"}>
-              <Input
-                maxLength={120}
-                value={merchant}
-                onChange={(event) => setMerchant(event.target.value)}
-                placeholder="e.g. Fresh Basket, Salary, Uber"
-              />
-            </Field>
-            <Field label={`Amount (${currency})`}>
-              <Input
-                inputMode="decimal"
-                required
-                value={amount}
-                onChange={(event) => setAmount(event.target.value)}
-                placeholder="1500"
-              />
-            </Field>
-            <Field label="Category">
-              <Select required value={categoryId} onChange={(event) => setCategoryId(event.target.value)}>
-                {categories
-                  .filter((item) => item.type === type)
-                  .map((item) => (
-                    <option key={item.id} value={item.id}>
-                      {item.name}
-                    </option>
-                  ))}
-              </Select>
-            </Field>
-            <Field label="Account">
-              <Select required value={accountId} onChange={(event) => setAccountId(event.target.value)}>
-                {accounts
-                  .filter((item) => item.isActive)
-                  .map((item) => (
-                    <option key={item.id} value={item.id}>
-                      {item.name}
-                    </option>
-                  ))}
-              </Select>
-            </Field>
-            <Field label="Date and time">
-              <Input
-                type="datetime-local"
-                required
-                value={transactionAt}
-                onChange={(event) => setTransactionAt(event.target.value)}
-              />
-            </Field>
-            <Field label="Tags (comma separated)">
-              <Input value={tags} onChange={(event) => setTags(event.target.value)} />
-            </Field>
-            <Field label="Notes">
-              <Textarea
-                maxLength={500}
-                rows={4}
-                value={notes}
-                onChange={(event) => setNotes(event.target.value)}
-                placeholder="Optional note, receipt details, bill info, or reminder"
-              />
-            </Field>
-          </div>
-        </div>
-        <aside className="rounded-[18px] border border-[color-mix(in_srgb,var(--border)_70%,transparent)] bg-[var(--muted)] p-3.5">
-          <h3 className="mb-2.5 text-xs font-semibold">Quick picks</h3>
-          <div className="grid grid-cols-2 gap-2">
-            <QuickPick onClick={() => pick("EXPENSE", "food", "Fresh Basket")}>
-              Food<small>Groceries & dining</small>
-            </QuickPick>
-            <QuickPick onClick={() => pick("EXPENSE", "transport", "Metro recharge")}>
-              Transport<small>Travel & fuel</small>
-            </QuickPick>
-            <QuickPick onClick={() => pick("EXPENSE", "shop", "Urban Style")}>
-              Shopping<small>Fashion & retail</small>
-            </QuickPick>
-            <QuickPick onClick={() => pick("INCOME", "salary", "Monthly salary")}>
-              Income<small>Salary & credits</small>
-            </QuickPick>
-          </div>
-          <div className="mt-3 grid gap-2">
-            <div className="rounded-xl border border-dashed bg-[var(--surface)] p-2.5">
-              <b className="block text-[10px]">Tip</b>
-              <small className="mt-1 block text-[9px] leading-snug text-[var(--muted-foreground)]">
-                Use clear merchant names to get better insights and cleaner reports.
-              </small>
+      <div className="transaction-layout">
+        <div className="transaction-main">
+          <section className="tx-card">
+            <div className="tx-card-head">
+              <div>
+                <h3>Transaction details</h3>
+                <p>Fill the key information for this entry.</p>
+              </div>
+              <span className="tx-step">01</span>
             </div>
-            <div className="rounded-xl border border-dashed bg-[var(--surface)] p-2.5">
-              <b className="block text-[10px]">Premium workflow</b>
-              <small className="mt-1 block text-[9px] leading-snug text-[var(--muted-foreground)]">
-                You can also scan a receipt from the dashboard and prefill this form automatically.
-              </small>
+            <div className="grid grid-cols-2 gap-2 rounded-xl bg-[var(--muted)] p-1 sm:max-w-[280px]">
+              <button
+                type="button"
+                onClick={() => setKind("EXPENSE")}
+                className={`rounded-lg py-2 text-sm font-semibold ${type === "EXPENSE" ? "bg-[var(--surface)] shadow-sm" : "text-[var(--muted-foreground)]"}`}
+              >
+                Expense
+              </button>
+              <button
+                type="button"
+                onClick={() => setKind("INCOME")}
+                className={`rounded-lg py-2 text-sm font-semibold ${type === "INCOME" ? "bg-[var(--surface)] shadow-sm" : "text-[var(--muted-foreground)]"}`}
+              >
+                Income
+              </button>
+            </div>
+            <div className="form-grid mt-4">
+              <Field label={type === "EXPENSE" ? "Merchant" : "Source"}>
+                <Input
+                  maxLength={120}
+                  value={merchant}
+                  onChange={(event) => setMerchant(event.target.value)}
+                  placeholder="e.g. Fresh Basket, Uber, Salary"
+                />
+              </Field>
+              <Field label={`Amount (${currency})`}>
+                <Input
+                  inputMode="decimal"
+                  required
+                  value={amount}
+                  onChange={(event) => setAmount(event.target.value)}
+                  placeholder="1500"
+                />
+              </Field>
+              <Field label="Category">
+                <Select required value={categoryId} onChange={(event) => setCategoryId(event.target.value)}>
+                  {categories
+                    .filter((item) => item.type === type)
+                    .map((item) => (
+                      <option key={item.id} value={item.id}>
+                        {item.name}
+                      </option>
+                    ))}
+                </Select>
+              </Field>
+              <Field
+                label="Account"
+                hint={
+                  options.length
+                    ? "Choose the payment account this money moved through."
+                    : undefined
+                }
+              >
+                {options.length ? (
+                  <Select
+                    required
+                    value={accountId}
+                    onChange={(event) => setAccountId(event.target.value)}
+                    aria-label="Account"
+                  >
+                    {!accountId ? (
+                      <option value="" disabled>
+                        Select an account
+                      </option>
+                    ) : null}
+                    {options.map((item) => (
+                      <option key={item.id} value={item.id}>
+                        {accountDisplayName(item)}
+                      </option>
+                    ))}
+                  </Select>
+                ) : (
+                  <div className="rounded-[15px] border border-dashed border-[var(--border)] bg-[var(--surface)] p-3.5 text-[12px] font-medium leading-relaxed text-[var(--muted-foreground)]">
+                    Hisaab assigns Cash, Bank, UPI, Wallet, and card accounts automatically.{" "}
+                    <Link className="font-extrabold text-[var(--primary)]" href="/accounts">
+                      View accounts
+                    </Link>
+                  </div>
+                )}
+              </Field>
+              <Field label="Tags (comma separated)">
+                <Input value={tags} onChange={(event) => setTags(event.target.value)} />
+              </Field>
+            </div>
+          </section>
+          <section className="tx-card">
+            <div className="tx-card-head">
+              <div>
+                <h3>Date, time & note</h3>
+                <p>Keep the transaction date and note properly maintained.</p>
+              </div>
+              <span className="tx-step">02</span>
+            </div>
+            <div className="form-grid">
+              <Field label="Date" hint="Choose the exact transaction date from the calendar.">
+                <div className="date-shell">
+                  <span className="calendar-icon" aria-hidden="true">
+                    <Calendar size={13} />
+                  </span>
+                  <Input
+                    type="date"
+                    required
+                    value={date}
+                    onChange={(event) => setDate(event.target.value)}
+                  />
+                </div>
+              </Field>
+              <Field label="Time" hint="Optional time for more accurate tracking.">
+                <div className="date-shell">
+                  <span className="calendar-icon" aria-hidden="true">
+                    <Clock size={13} />
+                  </span>
+                  <Input type="time" value={time} onChange={(event) => setTime(event.target.value)} />
+                </div>
+              </Field>
+              <div className="full">
+                <p className="mb-2 text-[12px] font-extrabold">Quick calendar shortcuts</p>
+                <div className="date-presets">
+                  <button type="button" className="date-chip" onClick={() => setDatePreset("today")}>
+                    Today
+                  </button>
+                  <button
+                    type="button"
+                    className="date-chip"
+                    onClick={() => setDatePreset("yesterday")}
+                  >
+                    Yesterday
+                  </button>
+                  <button
+                    type="button"
+                    className="date-chip"
+                    onClick={() => setDatePreset("tomorrow")}
+                  >
+                    Tomorrow
+                  </button>
+                  <button type="button" className="date-chip" onClick={() => setDatePreset("salary")}>
+                    Salary day
+                  </button>
+                </div>
+              </div>
+              <div className="full">
+                <Field label="Notes">
+                  <Textarea
+                    maxLength={500}
+                    rows={4}
+                    value={notes}
+                    onChange={(event) => setNotes(event.target.value)}
+                    placeholder="Add extra details like why you spent, merchant details, who paid, or anything important"
+                  />
+                </Field>
+              </div>
+            </div>
+          </section>
+          <p className="tx-footer-note">
+            <span className="dot" />
+            <span>Clean entries help budgets, reports, analytics, and monthly planning stay accurate.</span>
+          </p>
+        </div>
+        <aside className="transaction-side">
+          <div className="tx-side-block">
+            <h3>Quick picks</h3>
+            <div className="quick-grid">
+              <button type="button" className="quick-chip" onClick={() => pick("EXPENSE", "food", "Fresh Basket")}>
+                Food
+                <small>Groceries, snacks & dining</small>
+              </button>
+              <button
+                type="button"
+                className="quick-chip"
+                onClick={() => pick("EXPENSE", "transport", "Metro recharge")}
+              >
+                Transport
+                <small>Travel, cab & fuel</small>
+              </button>
+              <button
+                type="button"
+                className="quick-chip"
+                onClick={() => pick("EXPENSE", "shop", "Urban Style")}
+              >
+                Shopping
+                <small>Fashion, retail & online orders</small>
+              </button>
+              <button
+                type="button"
+                className="quick-chip"
+                onClick={() => pick("INCOME", "salary", "Monthly salary")}
+              >
+                Income
+                <small>Salary, credits & refunds</small>
+              </button>
+            </div>
+          </div>
+          <div className="tx-side-block">
+            <h3>Helpful guidance</h3>
+            <div className="meta-block">
+              <div className="meta-item">
+                <b>Calendar tip</b>
+                <small>Use the correct date so weekly and monthly analytics remain accurate.</small>
+              </div>
+              <div className="meta-item">
+                <b>Clean naming</b>
+                <small>Use proper merchant names so search and reports look organized.</small>
+              </div>
+              <div className="meta-item">
+                <b>Premium workflow</b>
+                <small>Receipt scan can prefill details, then you can review here before saving.</small>
+              </div>
             </div>
           </div>
         </aside>
@@ -209,22 +361,10 @@ export function TransactionForm({
         </p>
       ) : null}
       <div className="flex justify-end gap-2">
-        <Button disabled={saving || !accountId || !categoryId}>
+        <Button disabled={saving || !accountId || !categoryId || !options.length}>
           {saving ? "Saving…" : initial ? "Save changes" : `Add ${type.toLowerCase()}`}
         </Button>
       </div>
     </form>
-  );
-}
-
-function QuickPick({ children, onClick }: { children: React.ReactNode; onClick: () => void }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="rounded-xl border bg-[var(--surface)] p-2.5 text-left text-[11px] font-extrabold hover:border-[color-mix(in_srgb,var(--primary)_25%,var(--border))] hover:text-[var(--primary)] [&_small]:mt-1 [&_small]:block [&_small]:text-[9px] [&_small]:font-bold [&_small]:text-[var(--muted-foreground)]"
-    >
-      {children}
-    </button>
   );
 }

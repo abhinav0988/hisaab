@@ -42,6 +42,14 @@ export const signUpSchema = z.object({
   rememberMe: z.boolean(),
 });
 
+export const accountCatalogItemSchema = z.object({
+  id: z.string().min(8).max(64),
+  type: accountTypeSchema,
+  name: z.string().trim().min(1).max(80),
+  description: z.string().trim().max(160).nullable(),
+  sortOrder: z.number().int().nonnegative(),
+  isActive: z.boolean(),
+});
 export const accountSchema = z.object({
   name: z.string().trim().min(1).max(80),
   type: accountTypeSchema,
@@ -50,7 +58,9 @@ export const accountSchema = z.object({
   currency: currencySchema,
   isActive: z.boolean().default(true),
 });
-export const accountPatchSchema = accountSchema.partial();
+export const accountPatchSchema = accountSchema
+  .omit({ type: true })
+  .partial();
 
 export const categorySchema = z.object({
   name: z.string().trim().min(1).max(50),

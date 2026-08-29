@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build --webpack",
-    "build:cloudflare": "HISAAB_STATIC_EXPORT=1 next build --webpack",
+    "build:cloudflare": "NEXT_PUBLIC_API_URL=https://hisaab-gateway.blobforges.workers.dev HISAAB_STATIC_EXPORT=1 next build --webpack",
+    "deploy:cloudflare": "pnpm build:cloudflare && wrangler deploy",
     "start": "next start",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",

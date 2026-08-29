@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { AuthTrust, AuthWelcome } from "@/components/auth/auth-chrome";
+import { AuthStatus, AuthTrust, AuthWelcome } from "@/components/auth/auth-chrome";
 
 export function SessionExpiredView() {
   return (
@@ -7,6 +7,11 @@ export function SessionExpiredView() {
       <AuthWelcome
         title="Your session expired"
         subtitle="For your security, please sign in again."
+      />
+      <AuthStatus
+        icon="⌛"
+        title="Your data stayed protected"
+        description="We ended the inactive session. Sign in again to continue where you left off."
       />
       <Link
         href="/login"

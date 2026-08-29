@@ -12,15 +12,17 @@ export function PageHeader({
   actions?: React.ReactNode;
 }) {
   return (
-    <header className="mb-[22px] flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+    <header className="mb-[26px] flex flex-col gap-[22px] sm:flex-row sm:items-start sm:justify-between">
       <div>
         {eyebrow ? <Eyebrow>{eyebrow}</Eyebrow> : null}
-        <h1 className="m-0 text-[25px] font-semibold leading-[1.12] tracking-[-0.045em] lg:text-[30px]">
+        <h1 className="m-0 text-[clamp(26px,7vw,38px)] font-semibold leading-[1.08] tracking-[-0.055em]">
           {title}
         </h1>
-        <p className="mt-[7px] text-[13px] text-[var(--muted-foreground)]">{description}</p>
+        <p className="mt-[9px] max-w-[760px] text-[14px] leading-[1.65] text-[var(--muted-foreground)]">
+          {description}
+        </p>
       </div>
-      {actions ? <div className="flex flex-wrap gap-[9px]">{actions}</div> : null}
+      {actions ? <div className="flex flex-wrap items-center gap-2.5">{actions}</div> : null}
     </header>
   );
 }

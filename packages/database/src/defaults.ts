@@ -34,6 +34,51 @@ export function defaultUserPreferences(userId: string, countryCode?: string | nu
   };
 }
 
+export const ACCOUNT_CATALOG = [
+  {
+    id: "catalog-cash",
+    type: "CASH" as const,
+    name: "Cash",
+    description: "Physical cash and day-to-day notes",
+    sortOrder: 1,
+  },
+  {
+    id: "catalog-bank",
+    type: "BANK" as const,
+    name: "Bank",
+    description: "Savings or current bank account",
+    sortOrder: 2,
+  },
+  {
+    id: "catalog-upi",
+    type: "UPI" as const,
+    name: "UPI",
+    description: "UPI apps and linked bank handles",
+    sortOrder: 3,
+  },
+  {
+    id: "catalog-wallet",
+    type: "MOBILE_WALLET" as const,
+    name: "Wallet",
+    description: "Mobile wallets and prepaid balances",
+    sortOrder: 4,
+  },
+  {
+    id: "catalog-credit",
+    type: "CREDIT_CARD" as const,
+    name: "Credit card",
+    description: "Credit card spending",
+    sortOrder: 5,
+  },
+  {
+    id: "catalog-debit",
+    type: "DEBIT_CARD" as const,
+    name: "Debit card",
+    description: "Debit card linked to your bank",
+    sortOrder: 6,
+  },
+] as const;
+
 export function defaultSubscription(userId: string, countryCode?: string | null) {
   const region = regionFromCountry(countryCode);
   const now = new Date().toISOString();

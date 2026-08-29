@@ -9,15 +9,23 @@ export function ForgotPasswordForm() {
   const [email, setEmail] = useState("");
   const [sent, setSent] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
   const submit = async (event: React.FormEvent) => {
     event.preventDefault();
+    setError("");
     setLoading(true);
-    await authService.requestPasswordReset({
-      email,
-      redirectTo: `${window.location.origin}/reset-password`,
-    });
-    setLoading(false);
-    setSent(true);
+    try {
+      const result = await authService.requestPasswordReset({
+        email,
+        redirectTo: `${window.location.origin}/reset-password`,
+      });
+      if (result.error) throw new Error(result.error.message ?? "Unable to send a reset link.");
+      setSent(true);
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Unable to send a reset link.");
+    } finally {
+      setLoading(false);
+    }
   };
   return (
     <div>
@@ -26,7 +34,7 @@ export function ForgotPasswordForm() {
         subtitle="Enter your email and we’ll send a secure reset link."
       />
       {sent ? (
-        <div className="rounded-2xl bg-[var(--mint)] p-5">
+        <div className="rounded-[20px] border border-[color-mix(in_srgb,var(--primary)_14%,var(--border))] bg-[var(--mint)] p-5">
           <p className="font-semibold text-[var(--primary)]">Check your inbox</p>
           <p className="mt-1 text-sm text-[var(--muted-foreground)]">
             If an account exists for {email}, a reset link is on its way.
@@ -39,12 +47,13 @@ export function ForgotPasswordForm() {
               type="email"
               required
               placeholder="name@example.com"
-              className="bg-[var(--surface-2)]"
+              className="min-h-[58px] rounded-[17px] bg-[var(--surface-2)] px-[17px] text-[15px]"
               value={email}
               onChange={(event) => setEmail(event.target.value)}
             />
           </Field>
-          <Button className="min-h-[49px] w-full text-xs" disabled={loading}>
+          {error ? <p className="rounded-xl bg-[var(--danger-soft)] p-3 text-sm text-[var(--danger)]" role="alert">{error}</p> : null}
+          <Button className="min-h-[54px] w-full rounded-2xl text-[13px]" disabled={loading}>
             {loading ? "Sending…" : "Send reset link →"}
           </Button>
         </form>

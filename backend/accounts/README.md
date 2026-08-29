@@ -1,20 +1,23 @@
 # Hisaab accounts Worker
 
-Internal CRUD for user ledger accounts and derived balances. Public traffic goes to `backend/gateway`, which authenticates and forwards `x-user-id`.
+Internal ledger accounts and the static account catalog. Public traffic goes to `backend/gateway`, which authenticates and forwards `x-user-id`.
+
+Users do not create accounts. `GET /catalog` returns the static schema; `GET /` provisions those rows onto the signed-in user.
 
 ## Routes (`/api/v1/accounts`)
 
-| Method | Path   | Auth                              |
-| ------ | ------ | --------------------------------- |
-| GET    | `/`    | session via gateway               |
-| POST   | `/`    | session via gateway               |
-| GET    | `/:id` | session via gateway               |
-| PATCH  | `/:id` | session via gateway               |
-| DELETE | `/:id` | session via gateway (deactivates) |
+| Method | Path       | Auth                |
+| ------ | ---------- | ------------------- |
+| GET    | `/catalog` | session via gateway |
+| GET    | `/`        | session via gateway |
+| GET    | `/:id`     | session via gateway |
+| PATCH  | `/:id`     | session via gateway |
+| DELETE | `/:id`     | session via gateway (deactivates) |
+| POST   | `/`        | forbidden — catalog only |
 
 ## Bindings
 
-D1 `hisaab` as `DB`. Reads/writes `accounts`; balance uses `transactions`.
+D1 `hisaab` as `DB`. Reads `account_catalog` and `accounts`; balance uses `transactions`.
 
 ## Local
 

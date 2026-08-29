@@ -27,11 +27,7 @@ async function validateReferences(
   const db = createDatabase(env.DB);
   const [account, category, preferences] = await Promise.all([
     db.query.accounts.findFirst({
-      where: and(
-        eq(accounts.id, input.accountId),
-        eq(accounts.userId, userId),
-        eq(accounts.isActive, true),
-      ),
+      where: and(eq(accounts.id, input.accountId), eq(accounts.userId, userId)),
     }),
     db.query.categories.findFirst({
       where: and(
@@ -41,7 +37,8 @@ async function validateReferences(
     }),
     db.query.userPreferences.findFirst({ where: eq(userPreferences.userId, userId) }),
   ]);
-  if (!account) throw new AppError(400, "INVALID_ACCOUNT", "Select one of your active accounts.");
+  if (!account || Number(account.isActive) !== 1)
+    throw new AppError(400, "INVALID_ACCOUNT", "Select one of your active accounts.");
   if (!category || category.type !== input.type)
     throw new AppError(400, "INVALID_CATEGORY", "Select a category matching the transaction type.");
   const currency = preferences?.defaultCurrency ?? account.currency;

@@ -51,6 +51,10 @@ export const csrfGuard = createMiddleware<{ Bindings: Env }>(async (c, next) => 
 });
 
 export const rateLimit = createMiddleware<{ Bindings: Env }>(async (c, next) => {
+  if (c.env.E2E_DISABLE_RATE_LIMIT === "1") {
+    await next();
+    return;
+  }
   const ip = c.req.header("cf-connecting-ip") ?? "local";
   const key = await hashIp(ip, c.env.RATE_LIMIT_SECRET);
   const authRoute = c.req.path.includes("/sign-in") || c.req.path.includes("/forgot-password");

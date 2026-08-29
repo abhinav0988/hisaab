@@ -7,10 +7,11 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { Chip } from "@/components/layout/chrome";
-import { Modal } from "@/components/layout/modal";
+import { ConfirmDialog, Modal } from "@/components/layout/modal";
 import { PageHeader } from "@/components/layout/page-header";
-import { EmptyState, ErrorState, PageSkeleton } from "@/components/layout/states";
+import { EmptyState, ErrorState, NoResults, PageSkeleton } from "@/components/layout/states";
 import { dateTime, money, signedMoney } from "@/lib/format";
+import { uniqueCatalogAccounts, accountDisplayName, resolveAccountLabel, tidyAccountLabel } from "@/lib/accounts";
 import { accountService } from "@/services/account.service";
 import { categoryService } from "@/services/category.service";
 import { profileService } from "@/services/profile.service";
@@ -46,6 +47,7 @@ export function TransactionsView() {
   const [page, setPage] = useState(1);
   const [menu, setMenu] = useState<string | null>(null);
   const [editing, setEditing] = useState<Transaction | null>(null);
+  const [deleting, setDeleting] = useState<Transaction | null>(null);
   const [manualAdd, setManualAdd] = useState(false);
   const add = manualAdd || searchParams.has("action");
   const defaultType = searchParams.get("action") === "income" ? "INCOME" : "EXPENSE";
@@ -80,6 +82,7 @@ export function TransactionsView() {
     mutationFn: (id: string) => transactionService.remove(id),
     onSuccess: () => {
       toast.success("Transaction deleted");
+      setDeleting(null);
       void queryClient.invalidateQueries({ queryKey: ["transactions"] });
       void queryClient.invalidateQueries({ queryKey: ["dashboard"] });
     },
@@ -125,9 +128,9 @@ export function TransactionsView() {
           </>
         }
       />
-      <div className="mb-3 flex flex-wrap gap-2">
+      <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:flex-wrap">
         <Input
-          className="min-w-[200px] flex-1"
+          className="w-full min-w-0 flex-1 sm:min-w-[200px]"
           placeholder="Search merchant, category, account..."
           aria-label="Search merchant or notes"
           value={search}
@@ -136,14 +139,14 @@ export function TransactionsView() {
             setPage(1);
           }}
         />
-        <Select className="w-36 text-[11px]" value={period} onChange={(event) => setPeriod(event.target.value)}>
+        <Select className="w-full sm:w-36" value={period} onChange={(event) => setPeriod(event.target.value)}>
           <option value="all">All dates</option>
           <option value="month">This month</option>
           <option value="week">This week</option>
           <option value="today">Today</option>
         </Select>
         <Select
-          className="w-36 text-[11px]"
+          className="w-full sm:w-36"
           aria-label="Transaction type"
           value={type}
           onChange={(event) => setType(event.target.value)}
@@ -153,20 +156,20 @@ export function TransactionsView() {
           <option value="INCOME">Income</option>
         </Select>
         <Select
-          className="w-40 text-[11px]"
+          className="w-full sm:w-40"
           aria-label="Account"
           value={account}
           onChange={(event) => setAccount(event.target.value)}
         >
           <option value="">All accounts</option>
-          {accounts.data.map((item) => (
+          {uniqueCatalogAccounts(accounts.data).map((item) => (
             <option key={item.id} value={item.id}>
-              {item.name}
+              {accountDisplayName(item)}
             </option>
           ))}
         </Select>
       </div>
-      <div className="mb-3.5 flex flex-wrap gap-1.5">
+      <div className="chip-row mb-3.5">
         <Chip
           active={!category}
           onClick={() => {
@@ -203,7 +206,7 @@ export function TransactionsView() {
               {group.items.map((item) => (
                 <div
                   key={item.id}
-                  className="grid grid-cols-[44px_minmax(0,1fr)_auto_34px] items-center gap-3 border-b border-[var(--border)] py-3 last:border-0 lg:grid-cols-[44px_minmax(160px,1.3fr)_minmax(110px,.7fr)_minmax(90px,.5fr)_34px]"
+                  className="grid grid-cols-[44px_minmax(0,1fr)_auto_44px] items-center gap-3 border-b border-[var(--border)] py-3 last:border-0 lg:grid-cols-[44px_minmax(160px,1.3fr)_minmax(110px,.7fr)_minmax(90px,.5fr)_44px]"
                 >
                   <span className="grid size-[38px] place-items-center rounded-xl bg-[var(--muted)] text-[var(--primary)]">
                     {item.categoryIcon ?? (item.type === "INCOME" ? "₹" : "↘")}
@@ -212,8 +215,8 @@ export function TransactionsView() {
                     <b className="block truncate text-xs">
                       {item.merchant || item.notes || "Untitled transaction"}
                     </b>
-                    <small className="text-[10px] text-[var(--muted-foreground)]">
-                      {item.categoryName} · {item.accountName} · {dateTime(item.transactionAt)}
+                    <small className="block truncate text-[11px] text-[var(--muted-foreground)]">
+                      {item.categoryName} · {resolveAccountLabel(accounts.data, item.accountId, item.accountName)} · {dateTime(item.transactionAt)}
                     </small>
                   </div>
                   <div className="hidden lg:block">
@@ -222,13 +225,13 @@ export function TransactionsView() {
                     </span>
                   </div>
                   <span
-                    className={`text-right text-xs font-extrabold ${item.type === "INCOME" ? "text-[var(--primary)]" : ""}`}
+                    className={`shrink-0 text-right text-xs font-extrabold ${item.type === "INCOME" ? "text-[var(--primary)]" : ""}`}
                   >
                     {signedMoney(item.amountMinor, item.currency, item.type)}
                   </span>
                   <div className="relative">
                     <button
-                      className="grid size-8 place-items-center rounded-[10px] text-[var(--muted-foreground)] hover:bg-[var(--muted)]"
+                      className="grid size-11 place-items-center rounded-[10px] text-[var(--muted-foreground)] hover:bg-[var(--muted)]"
                       aria-label="Edit"
                       onClick={() => setMenu(menu === item.id ? null : item.id)}
                     >
@@ -250,8 +253,7 @@ export function TransactionsView() {
                           aria-label="Delete"
                           onClick={() => {
                             setMenu(null);
-                            if (confirm("Delete this transaction? This cannot be undone from the app."))
-                              remove.mutate(item.id);
+                            setDeleting(item);
                           }}
                         >
                           <Trash2 size={14} /> Delete
@@ -263,7 +265,7 @@ export function TransactionsView() {
               ))}
             </div>
           ))}
-          <div className="flex items-center justify-between border-t px-4 py-3 text-sm">
+          <div className="flex flex-col gap-3 border-t px-4 py-3 text-sm sm:flex-row sm:items-center sm:justify-between">
             <span className="text-[var(--muted-foreground)]">
               Page {page} of {Number(transactions.data.meta?.totalPages ?? 1)}
             </span>
@@ -279,7 +281,7 @@ export function TransactionsView() {
               >
                 <ChevronRight size={17} />
               </Button>
-              <Select className="w-40 text-[11px]" aria-label="Sort" value={sort} onChange={(event) => setSort(event.target.value)}>
+              <Select className="w-full sm:w-40" aria-label="Sort" value={sort} onChange={(event) => setSort(event.target.value)}>
                 <option value="newest">Newest first</option>
                 <option value="oldest">Oldest first</option>
                 <option value="amount_desc">Highest amount</option>
@@ -288,10 +290,21 @@ export function TransactionsView() {
             </div>
           </div>
         </Card>
+      ) : search || type || category || account ? (
+        <NoResults
+          query={search || "these filters"}
+          onClear={() => {
+            setSearch("");
+            setType("");
+            setCategory("");
+            setAccount("");
+            setPage(1);
+          }}
+        />
       ) : (
         <EmptyState
-          title="No matching transactions found."
-          description="Add your first transaction or adjust the filters."
+          title="No transactions yet"
+          description="Add your first transaction to start tracking money movement."
           action={
             <Button onClick={() => setManualAdd(true)}>
               <Plus size={17} />
@@ -318,6 +331,14 @@ export function TransactionsView() {
           onSaved={saved}
         />
       </Modal>
+      <ConfirmDialog
+        open={Boolean(deleting)}
+        title="Delete transaction?"
+        description={`${deleting?.merchant || deleting?.categoryName || "This transaction"} will be removed and account balances will be recalculated.`}
+        busy={remove.isPending}
+        onClose={() => setDeleting(null)}
+        onConfirm={() => deleting && remove.mutate(deleting.id)}
+      />
     </div>
   );
 }
@@ -356,7 +377,7 @@ function exportCsv(rows: Transaction[]) {
         item.transactionAt,
         `"${(item.merchant ?? "").replaceAll('"', '""')}"`,
         item.categoryName,
-        item.accountName,
+        tidyAccountLabel(item.accountName),
         item.type,
         (item.amountMinor / 100).toFixed(2),
       ].join(","),

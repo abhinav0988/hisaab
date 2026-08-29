@@ -2,6 +2,7 @@ import {
   createDatabase,
   defaultSubscription,
   defaultUserPreferences,
+  provisionUserAccounts,
   subscriptions,
   userPreferences,
 } from "@hisaab/database";
@@ -21,4 +22,8 @@ export async function seedUserWorkspace(env: Env, userId: string, countryCode?: 
   if (!plan) {
     await db.insert(subscriptions).values(defaultSubscription(userId, countryCode));
   }
+  const prefs = await db.query.userPreferences.findFirst({
+    where: eq(userPreferences.userId, userId),
+  });
+  await provisionUserAccounts(db, userId, prefs?.defaultCurrency);
 }

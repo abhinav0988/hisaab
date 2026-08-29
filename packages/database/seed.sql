@@ -19,3 +19,11 @@ INSERT OR IGNORE INTO categories (id,user_id,name,type,icon,colour,is_system,cre
 ('sys-inc-gift',NULL,'Gift','INCOME','Gift','#059669',1,datetime('now'),datetime('now')),
 ('sys-inc-refund',NULL,'Refund','INCOME','RotateCcw','#0D9488',1,datetime('now'),datetime('now')),
 ('sys-inc-other',NULL,'Other Income','INCOME','CircleDollarSign','#3F6212',1,datetime('now'),datetime('now'));
+
+INSERT OR IGNORE INTO account_catalog (id,type,name,description,sort_order,is_active,created_at,updated_at) VALUES
+('catalog-cash','CASH','Cash','Physical cash and day-to-day notes',1,1,datetime('now'),datetime('now')),
+('catalog-bank','BANK','Bank','Savings or current bank account',2,1,datetime('now'),datetime('now')),
+('catalog-upi','UPI','UPI','UPI apps and linked bank handles',3,1,datetime('now'),datetime('now')),
+('catalog-wallet','MOBILE_WALLET','Wallet','Mobile wallets and prepaid balances',4,1,datetime('now'),datetime('now')),
+('catalog-credit','CREDIT_CARD','Credit card','Credit card spending',5,1,datetime('now'),datetime('now')),
+('catalog-debit','DEBIT_CARD','Debit card','Debit card linked to your bank',6,1,datetime('now'),datetime('now'));

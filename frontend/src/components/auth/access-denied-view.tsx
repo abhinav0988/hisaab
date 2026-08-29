@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { AuthTrust, AuthWelcome } from "@/components/auth/auth-chrome";
+import { AuthStatus, AuthTrust, AuthWelcome } from "@/components/auth/auth-chrome";
 
 export function AccessDeniedView() {
   return (
@@ -7,6 +7,11 @@ export function AccessDeniedView() {
       <AuthWelcome
         title="Access denied"
         subtitle="You do not have permission to view this resource."
+      />
+      <AuthStatus
+        icon="⊘"
+        title="This area is protected"
+        description="Your account is signed in, but it does not have access to the requested resource."
       />
       <Link
         href="/dashboard"

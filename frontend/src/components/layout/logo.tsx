@@ -36,7 +36,7 @@ export function Logo({
       <span className="flex flex-col gap-0.5">
         <span
           className={cn(
-            "text-[22px] font-black tracking-[-0.045em]",
+            "text-[24px] font-black tracking-[-0.045em]",
             inverse ? "text-white" : "text-[var(--foreground)]",
           )}
         >

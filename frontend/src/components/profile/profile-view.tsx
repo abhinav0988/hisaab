@@ -4,11 +4,11 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Repeat2, Tags, WalletCards } from "lucide-react";
 import { useTheme } from "next-themes";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { CardHead, SettingRow } from "@/components/layout/chrome";
-import { Modal } from "@/components/layout/modal";
+import { ConfirmDialog, Modal } from "@/components/layout/modal";
 import { PageHeader } from "@/components/layout/page-header";
 import { ErrorState, PageSkeleton } from "@/components/layout/states";
 import { initials } from "@/lib/format";
@@ -41,12 +41,16 @@ function ProfileForm({ initial, onSaved }: { initial: Profile; onSaved: () => vo
   const [defaultCurrency, setCurrency] = useState(initial.defaultCurrency);
   const [timezone, setTimezone] = useState(initial.timezone);
   const [language, setLanguage] = useState(initial.language ?? "en");
-  const [theme, setThemeValue] = useState(initial.theme === "dark" ? "dark" : "light");
+  const [theme, setThemeValue] = useState(
+    ["light", "dark", "system"].includes(initial.theme) ? initial.theme : "system",
+  );
   const [smartNotifications, setSmart] = useState(initial.smartNotifications ?? true);
   const [weeklySummary, setWeekly] = useState(initial.weeklySummary ?? true);
   const [appLockEnabled, setLock] = useState(initial.appLockEnabled ?? false);
   const [passwordOpen, setPasswordOpen] = useState(false);
   const [sessionsOpen, setSessionsOpen] = useState(false);
+  const [logoutOpen, setLogoutOpen] = useState(false);
+  const pathname = usePathname();
   useEffect(() => setTheme(theme), [theme, setTheme]);
   const mutation = useMutation({
     mutationFn: () =>
@@ -73,7 +77,7 @@ function ProfileForm({ initial, onSaved }: { initial: Profile; onSaved: () => vo
     <div>
       <PageHeader
         eyebrow="Your account"
-        title="Settings"
+        title={pathname.startsWith("/profile") ? "Profile" : "Settings"}
         description="Manage profile, regional preferences, privacy, notifications and access."
         actions={
           <Button disabled={mutation.isPending} onClick={() => mutation.mutate()}>
@@ -81,12 +85,12 @@ function ProfileForm({ initial, onSaved }: { initial: Profile; onSaved: () => vo
           </Button>
         }
       />
-      <div className="grid gap-3.5 lg:grid-cols-2">
-        <div className="grid gap-3.5">
-          <Card className="p-[18px]">
+      <div className="grid gap-[18px] lg:grid-cols-2">
+        <div className="grid gap-[18px]">
+          <Card className="p-[22px]">
             <CardHead
-              title="Profile"
-              description="Personal details used across Hisaab."
+              title="Personal details"
+              description="Name and email used across Hisaab."
               action={
                 <span className="grid size-11 place-items-center rounded-[15px] bg-[var(--mint)] text-sm font-black text-[var(--primary)]">
                   {initials(name)}
@@ -98,7 +102,7 @@ function ProfileForm({ initial, onSaved }: { initial: Profile; onSaved: () => vo
                 <Input value={name} onChange={(event) => setName(event.target.value)} />
               </Field>
               <Field label="Email">
-                <Input value={initial.email} disabled />
+                <Input className="break-all" value={initial.email} disabled />
               </Field>
               <Field label="Profile note">
                 <Input
@@ -109,7 +113,7 @@ function ProfileForm({ initial, onSaved }: { initial: Profile; onSaved: () => vo
               </Field>
             </div>
           </Card>
-          <Card className="p-[18px]">
+          <Card className="p-[22px]">
             <h2 className="mb-3 text-[15px] font-semibold">Regional preferences</h2>
             <SettingRow title="Country" description="Controls regional defaults.">
               <Select className="h-11" value={countryCode} onChange={(event) => setCountry(event.target.value)}>
@@ -136,7 +140,7 @@ function ProfileForm({ initial, onSaved }: { initial: Profile; onSaved: () => vo
               </Select>
             </SettingRow>
           </Card>
-          <Card className="p-[18px]">
+          <Card className="p-[22px]">
             <h2 className="mb-3 text-[15px] font-semibold">Workspace</h2>
             <p className="mb-3 text-[11px] text-[var(--muted-foreground)]">
               Accounts, categories, and recurring bills live here.
@@ -157,15 +161,15 @@ function ProfileForm({ initial, onSaved }: { initial: Profile; onSaved: () => vo
                   </span>
                   <span>
                     <b className="block text-xs">{item.label}</b>
-                    <small className="text-[10px] text-[var(--muted-foreground)]">{item.hint}</small>
+                    <small className="text-[11px] text-[var(--muted-foreground)]">{item.hint}</small>
                   </span>
                 </Link>
               ))}
             </div>
           </Card>
         </div>
-        <div className="grid gap-3.5">
-          <Card className="p-[18px]">
+        <div className="grid gap-[18px]">
+          <Card className="p-[22px]">
             <h2 className="mb-3 text-[15px] font-semibold">Experience</h2>
             <SettingRow title="Language" description="Choose interface language.">
               <Select className="h-11" value={language} onChange={(event) => setLanguage(event.target.value)}>
@@ -178,6 +182,7 @@ function ProfileForm({ initial, onSaved }: { initial: Profile; onSaved: () => vo
             </SettingRow>
             <SettingRow title="Theme" description="Match device or choose manually.">
               <Select className="h-11" value={theme} onChange={(event) => setThemeValue(event.target.value)}>
+                <option value="system">System</option>
                 <option value="light">Light</option>
                 <option value="dark">Dark</option>
               </Select>
@@ -189,7 +194,7 @@ function ProfileForm({ initial, onSaved }: { initial: Profile; onSaved: () => vo
               <Switch checked={weeklySummary} onCheckedChange={setWeekly} label="Weekly money summary" />
             </SettingRow>
           </Card>
-          <Card className="p-[18px]">
+          <Card className="p-[22px]">
             <h2 className="mb-3 text-[15px] font-semibold">Security</h2>
             <SettingRow title="Password" description="Keep your account protected.">
               <Button variant="secondary" className="h-11 w-full" onClick={() => setPasswordOpen(true)}>
@@ -205,10 +210,10 @@ function ProfileForm({ initial, onSaved }: { initial: Profile; onSaved: () => vo
               <Switch checked={appLockEnabled} onCheckedChange={setLock} label="App lock" />
             </SettingRow>
           </Card>
-          <Card className="border-[color-mix(in_srgb,var(--danger)_30%,var(--border))] p-[18px]">
-            <h2 className="mb-3 text-[15px] font-semibold">Account access</h2>
+          <Card className="border-[color-mix(in_srgb,var(--danger)_30%,var(--border))] p-[22px]">
+            <h2 className="mb-3 text-[15px] font-semibold">Account Access</h2>
             <SettingRow title="Log out" description="Sign out securely from this device.">
-              <Button variant="danger" className="h-11 w-full" onClick={logout}>
+              <Button variant="danger" className="h-11 w-full" onClick={() => setLogoutOpen(true)}>
                 Log out
               </Button>
             </SettingRow>
@@ -216,7 +221,9 @@ function ProfileForm({ initial, onSaved }: { initial: Profile; onSaved: () => vo
         </div>
       </div>
       {mutation.error ? (
-        <p className="mt-3 text-sm text-[var(--danger)]">{mutation.error.message}</p>
+        <p className="mt-3 text-sm text-[var(--danger)]" role="alert">
+          {mutation.error.message}
+        </p>
       ) : null}
       <Modal open={passwordOpen} onClose={() => setPasswordOpen(false)} title="Change password">
         <PasswordForm onSaved={() => setPasswordOpen(false)} />
@@ -224,6 +231,14 @@ function ProfileForm({ initial, onSaved }: { initial: Profile; onSaved: () => vo
       <Modal open={sessionsOpen} onClose={() => setSessionsOpen(false)} title="Active sessions">
         <SessionsPanel />
       </Modal>
+      <ConfirmDialog
+        open={logoutOpen}
+        title="Log out of Hisaab?"
+        description="You will need to sign in again to see your accounts, budgets, and goals on this device."
+        confirmLabel="Log out"
+        onClose={() => setLogoutOpen(false)}
+        onConfirm={() => void logout()}
+      />
     </div>
   );
 }
@@ -258,7 +273,11 @@ function PasswordForm({ onSaved }: { onSaved: () => void }) {
       <Field label="New password">
         <Input type="password" required minLength={8} value={newPassword} onChange={(event) => setNext(event.target.value)} />
       </Field>
-      {error ? <p className="text-sm text-[var(--danger)]">{error}</p> : null}
+      {error ? (
+        <p className="text-sm text-[var(--danger)]" role="alert">
+          {error}
+        </p>
+      ) : null}
       <Button disabled={saving}>{saving ? "Saving…" : "Update password"}</Button>
     </form>
   );
@@ -287,7 +306,7 @@ function SessionsPanel() {
         <div key={session.token} className="flex items-center justify-between gap-3 rounded-xl border p-3">
           <div>
             <b className="block text-xs">{session.userAgent || "Signed-in device"}</b>
-            <small className="text-[10px] text-[var(--muted-foreground)]">
+            <small className="mt-0.5 block text-[11px] text-[var(--muted-foreground)]">
               {session.createdAt ? String(session.createdAt) : ""}
             </small>
           </div>
