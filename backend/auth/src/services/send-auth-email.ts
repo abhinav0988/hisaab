@@ -1,4 +1,21 @@
+import { AppError } from "../lib/errors";
+
 type WaitUntilContext = { waitUntil(promise: Promise<unknown>): void };
+
+function resendUserMessage(status: number, detail: string) {
+  const lower = detail.toLowerCase();
+  if (status === 401 || status === 403) {
+    return "Email sending is not authorized. Check the Resend API key on the auth service.";
+  }
+  if (
+    lower.includes("only send testing emails") ||
+    lower.includes("verify a domain") ||
+    lower.includes("testing email address")
+  ) {
+    return "This sender can only deliver to the Resend account email until a domain is verified.";
+  }
+  return "We could not send the verification code. Please try again in a moment.";
+}
 
 function withAppCallback(env: Env, url: string) {
   try {
@@ -90,7 +107,21 @@ export async function sendAuthEmail(
       });
       if (!response.ok) {
         const detail = await response.text();
-        throw new Error(`Resend returned ${response.status}: ${detail}`);
+        console.error(
+          JSON.stringify({
+            level: "error",
+            event: "auth_email_failed",
+            kind,
+            provider: "resend",
+            status: response.status,
+            detail: detail.slice(0, 300),
+          }),
+        );
+        throw new AppError(
+          500,
+          "EMAIL_SEND_FAILED",
+          resendUserMessage(response.status, detail),
+        );
       }
       return;
     }
@@ -106,7 +137,11 @@ export async function sendAuthEmail(
         );
         return;
       }
-      throw new Error("Email provider is not configured");
+      throw new AppError(
+        500,
+        "EMAIL_NOT_CONFIGURED",
+        "Email sending is not configured on the auth service.",
+      );
     }
     const response = await fetch(env.EMAIL_WEBHOOK_URL, {
       method: "POST",
@@ -116,7 +151,9 @@ export async function sendAuthEmail(
       },
       body: JSON.stringify({ template: kind, to, url: link, product: "Hisaab" }),
     });
-    if (!response.ok) throw new Error(`Email provider returned ${response.status}`);
+    if (!response.ok) {
+      throw new AppError(500, "EMAIL_SEND_FAILED", "We could not send the verification code. Please try again in a moment.");
+    }
   };
 
   if (env.ENVIRONMENT === "production") {

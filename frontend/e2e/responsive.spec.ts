@@ -151,9 +151,6 @@ test.describe("responsive production shell", () => {
       await page.setViewportSize({ width: viewport.width, height: viewport.height });
       await expect(page.getByLabel("Full name")).toBeVisible();
       await expect(page.getByLabel("Confirm password")).toBeVisible();
-      await expect(page.getByLabel("Country")).toBeVisible();
-      await expect(page.getByLabel("Currency")).toBeVisible();
-      await expect(page.getByLabel("Time zone")).toBeVisible();
       await assertNoHorizontalOverflow(page);
       if (viewport.name === "iphone" || viewport.name === "desktop") {
         await page.screenshot({

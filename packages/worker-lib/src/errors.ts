@@ -46,7 +46,14 @@ export function errorResponse(c: Context, error: unknown) {
       error.status,
     );
   }
-  console.error(JSON.stringify({ level: "error", requestId, code: "UNEXPECTED_ERROR" }));
+  console.error(
+    JSON.stringify({
+      level: "error",
+      requestId,
+      code: "UNEXPECTED_ERROR",
+      message: error instanceof Error ? error.message : "unknown",
+    }),
+  );
   return c.json(
     {
       success: false as const,

@@ -1,22 +1,19 @@
 "use client";
-import { AUTH_COUNTRIES, signInSchema, signUpSchema } from "@hisaab/validation";
-import { Button, Field, Input, Select } from "@hisaab/ui";
+import { signInSchema, signUpSchema } from "@hisaab/validation";
+import { Button, Field, Input } from "@hisaab/ui";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { z } from "zod";
 import { AuthTrust, AuthWelcome } from "@/components/auth/auth-chrome";
 import { EmailOtpPanel } from "@/components/auth/email-otp-panel";
-import { regionFromCountry } from "@/lib/regions";
 import { authService } from "@/services/auth.service";
 
 type SignIn = z.infer<typeof signInSchema>;
 type SignUp = z.infer<typeof signUpSchema>;
 type AuthFormValues = SignIn & Partial<SignUp> & {
   confirmPassword: string;
-  defaultCurrency: string;
-  timezone: string;
 };
 const authControlClass =
   "min-h-[58px] rounded-[17px] bg-[var(--surface-2)] px-[17px] text-[16px] font-medium";
@@ -39,8 +36,6 @@ export function AuthPanel({ initialMode = "signin" }: { initialMode?: "signin" |
       password: "",
       confirmPassword: "",
       countryCode: "IN",
-      defaultCurrency: "INR",
-      timezone: "Asia/Kolkata",
       rememberMe: true,
     },
   });
@@ -52,20 +47,13 @@ export function AuthPanel({ initialMode = "signin" }: { initialMode?: "signin" |
     clearErrors,
     getValues,
     reset,
-    setValue,
     watch,
   } = form;
 
   const password = watch("password") ?? "";
   const confirmPassword = watch("confirmPassword") ?? "";
-  const countryCode = watch("countryCode") ?? "IN";
   const emailValue = watch("email") ?? "";
   const emailVerified = verifiedEmail !== "" && verifiedEmail === emailValue.trim().toLowerCase();
-  useEffect(() => {
-    const region = regionFromCountry(countryCode);
-    setValue("defaultCurrency", region.currency);
-    setValue("timezone", region.timezone);
-  }, [countryCode, setValue]);
   const hasLength = password.length >= 8;
   const hasNumber = /\d/.test(password);
   const passwordsMatch = Boolean(password) && password === confirmPassword;
@@ -90,8 +78,6 @@ export function AuthPanel({ initialMode = "signin" }: { initialMode?: "signin" |
       password: "",
       confirmPassword: "",
       countryCode: "IN",
-      defaultCurrency: "INR",
-      timezone: "Asia/Kolkata",
       rememberMe: true,
     });
     router.replace(next ? "/register" : "/login", { scroll: false });
@@ -126,7 +112,7 @@ export function AuthPanel({ initialMode = "signin" }: { initialMode?: "signin" |
         password: parsed.data.password,
         callbackURL:
           typeof window === "undefined" ? "/dashboard" : `${window.location.origin}/dashboard`,
-        countryCode: parsed.data.countryCode,
+        countryCode: parsed.data.countryCode ?? "IN",
       });
       if (result.error) {
         setError("root", { message: result.error.message ?? "Unable to create account." });
@@ -299,35 +285,6 @@ export function AuthPanel({ initialMode = "signin" }: { initialMode?: "signin" |
               <span className={`auth-strength-rule ${hasNumber ? "is-valid" : ""}`}>✓ At least 1 number</span>
               <span className={`auth-strength-rule ${passwordsMatch ? "is-valid" : ""}`}>✓ Passwords match</span>
             </div>
-          </div>
-        ) : null}
-        {registerMode ? (
-          <div className="grid gap-4 md:grid-cols-3">
-            <Field label="Country" error={errors.countryCode?.message}>
-              <Select className={authControlClass} {...register("countryCode")}>
-                {AUTH_COUNTRIES.map((country) => (
-                  <option key={country.code} value={country.code}>
-                    {country.name}
-                  </option>
-                ))}
-              </Select>
-            </Field>
-            <Field label="Currency">
-              <Select className={authControlClass} {...register("defaultCurrency")}>
-                <option value="INR">INR — ₹</option>
-                <option value="NPR">NPR — रु</option>
-                <option value="PKR">PKR — Rs</option>
-                <option value="BDT">BDT — ৳</option>
-              </Select>
-            </Field>
-            <Field label="Time zone">
-              <Select className={authControlClass} {...register("timezone")}>
-                <option value="Asia/Kolkata">Asia/Kolkata</option>
-                <option value="Asia/Kathmandu">Asia/Kathmandu</option>
-                <option value="Asia/Karachi">Asia/Karachi</option>
-                <option value="Asia/Dhaka">Asia/Dhaka</option>
-              </Select>
-            </Field>
           </div>
         ) : null}
         <div className="flex items-center justify-between gap-4 text-[11px] text-[var(--muted-foreground)]">
