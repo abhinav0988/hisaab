@@ -57,7 +57,10 @@ export const rateLimit = createMiddleware<{ Bindings: Env }>(async (c, next) => 
   }
   const ip = c.req.header("cf-connecting-ip") ?? "local";
   const key = await hashIp(ip, c.env.RATE_LIMIT_SECRET);
-  const authRoute = c.req.path.includes("/sign-in") || c.req.path.includes("/forgot-password");
+  const authRoute =
+    c.req.path.includes("/sign-in") ||
+    c.req.path.includes("/forgot-password") ||
+    c.req.path.includes("send-verification-code");
   const windowSeconds = authRoute ? 900 : 60;
   const maximum = authRoute ? 10 : 120;
   const bucket = Math.floor(Date.now() / (windowSeconds * 1000));

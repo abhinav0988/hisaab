@@ -21,13 +21,15 @@ import {
 } from "@/components/layout/chrome";
 import { ErrorState, PageSkeleton } from "@/components/layout/states";
 import { dateTime, greetingForHour, longDate, money, signedMoney } from "@/lib/format";
-import { tidyAccountLabel } from "@/lib/accounts";
+import { tidyAccountLabel, uniqueCatalogAccounts } from "@/lib/accounts";
+import { accountService } from "@/services/account.service";
 import { authService } from "@/services/auth.service";
+import { budgetService } from "@/services/budget.service";
 import { dashboardService } from "@/services/dashboard.service";
 import { recurringService } from "@/services/recurring.service";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 
 type Recurring = {
   id: string;
@@ -50,6 +52,12 @@ export function DashboardView() {
   const bills = useQuery({
     queryKey: ["recurring"],
     queryFn: () => recurringService.list<Recurring>(),
+  });
+  const monthKey = useMemo(() => new Date().toISOString().slice(0, 7), []);
+  const accounts = useQuery({ queryKey: ["accounts"], queryFn: () => accountService.list() });
+  const budgets = useQuery({
+    queryKey: ["budgets", monthKey],
+    queryFn: () => budgetService.list(monthKey),
   });
   if (query.isLoading) return <PageSkeleton />;
   if (query.isError || !query.data) return <ErrorState retry={() => void query.refetch()} />;
@@ -79,6 +87,47 @@ export function DashboardView() {
     range === "week"
       ? data.sevenDaySpending.map((item) => ({ label: item.date, amount: item.amount }))
       : data.monthlyComparison.map((item) => ({ label: item.month, amount: item.expense }));
+  const monthLabel = new Intl.DateTimeFormat(undefined, { month: "long" }).format(new Date());
+  const totalBalance = uniqueCatalogAccounts(accounts.data ?? []).reduce(
+    (sum, item) => sum + item.currentBalanceMinor,
+    0,
+  );
+  const lastNet = lastMonth ? lastMonth.income - lastMonth.expense : 0;
+  const saveDelta =
+    lastNet !== 0 ? Math.round(((data.netSavings - lastNet) / Math.abs(lastNet)) * 100) : 0;
+  const amounts = chartData.map((item) => item.amount);
+  const avgSpend = amounts.length ? Math.round(amounts.reduce((sum, value) => sum + value, 0) / amounts.length) : 0;
+  const peak = chartData.reduce(
+    (winner, item) => (item.amount > winner.amount ? item : winner),
+    chartData[0] ?? { label: "—", amount: 0 },
+  );
+  const firstPoint = amounts[0] ?? 0;
+  const lastPoint = amounts.at(-1) ?? 0;
+  const trendLabel =
+    amounts.length < 2
+      ? "Not enough data"
+      : lastPoint > firstPoint * 1.08
+        ? lastPoint > firstPoint * 1.2
+          ? "Rising"
+          : "Moderate rise"
+        : lastPoint < firstPoint * 0.92
+          ? "Falling"
+          : "Steady";
+  const now = new Date();
+  const dayOfMonth = now.getDate();
+  const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+  const projectedSpend = Math.round((data.spentThisMonth / Math.max(1, dayOfMonth)) * daysInMonth);
+  const forecastLabel = !data.budgetTotal
+    ? "Add a budget"
+    : projectedSpend <= data.budgetTotal
+      ? "Under budget"
+      : "Over budget";
+  const secondCategory = data.categorySpending[1];
+  const categoryLimits = new Map(
+    (budgets.data ?? [])
+      .filter((item) => item.categoryName)
+      .map((item) => [item.categoryName as string, item.amountMinor]),
+  );
   return (
     <div>
       <section className="overview-hero">
@@ -118,14 +167,31 @@ export function DashboardView() {
         </div>
         <div className="hero-panel">
           <div className="mb-3.5 flex items-center justify-between">
-            <b className="text-[13px]">This month snapshot</b>
+            <b className="text-[13px]">{monthLabel} snapshot</b>
             <small className="text-[#d1e7d8]">Live from your accounts</small>
           </div>
           <div className="hero-mini-grid">
             <div className="hero-mini">
+              <small>Total balance</small>
+              <b className="break-words">{money(totalBalance, currency)}</b>
+              <span className="positive">
+                {accounts.data?.length
+                  ? totalBalance >= 0
+                    ? "↑ Across your accounts"
+                    : "Includes credit balances"
+                  : "Accounts will appear here"}
+              </span>
+            </div>
+            <div className="hero-mini">
               <small>Monthly saving</small>
-            <b className="break-words">{money(data.netSavings, currency)}</b>
-              <span className="positive">{rate >= 20 ? "↑ Strong savings pace" : "Keep building this month"}</span>
+              <b className="break-words">{money(data.netSavings, currency)}</b>
+              <span className="positive">
+                {saveDelta
+                  ? `${saveDelta > 0 ? "↑" : "↓"} ${Math.abs(saveDelta)}% vs last month`
+                  : rate >= 20
+                    ? "↑ Strong savings pace"
+                    : "Keep building this month"}
+              </span>
             </div>
             <div className="hero-mini">
               <small>Budget left</small>
@@ -133,11 +199,6 @@ export function DashboardView() {
               <span className="positive">
                 {data.budgetTotal ? `${Math.round(data.budgetPercentage)}% used so far` : "Add a monthly budget"}
               </span>
-            </div>
-            <div className="hero-mini">
-              <small>Income</small>
-              <b>{money(data.incomeThisMonth, currency)}</b>
-              <span className="positive">{data.incomeThisMonth ? "On track this month" : "Add income to start"}</span>
             </div>
             <div className="hero-mini">
               <small>Upcoming bills</small>
@@ -191,7 +252,7 @@ export function DashboardView() {
           icon="◎"
         />
       </section>
-      <section className="mt-[18px] grid gap-[18px] xl:grid-cols-[minmax(0,1.48fr)_minmax(310px,.72fr)]">
+      <section className="overview-main-grid">
         <div className="grid gap-[18px]">
           <Card className="p-[22px]">
             <CardHead
@@ -208,6 +269,28 @@ export function DashboardView() {
                 </div>
               }
             />
+            <div className="trend-stats">
+              <div className="trend-stat">
+                <small>Average</small>
+                <b>
+                  {chartData.length
+                    ? `${money(avgSpend, currency)} / ${range === "week" ? "day" : "month"}`
+                    : "—"}
+                </b>
+              </div>
+              <div className="trend-stat">
+                <small>Highest point</small>
+                <b>
+                  {chartData.length
+                    ? `${trendLabelFor(peak.label, range)} · ${money(peak.amount, currency)}`
+                    : "—"}
+                </b>
+              </div>
+              <div className="trend-stat">
+                <small>Trend</small>
+                <b>{trendLabel}</b>
+              </div>
+            </div>
             <div className="h-[300px] min-w-0">
               {chartData.length ? (
                 <ResponsiveContainer width="100%" height="100%">
@@ -226,6 +309,7 @@ export function DashboardView() {
                       fontSize={11}
                       interval="preserveStartEnd"
                       minTickGap={16}
+                      tickFormatter={(value) => trendLabelFor(String(value), range)}
                     />
                     <Tooltip
                       formatter={(value) => money(Number(value), currency)}
@@ -246,52 +330,112 @@ export function DashboardView() {
                 </p>
               )}
             </div>
-          </Card>
-          <Card className="p-[22px]">
-            <CardHead
-              title="Recent activity"
-              description="Your latest transactions"
-              action={
-                <Link href="/transactions" className="text-[11px] font-bold text-[var(--muted-foreground)]">
-                  View all →
-                </Link>
-              }
-            />
-            <div className="grid">
-              {data.recentTransactions.length ? (
-                data.recentTransactions.slice(0, 5).map((item) => (
-                  <div
-                    key={item.id}
-                    className="grid grid-cols-[42px_minmax(0,1fr)_auto] items-center gap-3.5 border-b border-[var(--border)] py-3.5 last:border-0"
-                  >
-                    <span className="grid size-[38px] place-items-center rounded-xl bg-[var(--muted)] text-[var(--primary)]">
-                      {item.categoryIcon ?? (item.type === "INCOME" ? "₹" : "↘")}
-                    </span>
-                    <div className="min-w-0">
-                      <b className="block truncate text-xs">
-                        {item.merchant || item.categoryName || "Transaction"}
-                      </b>
-                      <small className="mt-0.5 block truncate text-[var(--muted-foreground)]">
-                        {item.categoryName} · {tidyAccountLabel(item.accountName)} · {dateTime(item.transactionAt)}
-                      </small>
-                    </div>
-                    <span
-                      className={`shrink-0 text-xs font-extrabold ${item.type === "INCOME" ? "text-[var(--primary)]" : ""}`}
-                    >
-                      {signedMoney(item.amountMinor, item.currency, item.type)}
-                    </span>
-                  </div>
-                ))
-              ) : (
-                <p className="py-8 text-center text-sm text-[var(--muted-foreground)]">
-                  Your transactions will appear here.
-                </p>
-              )}
+            <div className="chart-legend-row">
+              <div className="chart-legend-note">
+                <span className="legend-dot" />
+                <span>Hover points to see exact values and context.</span>
+              </div>
+              <div className="text-[11px] text-[var(--muted-foreground)]">
+                Projected month-end spend: {money(projectedSpend, currency)}
+              </div>
             </div>
           </Card>
+          <div className="overview-bottom-grid">
+            <Card className="p-[22px]">
+              <CardHead
+                title="Recent activity"
+                description="Your latest transactions"
+                action={
+                  <Link href="/transactions" className="text-[11px] font-bold text-[var(--muted-foreground)]">
+                    View all →
+                  </Link>
+                }
+              />
+              <div className="grid">
+                {data.recentTransactions.length ? (
+                  data.recentTransactions.slice(0, 5).map((item) => (
+                    <div
+                      key={item.id}
+                      className="grid grid-cols-[42px_minmax(0,1fr)_auto] items-center gap-3.5 border-b border-[var(--border)] py-3.5 last:border-0"
+                    >
+                      <span className="grid size-[38px] place-items-center rounded-xl bg-[var(--muted)] text-[var(--primary)]">
+                        {item.categoryIcon ?? (item.type === "INCOME" ? "₹" : "↘")}
+                      </span>
+                      <div className="min-w-0">
+                        <b className="block truncate text-xs">
+                          {item.merchant || item.categoryName || "Transaction"}
+                        </b>
+                        <small className="mt-0.5 block truncate text-[var(--muted-foreground)]">
+                          {item.categoryName} · {tidyAccountLabel(item.accountName)} · {dateTime(item.transactionAt)}
+                        </small>
+                      </div>
+                      <span
+                        className={`shrink-0 text-xs font-extrabold ${item.type === "INCOME" ? "text-[var(--primary)]" : ""}`}
+                      >
+                        {signedMoney(item.amountMinor, item.currency, item.type)}
+                      </span>
+                    </div>
+                  ))
+                ) : (
+                  <p className="py-8 text-center text-sm text-[var(--muted-foreground)]">
+                    Your transactions will appear here.
+                  </p>
+                )}
+              </div>
+            </Card>
+            <Card className="p-[22px]">
+              <CardHead
+                title="Category breakdown"
+                description="Where your money went"
+                action={
+                  <Link href="/budgets" className="text-[11px] font-bold text-[var(--muted-foreground)]">
+                    Manage budgets
+                  </Link>
+                }
+              />
+              {data.categorySpending.length ? (
+                <div className="category-breakdown">
+                  {data.categorySpending.slice(0, 4).map((item) => {
+                    const limit = categoryLimits.get(item.name);
+                    const share = limit
+                      ? Math.round((item.value / Math.max(1, limit)) * 100)
+                      : data.spentThisMonth
+                        ? Math.round((item.value / data.spentThisMonth) * 100)
+                        : 0;
+                    return (
+                      <div key={item.name} className="category-row">
+                        <span className="category-icon" style={item.colour ? { color: item.colour } : undefined}>
+                          {item.name.slice(0, 1)}
+                        </span>
+                        <div className="category-main">
+                          <b>{item.name}</b>
+                          <small>
+                            {limit
+                              ? `${money(item.value, currency)} of ${money(limit, currency)}`
+                              : "Share of this month’s spending"}
+                          </small>
+                          <div className="micro-progress">
+                            <span style={{ width: `${Math.min(100, share)}%` }} />
+                          </div>
+                        </div>
+                        <div className="category-meta">
+                          <b>{money(item.value, currency)}</b>
+                          <span>{limit ? `${share}% of limit` : `${share}% of spend`}</span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <p className="py-6 text-sm text-[var(--muted-foreground)]">
+                  Add expenses to see where your money went.
+                </p>
+              )}
+            </Card>
+          </div>
         </div>
         <div className="grid gap-[18px]">
-          <Card className="p-[22px]">
+          <Card className="budget-health-card p-[22px]">
             <CardHead
               title="Monthly budget"
               description={new Intl.DateTimeFormat(undefined, { month: "long", year: "numeric" }).format(new Date())}
@@ -320,6 +464,20 @@ export function DashboardView() {
                 </Link>
               </p>
             )}
+            <div className="budget-health-grid">
+              <div className="budget-health-item">
+                <small>Daily allowance</small>
+                <b>{perDay ? money(perDay, currency) : "—"}</b>
+              </div>
+              <div className="budget-health-item">
+                <small>Largest category</small>
+                <b>{topCategory?.name ?? "—"}</b>
+              </div>
+              <div className="budget-health-item">
+                <small>Forecast</small>
+                <b>{forecastLabel}</b>
+              </div>
+            </div>
           </Card>
           <Card className="p-[22px]">
             <CardHead
@@ -330,7 +488,7 @@ export function DashboardView() {
               }
               description="Personal observations"
             />
-            <div className="grid gap-2">
+            <div className="insight-grid">
               <Insight
                 icon="↘"
                 title={topCategory ? `${topCategory.name} spend is high` : "Start tracking"}
@@ -348,6 +506,23 @@ export function DashboardView() {
                   rate >= 20
                     ? "At this pace, your savings can grow faster than last month."
                     : "A small weekly cut in your top category can lift your savings rate."
+                }
+              />
+              <Insight
+                icon="⚑"
+                title={
+                  secondCategory
+                    ? `${secondCategory.name} is stable`
+                    : upcoming.length
+                      ? "Bills coming up"
+                      : "Keep logging"
+                }
+                body={
+                  secondCategory
+                    ? `${secondCategory.name} is ${money(secondCategory.value, currency)} this month and is not your largest category.`
+                    : upcoming.length
+                      ? `${upcoming.length} recurring payment${upcoming.length === 1 ? "" : "s"} due in the next 7 days.`
+                      : "Add more transactions this week to sharpen your insights."
                 }
               />
             </div>
@@ -389,6 +564,14 @@ export function DashboardView() {
       </section>
     </div>
   );
+}
+
+function trendLabelFor(value: string, range: "week" | "month") {
+  const date = new Date(range === "week" ? value : `${value}-01T00:00:00`);
+  if (Number.isNaN(date.getTime())) return value;
+  return range === "week"
+    ? new Intl.DateTimeFormat("en-IN", { weekday: "short" }).format(date)
+    : new Intl.DateTimeFormat("en-IN", { month: "short" }).format(date);
 }
 
 function ChipBtn({

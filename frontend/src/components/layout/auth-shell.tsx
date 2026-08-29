@@ -64,7 +64,7 @@ export function AuthShell({ children }: { children: React.ReactNode }) {
       <section className="relative flex min-h-dvh items-center justify-center overflow-y-auto bg-[radial-gradient(circle_at_90%_0%,color-mix(in_srgb,var(--mint)_55%,transparent),transparent_30%),var(--background)] px-3 pb-[max(2.5rem,env(safe-area-inset-bottom))] pt-[max(4rem,calc(3rem+env(safe-area-inset-top)))] sm:px-[22px]">
         <ThemeToggle className="absolute right-5 top-5 z-10 sm:right-7 sm:top-7" />
         <div className="pointer-events-none absolute inset-[22px] rounded-[30px] border border-[color-mix(in_srgb,var(--border)_76%,transparent)] max-sm:inset-2.5 max-sm:rounded-[24px]" />
-        <div className="auth-shell-card relative w-full max-w-[540px] rounded-[34px] border border-[color-mix(in_srgb,var(--border)_84%,transparent)] bg-gradient-to-b from-[color-mix(in_srgb,var(--surface)_98%,white)] to-[color-mix(in_srgb,var(--surface-2)_96%,white)] p-6 shadow-[0_28px_80px_rgba(12,34,22,.10)] backdrop-blur-xl transition-[max-width,padding] sm:p-9">
+        <div className="auth-shell-card relative w-full rounded-[34px] border border-[color-mix(in_srgb,var(--border)_84%,transparent)] bg-gradient-to-b from-[color-mix(in_srgb,var(--surface)_98%,white)] to-[color-mix(in_srgb,var(--surface-2)_96%,white)] p-6 shadow-[0_28px_80px_rgba(12,34,22,.10)] backdrop-blur-xl transition-[max-width,padding] sm:p-9">
           <div className="mb-6 flex lg:hidden">
             <div className="flex items-center gap-3 text-[22px] font-black tracking-[-0.04em]">
               <HisaabMark />

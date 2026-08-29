@@ -1,15 +1,7 @@
 "use client";
 
-import { Monitor, Moon, Sun } from "lucide-react";
 import { useTheme } from "next-themes";
 import { useSyncExternalStore } from "react";
-
-const modes = ["system", "light", "dark"] as const;
-type ThemeMode = (typeof modes)[number];
-
-function isThemeMode(value: string | undefined): value is ThemeMode {
-  return modes.includes(value as ThemeMode);
-}
 
 export function ThemeToggle({ className = "" }: { className?: string }) {
   const { theme, setTheme } = useTheme();
@@ -18,20 +10,33 @@ export function ThemeToggle({ className = "" }: { className?: string }) {
     () => true,
     () => false,
   );
-
-  const current: ThemeMode = mounted && isThemeMode(theme) ? theme : "system";
-  const next = modes[(modes.indexOf(current) + 1) % modes.length] ?? "system";
-  const Icon = current === "dark" ? Moon : current === "light" ? Sun : Monitor;
+  const dark = mounted && theme === "dark";
 
   return (
     <button
       type="button"
-      onClick={() => setTheme(next)}
+      onClick={() => setTheme(dark ? "light" : "dark")}
       className={`top-action ${className}`}
-      aria-label={`Theme is ${current}. Change to ${next}.`}
-      title={`Theme: ${current}. Click for ${next}.`}
+      aria-label={dark ? "Switch to light theme" : "Switch to dark theme"}
+      title="Toggle theme"
     >
-      <Icon size={18} aria-hidden="true" />
+      {dark ? (
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M21 12.8A9 9 0 1 1 11.2 3 7 7 0 0 0 21 12.8z" />
+        </svg>
+      ) : (
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <circle cx="12" cy="12" r="4" />
+          <path d="M12 2v2.2" />
+          <path d="M12 19.8V22" />
+          <path d="M4.9 4.9l1.5 1.5" />
+          <path d="M17.6 17.6l1.5 1.5" />
+          <path d="M2 12h2.2" />
+          <path d="M19.8 12H22" />
+          <path d="M4.9 19.1l1.5-1.5" />
+          <path d="M17.6 6.4l1.5-1.5" />
+        </svg>
+      )}
     </button>
   );
 }

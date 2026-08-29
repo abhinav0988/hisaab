@@ -6,7 +6,7 @@ import { ChevronLeft, ChevronRight, MoreVertical, Pencil, Plus, Trash2 } from "l
 import { useRouter, useSearchParams } from "next/navigation";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
-import { Chip } from "@/components/layout/chrome";
+import { CardHead, Chip } from "@/components/layout/chrome";
 import { ConfirmDialog, Modal } from "@/components/layout/modal";
 import { PageHeader } from "@/components/layout/page-header";
 import { EmptyState, ErrorState, NoResults, PageSkeleton } from "@/components/layout/states";
@@ -112,7 +112,7 @@ export function TransactionsView() {
       <PageHeader
         eyebrow="Money movement"
         title="Transactions"
-        description="Search, filter, add, edit, and understand every movement."
+        description="Search, filter, review, and maintain every expense and income with a cleaner premium layout."
         actions={
           <>
             <Button
@@ -128,72 +128,111 @@ export function TransactionsView() {
           </>
         }
       />
-      <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:flex-wrap">
-        <Input
-          className="w-full min-w-0 flex-1 sm:min-w-[200px]"
-          placeholder="Search merchant, category, account..."
-          aria-label="Search merchant or notes"
-          value={search}
-          onChange={(event) => {
-            setSearch(event.target.value);
-            setPage(1);
-          }}
+      <Card className="transaction-filters-card p-[22px]">
+        <CardHead
+          title="Smart filters"
+          description="Use search, period, type, account, and category filters to find entries clearly."
+          action={
+            <button
+              type="button"
+              className="min-h-11 text-[11px] font-bold text-[var(--muted-foreground)]"
+              onClick={() => {
+                setSearch("");
+                setType("");
+                setCategory("");
+                setAccount("");
+                setPeriod("all");
+                setPage(1);
+              }}
+            >
+              Reset all
+            </button>
+          }
         />
-        <Select className="w-full sm:w-36" value={period} onChange={(event) => setPeriod(event.target.value)}>
-          <option value="all">All dates</option>
-          <option value="month">This month</option>
-          <option value="week">This week</option>
-          <option value="today">Today</option>
-        </Select>
-        <Select
-          className="w-full sm:w-36"
-          aria-label="Transaction type"
-          value={type}
-          onChange={(event) => setType(event.target.value)}
-        >
-          <option value="">All types</option>
-          <option value="EXPENSE">Expense</option>
-          <option value="INCOME">Income</option>
-        </Select>
-        <Select
-          className="w-full sm:w-40"
-          aria-label="Account"
-          value={account}
-          onChange={(event) => setAccount(event.target.value)}
-        >
-          <option value="">All accounts</option>
-          {uniqueCatalogAccounts(accounts.data).map((item) => (
-            <option key={item.id} value={item.id}>
-              {accountDisplayName(item)}
-            </option>
-          ))}
-        </Select>
-      </div>
-      <div className="chip-row mb-3.5">
-        <Chip
-          active={!category}
-          onClick={() => {
-            setCategory("");
-            setPage(1);
-          }}
-        >
-          All categories
-        </Chip>
-        {expenseCategories.map((item) => (
+        <div className="filters-grid">
+          <label className="filter-field">
+            <span>Search</span>
+            <Input
+              placeholder="Search merchant, category, note or account..."
+              aria-label="Search merchant or notes"
+              value={search}
+              onChange={(event) => {
+                setSearch(event.target.value);
+                setPage(1);
+              }}
+            />
+          </label>
+          <label className="filter-field">
+            <span>Period</span>
+            <Select value={period} onChange={(event) => setPeriod(event.target.value)}>
+              <option value="all">All dates</option>
+              <option value="month">This month</option>
+              <option value="week">This week</option>
+              <option value="today">Today</option>
+            </Select>
+          </label>
+          <label className="filter-field">
+            <span>Type</span>
+            <Select aria-label="Transaction type" value={type} onChange={(event) => setType(event.target.value)}>
+              <option value="">All types</option>
+              <option value="EXPENSE">Expense</option>
+              <option value="INCOME">Income</option>
+            </Select>
+          </label>
+          <label className="filter-field">
+            <span>Account</span>
+            <Select aria-label="Account" value={account} onChange={(event) => setAccount(event.target.value)}>
+              <option value="">All accounts</option>
+              {uniqueCatalogAccounts(accounts.data).map((item) => (
+                <option key={item.id} value={item.id}>
+                  {accountDisplayName(item)}
+                </option>
+              ))}
+            </Select>
+          </label>
+        </div>
+        <div className="chip-row tx-category-row">
           <Chip
-            key={item.id}
-            active={category === item.id}
+            active={!category}
             onClick={() => {
-              setCategory(item.id);
+              setCategory("");
               setPage(1);
             }}
           >
-            {item.name}
+            All categories
           </Chip>
-        ))}
-      </div>
+          {expenseCategories.map((item) => (
+            <Chip
+              key={item.id}
+              active={category === item.id}
+              onClick={() => {
+                setCategory(item.id);
+                setPage(1);
+              }}
+            >
+              {item.name}
+            </Chip>
+          ))}
+        </div>
+        <div className="tx-summary">
+          <div>
+            <b>
+              Showing {Number(transactions.data.meta?.total ?? rows.length)} transaction
+              {Number(transactions.data.meta?.total ?? rows.length) === 1 ? "" : "s"}
+            </b>
+            <small>
+              Category: {categories.data.find((item) => item.id === category)?.name ?? "All"} · Period:{" "}
+              {period === "all" ? "All dates" : period === "month" ? "This month" : period === "week" ? "This week" : "Today"}{" "}
+              · Type: {type === "INCOME" ? "Income" : type === "EXPENSE" ? "Expense" : "All types"}
+            </small>
+          </div>
+          <Button variant="secondary" onClick={() => setManualAdd(true)}>
+            ＋ New transaction
+          </Button>
+        </div>
+      </Card>
       {rows.length ? (
-        <Card className="overflow-hidden">
+        <Card className="table-card overflow-hidden">
           {groups.map((group) => (
             <div key={group.key} className="px-[18px] pb-0.5 pt-[17px]">
               <div className="mb-1.5 flex justify-between text-[11px] font-extrabold text-[var(--muted-foreground)]">
@@ -208,7 +247,7 @@ export function TransactionsView() {
                   key={item.id}
                   className="grid grid-cols-[44px_minmax(0,1fr)_auto_44px] items-center gap-3 border-b border-[var(--border)] py-3 last:border-0 lg:grid-cols-[44px_minmax(160px,1.3fr)_minmax(110px,.7fr)_minmax(90px,.5fr)_44px]"
                 >
-                  <span className="grid size-[38px] place-items-center rounded-xl bg-[var(--muted)] text-[var(--primary)]">
+                  <span className={`tx-icon${item.type === "INCOME" ? " income" : ""}`}>
                     {item.categoryIcon ?? (item.type === "INCOME" ? "₹" : "↘")}
                   </span>
                   <div className="min-w-0">
@@ -220,9 +259,7 @@ export function TransactionsView() {
                     </small>
                   </div>
                   <div className="hidden lg:block">
-                    <span className="inline-flex rounded-full bg-[var(--muted)] px-2 py-1 text-[9px] font-extrabold text-[var(--muted-foreground)]">
-                      {item.categoryName}
-                    </span>
+                    <span className="category-tag">{item.categoryName}</span>
                   </div>
                   <span
                     className={`shrink-0 text-right text-xs font-extrabold ${item.type === "INCOME" ? "text-[var(--primary)]" : ""}`}

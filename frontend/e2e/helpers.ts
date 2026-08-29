@@ -49,6 +49,18 @@ export async function register(page: Page, prefix: string) {
   await expect(page.getByLabel("Full name")).toBeVisible();
   await page.getByLabel("Full name").fill("Asha Sharma");
   await page.getByLabel("Email address").fill(email);
+  const sent = page.waitForResponse(
+    (response) =>
+      response.url().includes("/api/auth/send-verification-code") && response.request().method() === "POST",
+  );
+  await page.getByRole("button", { name: /Send code/ }).click();
+  const payload = (await (await sent).json()) as { data?: { otp?: string }; otp?: string };
+  const otp = payload.data?.otp ?? payload.otp ?? "";
+  expect(otp).toMatch(/^\d{6}$/);
+  await page.getByLabel("Digit 1").click();
+  await page.keyboard.type(otp);
+  await page.getByRole("button", { name: "Verify email", exact: true }).click();
+  await expect(page.getByText("Email verified")).toBeVisible({ timeout: 15_000 });
   await page.getByLabel("Create password", { exact: true }).fill("Secure!12345");
   await page.getByLabel("Confirm password").fill("Secure!12345");
   await page.getByRole("button", { name: /Create my secure account/ }).click();

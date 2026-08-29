@@ -1,5 +1,7 @@
 import { Hono } from "hono";
+import { AppError } from "../lib/errors";
 import { createAuth } from "../config/auth";
+import { hasVerifiedSignupOtp } from "../services/signup-otp";
 
 async function withSignupCountry(request: Request) {
   const url = new URL(request.url);
@@ -16,7 +18,18 @@ async function withSignupCountry(request: Request) {
   }
 }
 
+async function requireSignupEmailVerified(request: Request, env: Env) {
+  const url = new URL(request.url);
+  if (request.method !== "POST" || !url.pathname.endsWith("/sign-up/email")) return;
+  const body = (await request.clone().json().catch(() => null)) as { email?: string } | null;
+  if (!body?.email || !(await hasVerifiedSignupOtp(env, body.email))) {
+    throw new AppError(403, "EMAIL_NOT_VERIFIED", "Verify your email before creating your account.");
+  }
+}
+
 export const authRoutes = new Hono<{ Bindings: Env }>();
-authRoutes.all("/api/auth/*", async (c) =>
-  createAuth(c.env, c.executionCtx).handler(await withSignupCountry(c.req.raw)),
-);
+authRoutes.all("/api/auth/*", async (c) => {
+  const request = await withSignupCountry(c.req.raw);
+  await requireSignupEmailVerified(request, c.env);
+  return createAuth(c.env, c.executionCtx).handler(request);
+});

@@ -7,6 +7,7 @@ import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { z } from "zod";
 import { AuthTrust, AuthWelcome } from "@/components/auth/auth-chrome";
+import { EmailOtpPanel } from "@/components/auth/email-otp-panel";
 import { regionFromCountry } from "@/lib/regions";
 import { authService } from "@/services/auth.service";
 
@@ -30,6 +31,7 @@ export function AuthPanel({ initialMode = "signin" }: { initialMode?: "signin" |
   const [visible, setVisible] = useState(false);
   const [confirmVisible, setConfirmVisible] = useState(false);
   const [termsAccepted, setTermsAccepted] = useState(true);
+  const [verifiedEmail, setVerifiedEmail] = useState("");
   const form = useForm<AuthFormValues>({
     defaultValues: {
       name: "",
@@ -57,6 +59,8 @@ export function AuthPanel({ initialMode = "signin" }: { initialMode?: "signin" |
   const password = watch("password") ?? "";
   const confirmPassword = watch("confirmPassword") ?? "";
   const countryCode = watch("countryCode") ?? "IN";
+  const emailValue = watch("email") ?? "";
+  const emailVerified = verifiedEmail !== "" && verifiedEmail === emailValue.trim().toLowerCase();
   useEffect(() => {
     const region = regionFromCountry(countryCode);
     setValue("defaultCurrency", region.currency);
@@ -78,6 +82,7 @@ export function AuthPanel({ initialMode = "signin" }: { initialMode?: "signin" |
     setVisible(false);
     setConfirmVisible(false);
     setTermsAccepted(true);
+    setVerifiedEmail("");
     clearErrors();
     reset({
       name: "",
@@ -102,6 +107,10 @@ export function AuthPanel({ initialMode = "signin" }: { initialMode?: "signin" |
         setError("root", { message: "Accept the Terms and Privacy Policy to continue." });
         return;
       }
+      if (!emailVerified) {
+        toast.error("Verify your email before creating your account");
+        return;
+      }
       const parsed = signUpSchema.safeParse(values);
       if (!parsed.success) {
         for (const issue of parsed.error.issues) {
@@ -115,7 +124,8 @@ export function AuthPanel({ initialMode = "signin" }: { initialMode?: "signin" |
         name: parsed.data.name,
         email: parsed.data.email,
         password: parsed.data.password,
-        callbackURL: "/verify-email",
+        callbackURL:
+          typeof window === "undefined" ? "/dashboard" : `${window.location.origin}/dashboard`,
         countryCode: parsed.data.countryCode,
       });
       if (result.error) {
@@ -123,6 +133,19 @@ export function AuthPanel({ initialMode = "signin" }: { initialMode?: "signin" |
         return;
       }
       toast.success("Account created securely");
+      const token = result.data && "token" in result.data ? result.data.token : null;
+      if (!token) {
+        const signedIn = await authService.signIn({
+          email: parsed.data.email,
+          password: parsed.data.password,
+          rememberMe: true,
+        });
+        if (signedIn.error) {
+          router.replace("/login");
+          toast.success("Account created. Sign in to continue.");
+          return;
+        }
+      }
       router.replace("/dashboard");
       return;
     }
@@ -140,7 +163,13 @@ export function AuthPanel({ initialMode = "signin" }: { initialMode?: "signin" |
       rememberMe: parsed.data.rememberMe,
     });
     if (result.error) {
-      setError("root", { message: result.error.message ?? "Unable to sign in." });
+      const message = result.error.message ?? "Unable to sign in.";
+      if (/verif/i.test(message)) {
+        router.replace(`/verify-email?email=${encodeURIComponent(parsed.data.email)}`);
+        toast.error("Verify your email before signing in.");
+        return;
+      }
+      setError("root", { message });
       return;
     }
     toast.success("Signed in securely");
@@ -153,7 +182,7 @@ export function AuthPanel({ initialMode = "signin" }: { initialMode?: "signin" |
         title={registerMode ? "Create your Hisaab" : "Welcome back"}
         subtitle={
           registerMode
-            ? "Start your private money journey in less than a minute."
+            ? "Create your private money space. Verify your email first, then complete secure account setup."
             : "Sign in to continue to your private money space."
         }
       />
@@ -168,15 +197,47 @@ export function AuthPanel({ initialMode = "signin" }: { initialMode?: "signin" |
             />
           </Field>
         ) : null}
-        <Field label="Email address" error={errors.email?.message} hint="Your private login ID.">
-          <Input
-            type="email"
-            autoComplete="email"
-            placeholder="name@example.com"
-            className={authControlClass}
-            {...register("email")}
-          />
-        </Field>
+        {registerMode ? (
+          <div className="grid gap-2 text-[13px] font-extrabold">
+            <span className="flex flex-wrap items-center justify-between gap-2">
+              <label htmlFor="auth-email">Email address</label>
+              <small className="font-bold text-[var(--muted-foreground)]">
+                {emailVerified ? "Verified identity email" : "Verify this email before registration"}
+              </small>
+            </span>
+            <EmailOtpPanel
+              email={emailValue}
+              verified={emailVerified}
+              onVerified={() => setVerifiedEmail(emailValue.trim().toLowerCase())}
+              onReset={() => setVerifiedEmail("")}
+            >
+              <Input
+                type="email"
+                autoComplete="email"
+                placeholder="name@example.com"
+                readOnly={emailVerified}
+                className={authControlClass}
+                {...register("email")}
+                id="auth-email"
+              />
+            </EmailOtpPanel>
+            {errors.email?.message ? (
+              <span className="text-xs text-[var(--danger)]" role="alert">
+                {errors.email.message}
+              </span>
+            ) : null}
+          </div>
+        ) : (
+          <Field label="Email address" error={errors.email?.message} hint="Your private login ID.">
+            <Input
+              type="email"
+              autoComplete="email"
+              placeholder="name@example.com"
+              className={authControlClass}
+              {...register("email")}
+            />
+          </Field>
+        )}
         <div className={`grid gap-4 ${registerMode ? "md:grid-cols-2" : ""}`}>
           <Field
             label={registerMode ? "Create password" : "Password"}
@@ -306,15 +367,17 @@ export function AuthPanel({ initialMode = "signin" }: { initialMode?: "signin" |
           </p>
         ) : null}
         <Button
-          className="min-h-[54px] w-full rounded-2xl text-[13px] shadow-[0_16px_32px_color-mix(in_srgb,var(--primary)_24%,transparent)]"
-          disabled={isSubmitting}
+          className={`min-h-[54px] w-full rounded-2xl text-[13px] shadow-[0_16px_32px_color-mix(in_srgb,var(--primary)_24%,transparent)]${registerMode && !emailVerified ? " verification-required" : ""}`}
+          disabled={isSubmitting || (registerMode && !emailVerified)}
         >
           {isSubmitting
             ? registerMode
               ? "Creating account…"
               : "Signing in…"
             : registerMode
-              ? "Create my secure account →"
+              ? emailVerified
+                ? "Create my secure account →"
+                : "Verify email to continue"
               : "Continue securely →"}
         </Button>
       </form>

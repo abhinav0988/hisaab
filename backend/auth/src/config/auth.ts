@@ -1,5 +1,6 @@
 import { betterAuth } from "better-auth";
 import { sendAuthEmail } from "../services/send-auth-email";
+import { consumeVerifiedSignupOtp } from "../services/signup-otp";
 import { seedUserWorkspace } from "../services/seed-user-workspace";
 
 type WaitUntilContext = { waitUntil(promise: Promise<unknown>): void };
@@ -17,6 +18,7 @@ export function createAuth(env: Env, ctx: WaitUntilContext) {
       enabled: true,
       minPasswordLength: 8,
       maxPasswordLength: 128,
+      requireEmailVerification: env.ENVIRONMENT === "production",
       sendResetPassword: async ({ user, url }) =>
         sendAuthEmail(env, ctx, "password-reset", user.email, url),
       resetPasswordTokenExpiresIn: 3600,
@@ -25,7 +27,9 @@ export function createAuth(env: Env, ctx: WaitUntilContext) {
     emailVerification: {
       sendVerificationEmail: async ({ user, url }) =>
         sendAuthEmail(env, ctx, "verification", user.email, url),
-      sendOnSignUp: true,
+      sendOnSignUp: false,
+      sendOnSignIn: false,
+      autoSignInAfterVerification: true,
       expiresIn: 3600,
     },
     databaseHooks: {
@@ -41,6 +45,7 @@ export function createAuth(env: Env, ctx: WaitUntilContext) {
               ctx?.headers?.get("x-hisaab-country") ??
               ctx?.request?.headers.get("x-hisaab-country");
             await seedUserWorkspace(env, user.id, ctx?.body?.countryCode ?? headerCountry);
+            await consumeVerifiedSignupOtp(env, user.email, user.id);
           },
         },
       },

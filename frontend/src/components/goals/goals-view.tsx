@@ -146,8 +146,16 @@ export function GoalsView() {
           <Insight
             gold
             icon="✦"
-            title="Keep a steady monthly amount"
-            body="Adding a little more each month can finish your first goal weeks sooner without stretching this month’s budget."
+            title={
+              list[0]
+                ? `${list[0].name} can finish earlier`
+                : "Keep a steady monthly amount"
+            }
+            body={
+              list[0]
+                ? `Adding a little more each month could finish ${list[0].name} weeks sooner without stretching this month’s budget.`
+                : "Adding a little more each month can finish your first goal weeks sooner without stretching this month’s budget."
+            }
           />
         </Card>
       </div>

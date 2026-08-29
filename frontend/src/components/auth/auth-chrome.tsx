@@ -6,7 +6,7 @@ export function AuthWelcome({ title, subtitle }: { title: string; subtitle: stri
         <p className="mt-[11px] max-w-[430px] text-[15px] leading-[1.7] text-[var(--muted-foreground)]">{subtitle}</p>
       </div>
       <div
-        className="grid size-[46px] shrink-0 place-items-center rounded-[15px] bg-[var(--mint)] text-[20px] text-[var(--primary)]"
+        className="secure-mark grid size-[46px] shrink-0 place-items-center rounded-[15px] bg-[var(--mint)] text-[20px] text-[var(--primary)]"
         title="Secure access"
       >
         ⌾

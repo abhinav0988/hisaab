@@ -1,8 +1,9 @@
 "use client";
 
 import { Button } from "@hisaab/ui";
-import { Bell, Search } from "lucide-react";
+import { Bell } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { GlobalSearch } from "./global-search";
 import { HisaabMark } from "./logo";
 import { ThemeToggle } from "./theme-toggle";
 import { desktopNavigation, moreNavigation } from "./nav-config";
@@ -38,23 +39,7 @@ export function MobileHeader({
         <HisaabMark />
         <span className="truncate text-sm font-semibold tracking-tight">{title}</span>
       </div>
-      <form
-        className="relative hidden max-w-[620px] flex-1 lg:block"
-        onSubmit={(event) => {
-          event.preventDefault();
-          const data = new FormData(event.currentTarget);
-          const query = String(data.get("q") ?? "");
-          router.push(`/transactions?q=${encodeURIComponent(query)}`);
-        }}
-      >
-        <div className="search-shell">
-          <span className="search-icon" aria-hidden="true">
-            <Search size={16} />
-          </span>
-          <input name="q" placeholder="Search anything in Hisaab..." aria-label="Search Hisaab" />
-          <span className="search-shortcut">⌘ K</span>
-        </div>
-      </form>
+      <GlobalSearch />
       <Button className="hidden shrink-0 lg:inline-flex" onClick={() => router.push("/transactions?action=add")}>
         ＋ Add transaction
       </Button>

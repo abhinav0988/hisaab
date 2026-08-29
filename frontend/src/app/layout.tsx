@@ -24,7 +24,7 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en" data-scroll-behavior="smooth" className={plusJakarta.className} suppressHydrationWarning>
+    <html lang="en" data-theme="light" data-scroll-behavior="smooth" className={plusJakarta.className} suppressHydrationWarning>
       <body>
         <AppProviders>{children}</AppProviders>
       </body>

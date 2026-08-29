@@ -10,6 +10,7 @@
     "ENVIRONMENT": "development",
     "APP_ORIGIN": "http://localhost:3000",
     "BETTER_AUTH_URL": "http://localhost:8787",
+    "EMAIL_FROM": "Hisaab <onboarding@resend.dev>",
   },
   "d1_databases": [
     {

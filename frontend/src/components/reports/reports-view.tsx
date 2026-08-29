@@ -116,7 +116,7 @@ export function ReportsView() {
           icon="↻"
         />
       </section>
-      <section className="mt-[18px] grid gap-[18px] xl:grid-cols-[minmax(0,1.3fr)_minmax(280px,.7fr)]">
+      <section className="analytics-grid mt-[18px] grid gap-[18px] xl:grid-cols-[minmax(0,1.3fr)_minmax(280px,.7fr)]">
         <Card className="p-[22px]">
           <CardHead
             title="Income vs expenses"
@@ -124,35 +124,40 @@ export function ReportsView() {
             action={<ProLabel />}
           />
           <div className="min-w-0 overflow-x-auto">
-            <div className="flex h-[270px] min-w-[280px] items-end gap-[17px] border-b px-3 pb-[30px] pt-5">
-            {months.length ? (
-              months.map((item) => (
-                <div key={item.month} className="relative flex h-full flex-1 items-end justify-center gap-1">
-                  <span
-                    className="w-[13px] rounded-t-md bg-[#77c795]"
-                    style={{ height: `${Math.max(4, (item.income / maxBar) * 100)}%` }}
-                  />
-                  <span
-                    className="w-[13px] rounded-t-md bg-[#e0a267]"
-                    style={{ height: `${Math.max(4, (item.expense / maxBar) * 100)}%` }}
-                  />
-                  <span className="absolute -bottom-5 text-[11px] text-[var(--subtle)]">{item.month}</span>
-                </div>
-              ))
-            ) : (
-              <p className="w-full self-center text-center text-sm text-[var(--muted-foreground)]">
-                Not enough history yet.
-              </p>
-            )}
+            <div className="bars">
+              {months.length ? (
+                months.map((item) => (
+                  <div
+                    key={item.month}
+                    className="bar-set"
+                    data-income={money(item.income, currency)}
+                    data-expense={money(item.expense, currency)}
+                  >
+                    <span
+                      className="bar income"
+                      style={{ height: `${Math.max(4, (item.income / maxBar) * 100)}%` }}
+                    />
+                    <span
+                      className="bar expense"
+                      style={{ height: `${Math.max(4, (item.expense / maxBar) * 100)}%` }}
+                    />
+                    <span className="bar-label">{shortMonth(item.month)}</span>
+                  </div>
+                ))
+              ) : (
+                <p className="w-full self-center text-center text-sm text-[var(--muted-foreground)]">
+                  Not enough history yet.
+                </p>
+              )}
             </div>
           </div>
-          <div className="mt-3 flex flex-wrap gap-4 text-[11px] text-[var(--muted-foreground)]">
+          <div className="analytics-legend">
             <span>
-              <i className="mr-1 inline-block size-2 rounded-full bg-[#77c795]" />
+              <i style={{ background: "#77c795" }} />
               Income
             </span>
             <span>
-              <i className="mr-1 inline-block size-2 rounded-full bg-[#e0a267]" />
+              <i style={{ background: "#e0a267" }} />
               Expenses
             </span>
           </div>
@@ -209,7 +214,14 @@ export function ReportsView() {
           <p className="mt-2 text-xs text-[var(--muted-foreground)]">
             Projected end-of-month balance after recurring bills and your usual spending.
           </p>
-          <ProgressBar className="mt-4" value={78} />
+          <ProgressBar
+            className="mt-4"
+            value={
+              report.data.totalIncome
+                ? Math.min(100, Math.round((projected / report.data.totalIncome) * 100))
+                : 0
+            }
+          />
           <Button className="mt-4" variant="secondary" onClick={() => toast.info("Full forecasts unlock with Premium.")}>
             View forecast details
           </Button>
@@ -217,4 +229,10 @@ export function ReportsView() {
       </section>
     </div>
   );
+}
+
+function shortMonth(value: string) {
+  const date = new Date(`${value}-01T00:00:00`);
+  if (Number.isNaN(date.getTime())) return value;
+  return new Intl.DateTimeFormat("en-IN", { month: "short" }).format(date);
 }

@@ -1,4 +1,5 @@
 import { authClient } from "@/lib/auth-client";
+import { api } from "@/lib/api-client";
 
 export const authService = {
   useSession: () => authClient.useSession(),
@@ -22,4 +23,19 @@ export const authService = {
   requestPasswordReset: (input: { email: string; redirectTo: string }) =>
     authClient.requestPasswordReset(input),
   resetPassword: (input: { newPassword: string; token: string }) => authClient.resetPassword(input),
+  sendVerificationEmail: (email: string) =>
+    authClient.sendVerificationEmail({
+      email,
+      callbackURL: typeof window === "undefined" ? "/dashboard" : `${window.location.origin}/dashboard`,
+    }),
+  sendVerificationCode: (email: string) =>
+    api<{ sent: true; otp?: string }>("/api/auth/send-verification-code", {
+      method: "POST",
+      body: JSON.stringify({ email }),
+    }),
+  verifyEmailCode: (email: string, code: string) =>
+    api<{ verified: true }>("/api/auth/verify-email-code", {
+      method: "POST",
+      body: JSON.stringify({ email, code }),
+    }),
 };

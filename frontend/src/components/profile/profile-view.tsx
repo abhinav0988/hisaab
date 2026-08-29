@@ -41,8 +41,8 @@ function ProfileForm({ initial, onSaved }: { initial: Profile; onSaved: () => vo
   const [defaultCurrency, setCurrency] = useState(initial.defaultCurrency);
   const [timezone, setTimezone] = useState(initial.timezone);
   const [language, setLanguage] = useState(initial.language ?? "en");
-  const [theme, setThemeValue] = useState(
-    ["light", "dark", "system"].includes(initial.theme) ? initial.theme : "system",
+  const [theme, setThemeValue] = useState<"light" | "dark">(
+    initial.theme === "dark" ? "dark" : "light",
   );
   const [smartNotifications, setSmart] = useState(initial.smartNotifications ?? true);
   const [weeklySummary, setWeekly] = useState(initial.weeklySummary ?? true);
@@ -89,8 +89,8 @@ function ProfileForm({ initial, onSaved }: { initial: Profile; onSaved: () => vo
         <div className="grid gap-[18px]">
           <Card className="p-[22px]">
             <CardHead
-              title="Personal details"
-              description="Name and email used across Hisaab."
+              title="Profile"
+              description="Personal details used across Hisaab."
               action={
                 <span className="grid size-11 place-items-center rounded-[15px] bg-[var(--mint)] text-sm font-black text-[var(--primary)]">
                   {initials(name)}
@@ -180,9 +180,12 @@ function ProfileForm({ initial, onSaved }: { initial: Profile; onSaved: () => vo
                 <option value="ne">नेपाली</option>
               </Select>
             </SettingRow>
-            <SettingRow title="Theme" description="Match device or choose manually.">
-              <Select className="h-11" value={theme} onChange={(event) => setThemeValue(event.target.value)}>
-                <option value="system">System</option>
+            <SettingRow title="Theme" description="Choose light or dark.">
+              <Select
+                className="h-11"
+                value={theme}
+                onChange={(event) => setThemeValue(event.target.value === "dark" ? "dark" : "light")}
+              >
                 <option value="light">Light</option>
                 <option value="dark">Dark</option>
               </Select>
