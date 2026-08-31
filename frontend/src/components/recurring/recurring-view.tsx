@@ -9,7 +9,7 @@ import { ConfirmDialog, Modal } from "@/components/layout/modal";
 import { PageHeader } from "@/components/layout/page-header";
 import { EmptyState, ErrorState, PageSkeleton } from "@/components/layout/states";
 import { dateTime, money } from "@/lib/format";
-import { uniqueCatalogAccounts, accountDisplayName } from "@/lib/accounts";
+import { uniqueCatalogAccounts, accountDisplayName, isPaymentMethodType, paymentMethodAccounts } from "@/lib/accounts";
 import { accountService } from "@/services/account.service";
 import { categoryService } from "@/services/category.service";
 import { profileService } from "@/services/profile.service";
@@ -301,6 +301,29 @@ function RecurringForm({
             ))}
           </Select>
         </Field>
+        {paymentMethodAccounts(accountOptions).length ? (
+          <Field label="Payment method" hint="Quick select for UPI or credit card.">
+            <Select
+              aria-label="Payment method"
+              value={
+                isPaymentMethodType(accountOptions.find((item) => item.id === accountId)?.type ?? "")
+                  ? accountOptions.find((item) => item.id === accountId)?.type
+                  : ""
+              }
+              onChange={(event) => {
+                const match = accountOptions.find((item) => item.type === event.target.value);
+                if (match) setAccount(match.id);
+              }}
+            >
+              <option value="">Select UPI or credit card</option>
+              {paymentMethodAccounts(accountOptions).map((item) => (
+                <option key={item.id} value={item.type}>
+                  {accountDisplayName(item)}
+                </option>
+              ))}
+            </Select>
+          </Field>
+        ) : null}
         <Field label="Category">
           <Select value={categoryId} onChange={(event) => setCategory(event.target.value)}>
             {categories

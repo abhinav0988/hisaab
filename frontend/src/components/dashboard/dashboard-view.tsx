@@ -20,6 +20,7 @@ import {
   ProgressBar,
 } from "@/components/layout/chrome";
 import { ErrorState, PageSkeleton } from "@/components/layout/states";
+import { CategoryGlyph } from "@/components/finance/category-glyph";
 import { dateTime, greetingForHour, longDate, money, signedMoney } from "@/lib/format";
 import { tidyAccountLabel, uniqueCatalogAccounts } from "@/lib/accounts";
 import { accountService } from "@/services/account.service";
@@ -358,8 +359,11 @@ export function DashboardView() {
                       key={item.id}
                       className="grid grid-cols-[42px_minmax(0,1fr)_auto] items-center gap-3.5 border-b border-[var(--border)] py-3.5 last:border-0"
                     >
-                      <span className="grid size-[38px] place-items-center rounded-xl bg-[var(--muted)] text-[var(--primary)]">
-                        {item.categoryIcon ?? (item.type === "INCOME" ? "₹" : "↘")}
+                      <span className="grid size-[38px] place-items-center overflow-hidden rounded-xl bg-[var(--muted)] text-[var(--primary)]">
+                        <CategoryGlyph
+                          name={item.categoryIcon ?? (item.type === "INCOME" ? "₹" : "↘")}
+                          size={16}
+                        />
                       </span>
                       <div className="min-w-0">
                         <b className="block truncate text-xs">

@@ -3,8 +3,12 @@ import { api } from "@/lib/api-client";
 
 export const authService = {
   useSession: () => authClient.useSession(),
+  getSession: () => authClient.getSession(),
   signIn: (input: { email: string; password: string; rememberMe: boolean }) =>
-    authClient.signIn.email(input),
+    authClient.signIn.email({
+      ...input,
+      callbackURL: typeof window === "undefined" ? "/dashboard" : `${window.location.origin}/dashboard`,
+    }),
   signUp: (input: {
     name: string;
     email: string;

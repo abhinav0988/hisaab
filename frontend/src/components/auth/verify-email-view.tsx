@@ -7,6 +7,7 @@ import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { AuthStatus, AuthTrust, AuthWelcome } from "@/components/auth/auth-chrome";
 import { EmailOtpPanel } from "@/components/auth/email-otp-panel";
+import { enterApp } from "@/lib/auth-navigation";
 import { authClient } from "@/lib/auth-client";
 import { authService } from "@/services/auth.service";
 
@@ -25,8 +26,8 @@ export function VerifyEmailView() {
   }, [email, session?.user.email]);
 
   useEffect(() => {
-    if (session?.user.emailVerified === true) router.replace("/dashboard");
-  }, [session?.user.emailVerified, router]);
+    if (session?.user.emailVerified === true) enterApp("/dashboard");
+  }, [session?.user.emailVerified]);
 
   return (
     <div>
@@ -59,7 +60,7 @@ export function VerifyEmailView() {
               const next = await authClient.getSession();
               await refetch();
               if (next.data?.user || session) {
-                router.replace("/dashboard");
+                enterApp("/dashboard");
                 return;
               }
               toast.success("Email verified. Sign in to continue.");

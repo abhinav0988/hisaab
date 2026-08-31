@@ -19,6 +19,11 @@ const appPages = [
   "/premium",
   "/settings",
 ] as const;
+const secondaryAppPages = [
+  { route: "/accounts", link: "Accounts" },
+  { route: "/categories", link: "Categories" },
+  { route: "/recurring", link: "Recurring" },
+] as const;
 
 test.describe("responsive production shell", () => {
   test.describe.configure({ retries: 0 });
@@ -61,6 +66,33 @@ test.describe("responsive production shell", () => {
           expect(parseFloat(mainPadding)).toBeGreaterThanOrEqual(76);
         }
       }
+      for (const { route, link } of secondaryAppPages) {
+        await test.step(`${viewport.name}: ${route}`, async () => {
+          await page.getByRole("link", { name: new RegExp(`^${link}`) }).last().click();
+          await expect(page).toHaveURL(new RegExp(`${route}$`));
+          await expectAppShell(page);
+          await expect(page.locator("main .skeleton")).toHaveCount(0, { timeout: 15_000 });
+          await expect(page.locator("main").getByRole("heading").first()).toBeVisible({ timeout: 10_000 });
+          await assertNoHorizontalOverflow(page);
+          await openAppRoute(page, "/settings", isMobile);
+        });
+      }
+
+      const selects = page.locator("select");
+      for (const select of await selects.all()) {
+        const box = await select.boundingBox();
+        if (!box) continue;
+        expect(box.width).toBeLessThanOrEqual(viewport.width);
+        expect(box.height).toBeGreaterThanOrEqual(44);
+      }
+
+      await page.getByRole("button", { name: "Notifications" }).click();
+      const notificationBox = await page.locator("[data-notification-panel]").boundingBox();
+      expect(notificationBox).toBeTruthy();
+      expect(notificationBox!.x).toBeGreaterThanOrEqual(0);
+      expect(notificationBox!.x + notificationBox!.width).toBeLessThanOrEqual(viewport.width);
+      expect(notificationBox!.y + notificationBox!.height).toBeLessThanOrEqual(viewport.height);
+      await page.getByRole("button", { name: "Notifications" }).click();
     }
 
     await page.setViewportSize({ width: 1440, height: 900 });
@@ -138,6 +170,20 @@ test.describe("responsive production shell", () => {
       await page.setViewportSize({ width: viewport.width, height: viewport.height });
       await expect(page.getByRole("heading", { name: /Welcome back/i })).toBeVisible();
       await assertNoHorizontalOverflow(page);
+      const loginCard = await page.locator("[data-auth-card]").boundingBox();
+      const loginLegal = await page.locator("[data-auth-legal]").boundingBox();
+      expect(loginCard).toBeTruthy();
+      expect(loginLegal).toBeTruthy();
+      expect(loginCard!.x).toBeGreaterThanOrEqual(0);
+      expect(loginCard!.x + loginCard!.width).toBeLessThanOrEqual(viewport.width);
+      expect(loginCard!.width).toBeGreaterThanOrEqual(Math.min(280, viewport.width - 24));
+      expect(loginLegal!.y).toBeGreaterThanOrEqual(loginCard!.y + loginCard!.height);
+      for (const input of await page.locator("[data-auth-card] input").all()) {
+        const box = await input.boundingBox();
+        if (!box) continue;
+        expect(box.x).toBeGreaterThanOrEqual(loginCard!.x);
+        expect(box.x + box.width).toBeLessThanOrEqual(loginCard!.x + loginCard!.width);
+      }
       if (viewport.name === "iphone" || viewport.name === "desktop") {
         await page.screenshot({
           path: path.join(screenshotDir, `login-${viewport.name}.png`),
@@ -152,6 +198,13 @@ test.describe("responsive production shell", () => {
       await expect(page.getByLabel("Full name")).toBeVisible();
       await expect(page.getByLabel("Confirm password")).toBeVisible();
       await assertNoHorizontalOverflow(page);
+      const registrationCard = await page.locator("[data-auth-card]").boundingBox();
+      const registrationLegal = await page.locator("[data-auth-legal]").boundingBox();
+      expect(registrationCard).toBeTruthy();
+      expect(registrationLegal).toBeTruthy();
+      expect(registrationCard!.x).toBeGreaterThanOrEqual(0);
+      expect(registrationCard!.x + registrationCard!.width).toBeLessThanOrEqual(viewport.width);
+      expect(registrationLegal!.y).toBeGreaterThanOrEqual(registrationCard!.y + registrationCard!.height);
       if (viewport.name === "iphone" || viewport.name === "desktop") {
         await page.screenshot({
           path: path.join(screenshotDir, `registration-${viewport.name}.png`),

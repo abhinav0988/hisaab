@@ -8,6 +8,7 @@ import { toast } from "sonner";
 import { z } from "zod";
 import { AuthTrust, AuthWelcome } from "@/components/auth/auth-chrome";
 import { EmailOtpPanel } from "@/components/auth/email-otp-panel";
+import { enterApp } from "@/lib/auth-navigation";
 import { authService } from "@/services/auth.service";
 
 type SignIn = z.infer<typeof signInSchema>;
@@ -132,7 +133,8 @@ export function AuthPanel({ initialMode = "signin" }: { initialMode?: "signin" |
           return;
         }
       }
-      router.replace("/dashboard");
+      await authService.getSession();
+      enterApp("/dashboard");
       return;
     }
     const parsed = signInSchema.safeParse(values);
@@ -159,7 +161,8 @@ export function AuthPanel({ initialMode = "signin" }: { initialMode?: "signin" |
       return;
     }
     toast.success("Signed in securely");
-    router.replace(search.get("next") || "/dashboard");
+    await authService.getSession();
+    enterApp(search.get("next") || "/dashboard");
   });
 
   return (

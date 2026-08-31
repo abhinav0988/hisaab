@@ -10,10 +10,55 @@ export function signedMoney(minor: number, currency: string, type: "INCOME" | "E
   return `${type === "INCOME" ? "+ " : "− "}${money(minor, currency)}`;
 }
 
+function asDate(value: string | Date) {
+  return value instanceof Date ? value : new Date(value);
+}
+
+function sameCalendarYear(value: Date, now = new Date()) {
+  return value.getFullYear() === now.getFullYear();
+}
+
+export function compactTime(value: string) {
+  return new Intl.DateTimeFormat("en-IN", {
+    hour: "numeric",
+    minute: "2-digit",
+  }).format(asDate(value));
+}
+
+export function transactionStamp(value: string) {
+  const date = asDate(value);
+  const day = new Intl.DateTimeFormat("en-GB", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  }).format(date);
+  const time = new Intl.DateTimeFormat("en-GB", {
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).format(date);
+  return `${day}, ${time}`;
+}
+
 export function dateTime(value: string) {
-  return new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short" }).format(
-    new Date(value),
-  );
+  const date = asDate(value);
+  return new Intl.DateTimeFormat("en-IN", {
+    day: "numeric",
+    month: "short",
+    ...(sameCalendarYear(date) ? {} : { year: "numeric" }),
+    hour: "numeric",
+    minute: "2-digit",
+  }).format(date);
+}
+
+export function dayGroupLabel(value: string) {
+  const date = asDate(value);
+  return new Intl.DateTimeFormat("en-IN", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    ...(sameCalendarYear(date) ? {} : { year: "numeric" }),
+  }).format(date);
 }
 
 export function longDate(value = new Date()) {

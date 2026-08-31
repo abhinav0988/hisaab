@@ -55,7 +55,10 @@ export function MobileHeader({
           {notices.length ? <span className="notification-dot" /> : null}
         </button>
         {notifyOpen ? (
-          <div className="absolute end-0 top-[52px] z-30 w-[min(390px,calc(100vw-2rem))] rounded-[22px] border bg-gradient-to-b from-[var(--surface)] to-[var(--surface-2)] p-3.5 shadow-[var(--shadow-lg)]">
+          <div
+            data-notification-panel
+            className="fixed inset-x-3 top-[calc(72px+env(safe-area-inset-top))] z-30 max-h-[min(70dvh,560px)] overflow-y-auto rounded-[22px] border bg-gradient-to-b from-[var(--surface)] to-[var(--surface-2)] p-3.5 shadow-[var(--shadow-lg)] lg:absolute lg:inset-x-auto lg:end-0 lg:top-[52px] lg:w-[min(390px,calc(100vw-2rem))]"
+          >
             <div className="mb-2.5 flex items-start justify-between px-1.5">
               <div>
                 <h2 className="text-base font-semibold">Notifications</h2>

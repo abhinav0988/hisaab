@@ -6,7 +6,12 @@ import Link from "next/link";
 import { Calendar, Clock } from "lucide-react";
 import { useMemo, useState } from "react";
 import { ApiError } from "@/lib/api-client";
-import { accountDisplayName, uniqueCatalogAccounts } from "@/lib/accounts";
+import {
+  accountDisplayName,
+  isPaymentMethodType,
+  paymentMethodAccounts,
+  uniqueCatalogAccounts,
+} from "@/lib/accounts";
 import { transactionService } from "@/services/transaction.service";
 
 function localParts(iso: string) {
@@ -57,6 +62,10 @@ export function TransactionForm({
   const [tags, setTags] = useState(initial?.tags?.join(", ") ?? "");
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
+  const methodOptions = paymentMethodAccounts(options);
+  const selectedAccount = options.find((item) => item.id === accountId);
+  const paymentMethod =
+    selectedAccount && isPaymentMethodType(selectedAccount.type) ? selectedAccount.type : "";
   const setKind = (next: "INCOME" | "EXPENSE") => {
     setType(next);
     setCategoryId(categories.find((item) => item.type === next)?.id ?? "");
@@ -224,6 +233,28 @@ export function TransactionForm({
                   </div>
                 )}
               </Field>
+              {methodOptions.length ? (
+                <Field
+                  label="Payment method"
+                  hint="Quick select for UPI or credit card."
+                >
+                  <Select
+                    aria-label="Payment method"
+                    value={paymentMethod}
+                    onChange={(event) => {
+                      const match = options.find((item) => item.type === event.target.value);
+                      if (match) setAccountId(match.id);
+                    }}
+                  >
+                    <option value="">Select UPI or credit card</option>
+                    {methodOptions.map((item) => (
+                      <option key={item.id} value={item.type}>
+                        {accountDisplayName(item)}
+                      </option>
+                    ))}
+                  </Select>
+                </Field>
+              ) : null}
               <Field label="Tags (comma separated)">
                 <Input value={tags} onChange={(event) => setTags(event.target.value)} />
               </Field>

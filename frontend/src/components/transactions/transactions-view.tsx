@@ -1,22 +1,47 @@
 "use client";
-import type { Transaction } from "@hisaab/types";
+import type { Category, Transaction } from "@hisaab/types";
 import { Button, Card, Input, Select } from "@hisaab/ui";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ChevronLeft, ChevronRight, MoreVertical, Pencil, Plus, Trash2 } from "lucide-react";
+import {
+  BarChart3,
+  CalendarDays,
+  ChevronLeft,
+  ChevronRight,
+  Download,
+  Headset,
+  Layers,
+  MoreVertical,
+  Pencil,
+  Plus,
+  RefreshCw,
+  Shield,
+  Sparkles,
+  Trash2,
+} from "lucide-react";
+import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useMemo, useState } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import { toast } from "sonner";
-import { CardHead, Chip } from "@/components/layout/chrome";
+import { CardHead, Eyebrow } from "@/components/layout/chrome";
 import { ConfirmDialog, Modal } from "@/components/layout/modal";
-import { PageHeader } from "@/components/layout/page-header";
 import { EmptyState, ErrorState, NoResults, PageSkeleton } from "@/components/layout/states";
-import { dateTime, money, signedMoney } from "@/lib/format";
+import { CategoryGlyph } from "@/components/finance/category-glyph";
+import { dayGroupLabel, money, signedMoney, transactionStamp } from "@/lib/format";
 import { uniqueCatalogAccounts, accountDisplayName, resolveAccountLabel, tidyAccountLabel } from "@/lib/accounts";
 import { accountService } from "@/services/account.service";
 import { categoryService } from "@/services/category.service";
 import { profileService } from "@/services/profile.service";
 import { transactionService } from "@/services/transaction.service";
 import { TransactionForm } from "./transaction-form";
+
+const FEATURED_CATEGORY_NAMES = [
+  "Education",
+  "Entertainment",
+  "Family",
+  "Food and Dining",
+  "Groceries",
+  "Healthcare",
+];
 
 function periodBounds(period: string) {
   const now = new Date();
@@ -49,6 +74,7 @@ export function TransactionsView() {
   const [editing, setEditing] = useState<Transaction | null>(null);
   const [deleting, setDeleting] = useState<Transaction | null>(null);
   const [manualAdd, setManualAdd] = useState(false);
+  const [showMoreCategories, setShowMoreCategories] = useState(false);
   const add = manualAdd || searchParams.has("action");
   const defaultType = searchParams.get("action") === "income" ? "INCOME" : "EXPENSE";
   const closeAdd = () => {
@@ -104,46 +130,63 @@ export function TransactionsView() {
     void queryClient.invalidateQueries({ queryKey: ["transactions"] });
     void queryClient.invalidateQueries({ queryKey: ["dashboard"] });
   };
+  const resetFilters = () => {
+    setSearch("");
+    setType("");
+    setCategory("");
+    setAccount("");
+    setPeriod("all");
+    setPage(1);
+  };
   const rows = transactions.data.data;
   const groups = groupByDate(rows);
-  const expenseCategories = categories.data.filter((item) => item.type === "EXPENSE").slice(0, 6);
+  const { featured, extra } = splitCategoryChips(categories.data);
+  const visibleCategories = showMoreCategories ? [...featured, ...extra] : featured;
+  const periodLabel =
+    period === "all" ? "All dates" : period === "month" ? "This month" : period === "week" ? "This week" : "Today";
+  const typeLabel = type === "INCOME" ? "Income" : type === "EXPENSE" ? "Expense" : "All types";
   return (
     <div>
-      <PageHeader
-        eyebrow="Money movement"
-        title="Transactions"
-        description="Search, filter, review, and maintain every expense and income with a cleaner premium layout."
-        actions={
-          <>
-            <Button
-              variant="secondary"
-              onClick={() => exportCsv(rows)}
-            >
-              ⇩ Export CSV
+      <header className="tx-hero">
+        <div>
+          <Eyebrow>Money movement</Eyebrow>
+          <h1 className="m-0 text-[clamp(26px,7vw,38px)] font-semibold leading-[1.08] tracking-[-0.055em]">
+            Transactions
+          </h1>
+          <p className="mt-[9px] max-w-[620px] text-[14px] leading-[1.65] text-[var(--muted-foreground)]">
+            Search, filter, review, and maintain every expense and income with a cleaner premium layout.
+          </p>
+        </div>
+        <div className="tx-hero-side">
+          <div className="tx-hero-art" aria-hidden>
+            <WalletMark />
+          </div>
+          <div className="tx-hero-actions">
+            <Button variant="secondary" onClick={() => exportCsv(rows)}>
+              <Download size={16} />
+              Export CSV
             </Button>
             <Button onClick={() => setManualAdd(true)}>
               <Plus size={17} />
               Add transaction
             </Button>
-          </>
-        }
-      />
+          </div>
+        </div>
+      </header>
       <Card className="transaction-filters-card p-[22px]">
         <CardHead
-          title="Smart filters"
+          title={
+            <span className="inline-flex items-center gap-2">
+              Smart filters
+              <Sparkles size={16} className="text-[var(--primary)]" aria-hidden />
+            </span>
+          }
           description="Use search, period, type, account, and category filters to find entries clearly."
           action={
             <button
               type="button"
               className="min-h-11 text-[11px] font-bold text-[var(--muted-foreground)]"
-              onClick={() => {
-                setSearch("");
-                setType("");
-                setCategory("");
-                setAccount("");
-                setPeriod("all");
-                setPage(1);
-              }}
+              onClick={resetFilters}
             >
               Reset all
             </button>
@@ -192,27 +235,38 @@ export function TransactionsView() {
           </label>
         </div>
         <div className="chip-row tx-category-row">
-          <Chip
+          <CategoryFilterChip
             active={!category}
             onClick={() => {
               setCategory("");
               setPage(1);
             }}
+            icon={<Layers size={14} />}
           >
             All categories
-          </Chip>
-          {expenseCategories.map((item) => (
-            <Chip
+          </CategoryFilterChip>
+          {visibleCategories.map((item) => (
+            <CategoryFilterChip
               key={item.id}
               active={category === item.id}
+              colour={item.colour}
               onClick={() => {
                 setCategory(item.id);
                 setPage(1);
               }}
+              icon={<CategoryGlyph name={item.icon} size={14} />}
             >
               {item.name}
-            </Chip>
+            </CategoryFilterChip>
           ))}
+          {extra.length ? (
+            <CategoryFilterChip
+              active={showMoreCategories}
+              onClick={() => setShowMoreCategories((value) => !value)}
+            >
+              {showMoreCategories ? "Show less" : `+ More`}
+            </CategoryFilterChip>
+          ) : null}
         </div>
         <div className="tx-summary">
           <div>
@@ -222,62 +276,75 @@ export function TransactionsView() {
             </b>
             <small>
               Category: {categories.data.find((item) => item.id === category)?.name ?? "All"} · Period:{" "}
-              {period === "all" ? "All dates" : period === "month" ? "This month" : period === "week" ? "This week" : "Today"}{" "}
-              · Type: {type === "INCOME" ? "Income" : type === "EXPENSE" ? "Expense" : "All types"}
+              {periodLabel} · Type: {typeLabel}
             </small>
           </div>
-          <Button variant="secondary" onClick={() => setManualAdd(true)}>
+          <Button
+            variant="secondary"
+            className="bg-[var(--mint)] hover:bg-[color-mix(in_srgb,var(--mint)_80%,var(--surface))]"
+            onClick={() => setManualAdd(true)}
+          >
             ＋ New transaction
           </Button>
         </div>
       </Card>
       {rows.length ? (
-        <Card className="table-card overflow-hidden">
+        <Card className="table-card">
           {groups.map((group) => (
-            <div key={group.key} className="px-[18px] pb-0.5 pt-[17px]">
-              <div className="mb-1.5 flex justify-between text-[11px] font-extrabold text-[var(--muted-foreground)]">
-                <span>{group.label}</span>
-                <span>
+            <div key={group.key} className="tx-date-group">
+              <div className="tx-date-bar">
+                <span className="tx-date-bar-label">
+                  <CalendarDays size={14} aria-hidden />
+                  <span className="truncate">{group.label}</span>
+                </span>
+                <span className="tx-date-bar-total">
                   {group.total >= 0 ? "+ " : "− "}
                   {money(Math.abs(group.total), profile.data.defaultCurrency)}
                 </span>
               </div>
               {group.items.map((item) => (
-                <div
-                  key={item.id}
-                  className="grid grid-cols-[44px_minmax(0,1fr)_auto_44px] items-center gap-3 border-b border-[var(--border)] py-3 last:border-0 lg:grid-cols-[44px_minmax(160px,1.3fr)_minmax(110px,.7fr)_minmax(90px,.5fr)_44px]"
-                >
+                <div key={item.id} className="transaction-row">
                   <span className={`tx-icon${item.type === "INCOME" ? " income" : ""}`}>
-                    {item.categoryIcon ?? (item.type === "INCOME" ? "₹" : "↘")}
+                    <CategoryGlyph
+                      name={item.categoryIcon ?? (item.type === "INCOME" ? "₹" : "↘")}
+                    />
                   </span>
                   <div className="min-w-0">
-                    <b className="block truncate text-xs">
+                    <b className="block truncate text-[13px]">
                       {item.merchant || item.notes || "Untitled transaction"}
                     </b>
-                    <small className="block truncate text-[11px] text-[var(--muted-foreground)]">
-                      {item.categoryName} · {resolveAccountLabel(accounts.data, item.accountId, item.accountName)} · {dateTime(item.transactionAt)}
+                    <small className="mt-1 block truncate text-[11px] text-[var(--muted-foreground)]">
+                      {item.categoryName} • {resolveAccountLabel(accounts.data, item.accountId, item.accountName)} •{" "}
+                      {transactionStamp(item.transactionAt)}
                     </small>
                   </div>
-                  <div className="hidden lg:block">
+                  <div className="hide-mobile shrink-0">
                     <span className="category-tag">{item.categoryName}</span>
                   </div>
                   <span
-                    className={`shrink-0 text-right text-xs font-extrabold ${item.type === "INCOME" ? "text-[var(--primary)]" : ""}`}
+                    className={`shrink-0 whitespace-nowrap text-right text-[13px] font-extrabold tabular-nums ${item.type === "INCOME" ? "text-[var(--primary)]" : ""}`}
                   >
                     {signedMoney(item.amountMinor, item.currency, item.type)}
                   </span>
-                  <div className="relative">
+                  <div className="relative row-menu">
                     <button
                       className="grid size-11 place-items-center rounded-[10px] text-[var(--muted-foreground)] hover:bg-[var(--muted)]"
-                      aria-label="Edit"
+                      aria-label="Transaction actions"
+                      aria-haspopup="menu"
+                      aria-expanded={menu === item.id}
                       onClick={() => setMenu(menu === item.id ? null : item.id)}
                     >
                       <MoreVertical size={16} />
                     </button>
                     {menu === item.id ? (
-                      <div className="absolute right-0 z-10 mt-1 w-36 rounded-xl border bg-[var(--surface)] p-1 shadow-[var(--shadow)]">
+                      <div
+                        className="absolute end-0 top-full z-40 mt-1 w-40 max-w-[calc(100vw-2rem)] rounded-2xl border bg-[var(--surface)] p-1.5 shadow-[var(--shadow-lg)]"
+                        role="menu"
+                        aria-label="Transaction actions"
+                      >
                         <button
-                          className="flex w-full items-center gap-2 rounded-lg px-2 py-2 text-left text-xs hover:bg-[var(--muted)]"
+                          className="flex min-h-11 w-full items-center gap-2 rounded-xl px-3 py-2 text-start text-xs hover:bg-[var(--muted)]"
+                          role="menuitem"
                           onClick={() => {
                             setEditing(item);
                             setMenu(null);
@@ -286,8 +353,9 @@ export function TransactionsView() {
                           <Pencil size={14} /> Edit
                         </button>
                         <button
-                          className="flex w-full items-center gap-2 rounded-lg px-2 py-2 text-left text-xs text-[var(--danger)] hover:bg-[var(--danger-soft)]"
+                          className="flex min-h-11 w-full items-center gap-2 rounded-xl px-3 py-2 text-start text-xs text-[var(--danger)] hover:bg-[var(--danger-soft)]"
                           aria-label="Delete"
+                          role="menuitem"
                           onClick={() => {
                             setMenu(null);
                             setDeleting(item);
@@ -330,13 +398,7 @@ export function TransactionsView() {
       ) : search || type || category || account ? (
         <NoResults
           query={search || "these filters"}
-          onClear={() => {
-            setSearch("");
-            setType("");
-            setCategory("");
-            setAccount("");
-            setPage(1);
-          }}
+          onClear={resetFilters}
         />
       ) : (
         <EmptyState
@@ -350,6 +412,44 @@ export function TransactionsView() {
           }
         />
       )}
+      <div className="tx-proofs">
+        <Link href="/privacy" className="tx-proof">
+          <span className="tx-proof-icon">
+            <Shield size={16} />
+          </span>
+          <span>
+            <b>Secure & Private</b>
+            <small>Your ledger stays on your Hisaab account.</small>
+          </span>
+        </Link>
+        <Link href="/settings" className="tx-proof">
+          <span className="tx-proof-icon" style={{ background: "color-mix(in srgb, #2563EB 14%, var(--surface))", color: "#2563EB" }}>
+            <RefreshCw size={16} />
+          </span>
+          <span>
+            <b>Real-time Sync</b>
+            <small>Balances update as soon as you save.</small>
+          </span>
+        </Link>
+        <Link href="/reports" className="tx-proof">
+          <span className="tx-proof-icon" style={{ background: "color-mix(in srgb, #7C3AED 14%, var(--surface))", color: "#7C3AED" }}>
+            <BarChart3 size={16} />
+          </span>
+          <span>
+            <b>Smart Reports</b>
+            <small>See spending trends and monthly health.</small>
+          </span>
+        </Link>
+        <Link href="/premium" className="tx-proof">
+          <span className="tx-proof-icon" style={{ background: "color-mix(in srgb, #EA580C 14%, var(--surface))", color: "#EA580C" }}>
+            <Headset size={16} />
+          </span>
+          <span>
+            <b>Premium Support</b>
+            <small>Priority help when you need it.</small>
+          </span>
+        </Link>
+      </div>
       <Modal open={add} onClose={closeAdd} title="Add transaction" size="lg">
         <TransactionForm
           accounts={accounts.data}
@@ -380,6 +480,61 @@ export function TransactionsView() {
   );
 }
 
+function splitCategoryChips(items: Category[]) {
+  const featured = FEATURED_CATEGORY_NAMES.map((name) => items.find((item) => item.name === name)).filter(
+    (item): item is Category => Boolean(item),
+  );
+  if (featured.length < 4) {
+    const extras = items.filter((item) => item.type === "EXPENSE" && !featured.some((row) => row.id === item.id));
+    featured.push(...extras.slice(0, Math.max(0, 6 - featured.length)));
+  }
+  const extra = items.filter((item) => !featured.some((row) => row.id === item.id));
+  return { featured, extra };
+}
+
+function CategoryFilterChip({
+  active,
+  colour,
+  icon,
+  children,
+  onClick,
+}: {
+  active?: boolean;
+  colour?: string;
+  icon?: ReactNode;
+  children: ReactNode;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`tx-category-chip${active ? " active" : ""}`}
+      style={!active && colour ? { borderColor: colour } : undefined}
+    >
+      {icon ? (
+        <span className="grid size-4 place-items-center" style={!active && colour ? { color: colour } : undefined}>
+          {icon}
+        </span>
+      ) : null}
+      {children}
+    </button>
+  );
+}
+
+function WalletMark() {
+  return (
+    <svg viewBox="0 0 148 108" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <ellipse cx="118" cy="26" rx="16" ry="16" fill="var(--gold)" opacity="0.92" />
+      <ellipse cx="134" cy="44" rx="11" ry="11" fill="#e2b867" />
+      <rect x="6" y="30" width="104" height="68" rx="18" fill="var(--primary)" />
+      <rect x="6" y="42" width="104" height="14" fill="color-mix(in srgb, #000 14%, var(--primary))" />
+      <rect x="78" y="62" width="40" height="24" rx="8" fill="color-mix(in srgb, #fff 18%, var(--primary))" />
+      <circle cx="98" cy="74" r="6" fill="var(--gold)" />
+    </svg>
+  );
+}
+
 function groupByDate(items: Transaction[]) {
   const groups: Array<{ key: string; label: string; total: number; items: Transaction[] }> = [];
   for (const item of items) {
@@ -393,11 +548,7 @@ function groupByDate(items: Transaction[]) {
     } else {
       groups.push({
         key,
-        label: new Intl.DateTimeFormat("en-IN", {
-          weekday: "long",
-          day: "numeric",
-          month: "long",
-        }).format(date),
+        label: dayGroupLabel(item.transactionAt),
         total: signed,
         items: [item],
       });

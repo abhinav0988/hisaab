@@ -60,7 +60,7 @@ export async function register(page: Page, prefix: string) {
   await page.getByLabel("Digit 1").click();
   await page.keyboard.type(otp);
   await page.getByRole("button", { name: "Verify email", exact: true }).click();
-  await expect(page.getByText("Email verified")).toBeVisible({ timeout: 15_000 });
+  await expect(page.getByText("Email verified", { exact: true })).toBeVisible({ timeout: 15_000 });
   await page.getByLabel("Create password", { exact: true }).fill("Secure!12345");
   await page.getByLabel("Confirm password").fill("Secure!12345");
   await page.getByRole("button", { name: /Create my secure account/ }).click();

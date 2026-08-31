@@ -60,6 +60,16 @@ export function isOpenAccount(account: Account) {
   return account.isActive === true || Number(account.isActive) === 1;
 }
 
+export const PAYMENT_METHOD_TYPES = ["UPI", "CREDIT_CARD"] as const;
+
+export function isPaymentMethodType(type: string) {
+  return (PAYMENT_METHOD_TYPES as readonly string[]).includes(type);
+}
+
+export function paymentMethodAccounts(accounts: Account[]) {
+  return uniqueCatalogAccounts(accounts).filter((item) => isPaymentMethodType(item.type));
+}
+
 export function uniqueCatalogAccounts(accounts: Account[], keepId?: string) {
   const open = accounts.filter(isOpenAccount);
   const source = open.length ? open : accounts;

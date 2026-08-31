@@ -37,15 +37,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   });
   useEffect(() => {
     if (isPending || session || heldSession) return;
-    router.replace(`/login?next=${encodeURIComponent(pathname)}`);
+    const next = pathname.startsWith("/login") || pathname.startsWith("/register") ? "/dashboard" : pathname;
+    router.replace(`/login?next=${encodeURIComponent(next)}`);
   }, [isPending, session, heldSession, router, pathname]);
-  useEffect(() => {
-    if (process.env.NODE_ENV !== "production" || isPending || !session) return;
-    if (session.user.emailVerified === false) {
-      const email = session.user.email ? `?email=${encodeURIComponent(session.user.email)}` : "";
-      router.replace(`/verify-email${email}`);
-    }
-  }, [isPending, session, router]);
   const notices = useMemo(() => {
     const data = dashboard.data;
     if (!data) return [];
