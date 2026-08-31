@@ -126,6 +126,84 @@ export interface GoalContribution {
   notes: string | null;
   contributedAt: string;
 }
+
+export type IpoStatus = "Applied" | "In progress" | "Allotted" | "Not Allotted" | "Listed";
+export type LendKind = "lent" | "borrowed";
+export type LendStatus = "pending" | "due" | "settled";
+export type CreditFacilityKind = "CARD" | "UPI";
+
+export interface Investment {
+  id: string;
+  name: string;
+  type: string;
+  detail: string | null;
+  investedMinor: number;
+  currentMinor: number;
+  sipMinor: number;
+  sipDay: string | null;
+  currency: Currency;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface IpoApplication {
+  id: string;
+  name: string;
+  appliedOn: string;
+  allotmentOn: string | null;
+  amountMinor: number;
+  lots: number;
+  status: IpoStatus;
+  currency: Currency;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface Loan {
+  id: string;
+  name: string;
+  lender: string;
+  rate: string;
+  emiMinor: number;
+  outstandingMinor: number;
+  dueOn: string;
+  remainingEmis: number;
+  progress: number;
+  currency: Currency;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreditFacility {
+  id: string;
+  kind: CreditFacilityKind;
+  name: string;
+  provider: string | null;
+  mask: string | null;
+  accountId: string | null;
+  limitMinor: number;
+  usedMinor: number;
+  todaySpendMinor: number;
+  overdueMinor: number;
+  dueOn: string | null;
+  currency: Currency;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface LendRecord {
+  id: string;
+  person: string;
+  relation: string | null;
+  kind: LendKind;
+  amountMinor: number;
+  givenOn: string;
+  dueOn: string;
+  status: LendStatus;
+  currency: Currency;
+  createdAt: string;
+  updatedAt: string;
+}
 export interface DashboardSummary {
   spentThisMonth: number;
   incomeThisMonth: number;

@@ -1,6 +1,7 @@
+import { AppError } from "@hisaab/worker-lib";
 import { Hono } from "hono";
 import { describe, expect, it } from "vitest";
-import { browserCors, sameOrigin } from "./middleware/security";
+import { browserCors, csrfGuard, mutationIsCsrfSafe, sameOrigin } from "./middleware/security";
 
 const APP_ORIGIN = "https://hisaab.blobforges.workers.dev";
 
@@ -75,5 +76,42 @@ describe("browser CORS", () => {
       env,
     );
     expect(response.headers.get("Access-Control-Allow-Origin")).toBeNull();
+  });
+});
+
+describe("CSRF guard", () => {
+  const csrfEnv = {
+    APP_ORIGIN,
+    BETTER_AUTH_URL: "https://hisaab-gateway.blobforges.workers.dev",
+  } as Env;
+
+  it("allows same-site browser mutations from the app origin", () => {
+    expect(
+      mutationIsCsrfSafe("POST", APP_ORIGIN, "same-site", csrfEnv),
+    ).toBe(true);
+  });
+
+  it("rejects cross-site mutations", () => {
+    expect(mutationIsCsrfSafe("POST", "https://evil.example", "cross-site", csrfEnv)).toBe(false);
+  });
+
+  it("rejects mutating requests with no origin and no fetch metadata", () => {
+    expect(mutationIsCsrfSafe("PATCH", undefined, undefined, csrfEnv)).toBe(false);
+  });
+
+  it("blocks forged origin on the gateway", async () => {
+    const instance = new Hono<{ Bindings: Env }>();
+    instance.use("/api/*", csrfGuard);
+    instance.post("/api/v1/investments", (c) => c.json({ ok: true }));
+    instance.onError((error, c) => {
+      if (error instanceof AppError) return c.json({ code: error.code }, error.status);
+      return c.json({ code: "INTERNAL" }, 500);
+    });
+    const response = await instance.request(
+      "https://gateway.test/api/v1/investments",
+      { method: "POST", headers: { Origin: "https://evil.example" } },
+      csrfEnv,
+    );
+    expect(response.status).toBe(403);
   });
 });

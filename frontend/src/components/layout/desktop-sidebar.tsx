@@ -2,7 +2,7 @@
 
 import { cn } from "@hisaab/ui";
 import Link from "next/link";
-import { desktopNavigation, isNavActive } from "./nav-config";
+import { desktopNavigation, financeToolsNavigation, isNavActive } from "./nav-config";
 import { Logo } from "./logo";
 import { initials } from "@/lib/format";
 
@@ -35,7 +35,8 @@ export function DesktopSidebar({
           </small>
         </div>
       </div>
-      <nav className="grid flex-1 content-start gap-1.5 overflow-y-auto" aria-label="Main">
+      <div className="grid flex-1 content-start gap-1.5 overflow-y-auto">
+      <nav className="grid content-start gap-1.5" aria-label="Main">
         {desktopNavigation.map((item) => {
           const active = isNavActive(pathname, item.href);
           return (
@@ -73,6 +74,48 @@ export function DesktopSidebar({
           );
         })}
       </nav>
+        <p className="px-3 pb-1 pt-4 text-[10px] font-black uppercase tracking-[0.12em] text-[var(--subtle)]">
+          More finance tools
+        </p>
+      <nav className="grid content-start gap-1.5" aria-label="More finance tools">
+        {financeToolsNavigation.map((item) => {
+          const active = isNavActive(pathname, item.href);
+          return (
+            <Link
+              key={item.href}
+              href={item.href}
+              aria-current={active ? "page" : undefined}
+              className={cn(
+                "nav-link flex min-h-[52px] items-center gap-3 rounded-2xl border border-transparent px-3 py-2 text-start text-[13px] font-bold text-[var(--muted-foreground)] transition",
+                active
+                  ? "is-active border-[color-mix(in_srgb,var(--primary)_16%,var(--border))] bg-gradient-to-br from-[color-mix(in_srgb,var(--mint)_92%,white)] to-[color-mix(in_srgb,var(--surface)_80%,var(--mint)_20%)] text-[var(--primary)] shadow-[0_12px_26px_color-mix(in_srgb,var(--primary)_11%,transparent)]"
+                  : "hover:border-[color-mix(in_srgb,var(--border)_70%,transparent)] hover:bg-[color-mix(in_srgb,var(--muted)_86%,transparent)] hover:text-[var(--foreground)] hover:translate-x-0.5 rtl:hover:-translate-x-0.5",
+              )}
+            >
+              <span
+                className={cn(
+                  "grid size-[34px] shrink-0 place-items-center rounded-[12px] border",
+                  active
+                    ? "border-transparent bg-gradient-to-br from-[var(--primary)] to-[var(--primary-hover)] text-white shadow-[0_10px_18px_color-mix(in_srgb,var(--primary)_26%,transparent)] dark:text-[#08140d]"
+                    : "border-[color-mix(in_srgb,var(--border)_75%,transparent)] bg-[var(--muted)] text-[var(--primary)]",
+                )}
+              >
+                <item.icon size={16} aria-hidden="true" />
+              </span>
+              <span className="flex min-w-0 flex-col gap-0.5">
+                <span>{item.label}</span>
+                <small className="mt-0.5 text-[11px] font-bold text-[var(--subtle)]">{item.hint}</small>
+              </span>
+              {"pro" in item && item.pro ? (
+                <span className="ms-auto rounded-full border border-[rgba(201,154,67,.18)] bg-gradient-to-br from-[#fff6df] to-[#f7e6b8] px-1.5 py-1 text-[11px] font-black text-[#6f4b08]">
+                  PRO
+                </span>
+              ) : null}
+            </Link>
+          );
+        })}
+      </nav>
+      </div>
       <div className="mt-auto grid gap-2 border-t border-[color-mix(in_srgb,var(--border)_75%,transparent)] pt-3.5">
         <Link
           href="/premium"

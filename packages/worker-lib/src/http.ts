@@ -13,3 +13,15 @@ export async function hashIp(value: string, secret: string) {
     .map((byte) => byte.toString(16).padStart(2, "0"))
     .join("");
 }
+
+export function timingSafeEqual(left: string, right: string) {
+  const encoder = new TextEncoder();
+  const a = encoder.encode(left);
+  const b = encoder.encode(right);
+  const length = Math.max(a.byteLength, b.byteLength);
+  let diff = a.byteLength ^ b.byteLength;
+  for (let index = 0; index < length; index += 1) {
+    diff |= (a[index] ?? 0) ^ (b[index] ?? 0);
+  }
+  return diff === 0;
+}

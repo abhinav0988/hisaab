@@ -13,4 +13,5 @@ interface Env {
   BUDGETS: Fetcher;
   REPORTS: Fetcher;
   RECURRING: Fetcher;
+  FINANCE: Fetcher;
 }

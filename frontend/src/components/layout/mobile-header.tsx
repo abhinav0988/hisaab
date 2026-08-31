@@ -7,10 +7,10 @@ import { useEffect, useLayoutEffect, useRef } from "react";
 import { GlobalSearch } from "./global-search";
 import { HisaabMark } from "./logo";
 import { ThemeToggle } from "./theme-toggle";
-import { desktopNavigation, moreNavigation } from "./nav-config";
+import { desktopNavigation, financeToolsNavigation, moreNavigation } from "./nav-config";
 
 function titleForPath(pathname: string) {
-  const match = [...desktopNavigation, ...moreNavigation].find(
+  const match = [...desktopNavigation, ...moreNavigation, ...financeToolsNavigation].find(
     (item) => pathname === item.href || pathname.startsWith(`${item.href}/`),
   );
   if (pathname.startsWith("/accounts")) return "Accounts";

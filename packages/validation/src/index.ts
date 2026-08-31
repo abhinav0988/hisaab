@@ -106,6 +106,75 @@ export const goalContributionSchema = z.object({
   notes: z.string().trim().max(200).nullable().optional(),
 });
 
+export const isoDateSchema = z.string().regex(/^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$/, "Use YYYY-MM-DD");
+export const ipoStatusSchema = z.enum(["Applied", "In progress", "Allotted", "Not Allotted", "Listed"]);
+export const lendKindSchema = z.enum(["lent", "borrowed"]);
+export const lendStatusSchema = z.enum(["pending", "due", "settled"]);
+export const creditFacilityKindSchema = z.enum(["CARD", "UPI"]);
+
+export const investmentSchema = z.object({
+  name: z.string().trim().min(1).max(80),
+  type: z.string().trim().min(1).max(40),
+  detail: z.string().trim().max(120).nullable().optional(),
+  investedMinor: z.number().int().nonnegative().safe(),
+  currentMinor: z.number().int().nonnegative().safe(),
+  sipMinor: z.number().int().nonnegative().safe().optional(),
+  sipDay: z.string().trim().max(12).nullable().optional(),
+  currency: currencySchema,
+});
+export const investmentPatchSchema = investmentSchema.partial();
+
+export const ipoSchema = z.object({
+  name: z.string().trim().min(1).max(80),
+  appliedOn: isoDateSchema,
+  allotmentOn: isoDateSchema.nullable().optional(),
+  amountMinor: z.number().int().positive().safe(),
+  lots: z.number().int().positive().max(1000),
+  status: ipoStatusSchema,
+  currency: currencySchema,
+});
+export const ipoPatchSchema = ipoSchema.partial();
+
+export const loanSchema = z.object({
+  name: z.string().trim().min(1).max(80),
+  lender: z.string().trim().min(1).max(80),
+  rate: z.string().trim().min(1).max(20),
+  emiMinor: z.number().int().nonnegative().safe(),
+  outstandingMinor: z.number().int().nonnegative().safe(),
+  dueOn: isoDateSchema,
+  remainingEmis: z.number().int().nonnegative().max(600).optional(),
+  progress: z.number().int().min(0).max(100).optional(),
+  currency: currencySchema,
+});
+export const loanPatchSchema = loanSchema.partial();
+
+export const creditFacilitySchema = z.object({
+  kind: creditFacilityKindSchema,
+  name: z.string().trim().min(1).max(80),
+  provider: z.string().trim().max(80).nullable().optional(),
+  mask: z.string().trim().max(24).nullable().optional(),
+  accountId: idSchema.nullable().optional(),
+  limitMinor: z.number().int().nonnegative().safe(),
+  usedMinor: z.number().int().nonnegative().safe().optional(),
+  todaySpendMinor: z.number().int().nonnegative().safe().optional(),
+  overdueMinor: z.number().int().nonnegative().safe().optional(),
+  dueOn: isoDateSchema.nullable().optional(),
+  currency: currencySchema,
+});
+export const creditFacilityPatchSchema = creditFacilitySchema.partial().omit({ kind: true });
+
+export const lendRecordSchema = z.object({
+  person: z.string().trim().min(1).max(80),
+  relation: z.string().trim().max(40).nullable().optional(),
+  kind: lendKindSchema,
+  amountMinor: z.number().int().positive().safe(),
+  givenOn: isoDateSchema,
+  dueOn: isoDateSchema,
+  status: lendStatusSchema.optional(),
+  currency: currencySchema,
+});
+export const lendRecordPatchSchema = lendRecordSchema.partial();
+
 export const recurringSchema = transactionSchema
   .omit({ tags: true, recurring: true, transactionAt: true })
   .extend({

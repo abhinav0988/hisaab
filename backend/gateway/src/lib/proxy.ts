@@ -3,6 +3,8 @@ import type { Context } from "hono";
 
 export function proxyTo(fetcher: Fetcher, request: Request, userId?: string) {
   const headers = new Headers(request.headers);
+  headers.delete(INTERNAL_HEADER);
+  headers.delete(USER_ID_HEADER);
   if (userId) {
     headers.set(INTERNAL_HEADER, INTERNAL_HEADER_VALUE);
     headers.set(USER_ID_HEADER, userId);
@@ -17,6 +19,14 @@ export function domainFetcher(env: Env, path: string): Fetcher | null {
   if (path.startsWith("/api/v1/transactions")) return env.TRANSACTIONS;
   if (path.startsWith("/api/v1/budgets") || path.startsWith("/api/v1/goals")) return env.BUDGETS;
   if (path.startsWith("/api/v1/recurring-transactions")) return env.RECURRING;
+  if (
+    path.startsWith("/api/v1/investments") ||
+    path.startsWith("/api/v1/ipos") ||
+    path.startsWith("/api/v1/loans") ||
+    path.startsWith("/api/v1/credit-facilities") ||
+    path.startsWith("/api/v1/lend-records")
+  )
+    return env.FINANCE;
   if (path.startsWith("/api/v1/dashboard") || path.startsWith("/api/v1/reports"))
     return env.REPORTS;
   return null;

@@ -12,7 +12,16 @@ export function createAuth(env: Env, ctx: WaitUntilContext) {
     baseURL: env.BETTER_AUTH_URL,
     basePath: "/api/auth",
     trustedOrigins: [env.APP_ORIGIN],
-    advanced: { useSecureCookies: env.ENVIRONMENT === "production", cookiePrefix: "hisaab" },
+    advanced: {
+      useSecureCookies: env.ENVIRONMENT === "production",
+      cookiePrefix: "hisaab",
+      defaultCookieAttributes: {
+        httpOnly: true,
+        sameSite: "lax",
+        path: "/",
+        secure: env.ENVIRONMENT === "production",
+      },
+    },
     session: { expiresIn: 60 * 60 * 24 * 30, updateAge: 60 * 60 * 24 },
     emailAndPassword: {
       enabled: true,

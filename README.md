@@ -11,7 +11,7 @@ This repository is a pnpm/Turborepo workspace in the Micron layout: **backend Wo
 - `frontend/` — Next.js App Router client (`@hisaab/web`): Tailwind CSS, TanStack Query, React Hook Form, Recharts, and Better Auth client. Domain UI in `src/components/<domain>/`, API calls in `src/services/`.
 - `backend/gateway` — public Hono Worker: CORS, CSRF, rate limits, and service-binding proxy (`http://localhost:8787`).
 - `backend/auth` — Better Auth (`/api/auth/*`) and internal `GET /internal/session`. Not published on workers.dev.
-- `backend/profile`, `accounts`, `categories`, `transactions`, `budgets`, `reports`, `recurring` — one Worker per domain.
+- `backend/profile`, `accounts`, `categories`, `transactions`, `budgets`, `reports`, `recurring`, `finance` — one Worker per domain.
 - `packages/database` — Drizzle schema, D1 migrations, and reference-data seed.
 - `packages/validation` — shared Zod contracts and financial calculation helpers.
 - `packages/types` — shared API/domain types.

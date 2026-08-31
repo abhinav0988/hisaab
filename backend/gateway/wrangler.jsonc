@@ -28,6 +28,7 @@
     { "binding": "BUDGETS", "service": "hisaab-budgets" },
     { "binding": "REPORTS", "service": "hisaab-reports" },
     { "binding": "RECURRING", "service": "hisaab-recurring" },
+    { "binding": "FINANCE", "service": "hisaab-finance" },
   ],
   "observability": { "enabled": true, "head_sampling_rate": 1 },
 }

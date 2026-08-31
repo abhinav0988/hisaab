@@ -14,6 +14,21 @@ describe("financial helpers", () => {
   it("handles zero-income savings rates", () => expect(savingsRate(0, 100)).toBe(0));
 });
 
+describe("finance module validation", () => {
+  it("accepts an investment payload", async () => {
+    const { investmentSchema } = await import("./index");
+    expect(
+      investmentSchema.safeParse({
+        name: "Nifty 50 Index",
+        type: "Index MF",
+        investedMinor: 12000000,
+        currentMinor: 12675000,
+        currency: "INR",
+      }).success,
+    ).toBe(true);
+  });
+});
+
 describe("registration validation", () => {
   it("rejects passwords without a number", () => {
     expect(

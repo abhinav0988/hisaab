@@ -14,6 +14,7 @@ The only public origin. Browser traffic hits this Worker. It applies CORS, CSRF,
 | `/api/v1/transactions*`                  | `hisaab-transactions`                |
 | `/api/v1/budgets*`                       | `hisaab-budgets`                     |
 | `/api/v1/recurring-transactions*`        | `hisaab-recurring`                   |
+| `/api/v1/investments*`, `/api/v1/ipos*`, `/api/v1/loans*`, `/api/v1/credit-facilities*`, `/api/v1/lend-records*` | `hisaab-finance` |
 | `/api/v1/dashboard*`, `/api/v1/reports*` | `hisaab-reports`                     |
 
 `NEXT_PUBLIC_API_URL` and `BETTER_AUTH_URL` must be this origin.
@@ -21,7 +22,7 @@ The only public origin. Browser traffic hits this Worker. It applies CORS, CSRF,
 ## Bindings
 
 - D1 `hisaab` — rate-limit table only
-- Service bindings: `AUTH`, `PROFILE`, `ACCOUNTS`, `CATEGORIES`, `TRANSACTIONS`, `BUDGETS`, `REPORTS`, `RECURRING`
+- Service bindings: `AUTH`, `PROFILE`, `ACCOUNTS`, `CATEGORIES`, `TRANSACTIONS`, `BUDGETS`, `REPORTS`, `RECURRING`, `FINANCE`
 - Vars: `APP_ORIGIN`, `BETTER_AUTH_URL`, `RATE_LIMIT_SECRET`
 
 No Better Auth secret on this Worker.

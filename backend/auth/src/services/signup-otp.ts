@@ -3,6 +3,7 @@ import { sendAuthEmail } from "./send-auth-email";
 
 const OTP_TTL_MS = 10 * 60 * 1000;
 const VERIFIED_TTL_MS = 30 * 60 * 1000;
+const MAX_OTP_ATTEMPTS = 5;
 
 type WaitUntilContext = { waitUntil(promise: Promise<unknown>): void };
 
@@ -12,6 +13,9 @@ function otpKey(email: string) {
 function verifiedKey(email: string) {
   return `hisaab-signup-otp-ok:${email.trim().toLowerCase()}`;
 }
+function failKey(email: string) {
+  return `hisaab-signup-otp-fail:${email.trim().toLowerCase()}`;
+}
 
 async function sha256(value: string) {
   const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(value));
@@ -20,8 +24,28 @@ async function sha256(value: string) {
     .join("");
 }
 
+function timingSafeEqual(left: string, right: string) {
+  const encoder = new TextEncoder();
+  const a = encoder.encode(left);
+  const b = encoder.encode(right);
+  const length = Math.max(a.byteLength, b.byteLength);
+  let diff = a.byteLength ^ b.byteLength;
+  for (let index = 0; index < length; index += 1) {
+    diff |= (a[index] ?? 0) ^ (b[index] ?? 0);
+  }
+  return diff === 0;
+}
+
 function sixDigitCode() {
-  return Array.from(crypto.getRandomValues(new Uint8Array(6)), (byte) => String(byte % 10)).join("");
+  const digits = new Array<string>(6);
+  for (let index = 0; index < 6; index += 1) {
+    const bytes = new Uint8Array(1);
+    do {
+      crypto.getRandomValues(bytes);
+    } while ((bytes[0] ?? 0) >= 250);
+    digits[index] = String((bytes[0] ?? 0) % 10);
+  }
+  return digits.join("");
 }
 
 async function replaceVerification(env: Env, identifier: string, value: string, expiresAt: string) {
@@ -47,6 +71,7 @@ export async function sendSignupOtp(env: Env, ctx: WaitUntilContext, email: stri
     new Date(Date.now() + OTP_TTL_MS).toISOString(),
   );
   await deleteVerification(env, verifiedKey(normalized));
+  await deleteVerification(env, failKey(normalized));
   await sendAuthEmail(env, ctx, "otp", normalized, code);
   return {
     sent: true as const,
@@ -62,8 +87,23 @@ export async function verifySignupOtp(env: Env, email: string, code: string) {
     .bind(otpKey(normalized))
     .first<{ value: string; expiresAt: string }>();
   if (!row || new Date(row.expiresAt).getTime() < Date.now()) return false;
-  if (row.value !== (await sha256(code.trim()))) return false;
+  if (!timingSafeEqual(row.value, await sha256(code.trim()))) {
+    const fails = await env.DB.prepare(
+      "SELECT value FROM verification WHERE identifier = ? LIMIT 1",
+    )
+      .bind(failKey(normalized))
+      .first<{ value: string }>();
+    const attempts = Number(fails?.value ?? 0) + 1;
+    if (attempts >= MAX_OTP_ATTEMPTS) {
+      await deleteVerification(env, otpKey(normalized));
+      await deleteVerification(env, failKey(normalized));
+      return false;
+    }
+    await replaceVerification(env, failKey(normalized), String(attempts), row.expiresAt);
+    return false;
+  }
   await deleteVerification(env, otpKey(normalized));
+  await deleteVerification(env, failKey(normalized));
   await replaceVerification(
     env,
     verifiedKey(normalized),
@@ -91,4 +131,5 @@ export async function consumeVerifiedSignupOtp(env: Env, email: string, userId: 
     .run();
   await deleteVerification(env, otpKey(email));
   await deleteVerification(env, verifiedKey(email));
+  await deleteVerification(env, failKey(email));
 }

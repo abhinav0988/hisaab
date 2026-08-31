@@ -1,14 +1,21 @@
 import { AppError, errorResponse, ok, requestContext } from "@hisaab/worker-lib";
 import { Hono } from "hono";
 import { domainFetcher, proxyTo, resolveUserId } from "./lib/proxy";
-import { browserCors, csrfGuard, rateLimit } from "./middleware/security";
+import { bodyLimit, browserCors, csrfGuard, rateLimit } from "./middleware/security";
 
 type Variables = { requestId: string };
 const app = new Hono<{ Bindings: Env; Variables: Variables }>();
 
 app.use("*", requestContext);
+app.use("*", async (c, next) => {
+  if (c.env.ENVIRONMENT === "production") {
+    c.header("strict-transport-security", "max-age=31536000; includeSubDomains");
+  }
+  await next();
+});
 app.use("/api/*", browserCors);
 app.use("/api/*", csrfGuard);
+app.use("/api/*", bodyLimit);
 app.use("/api/*", rateLimit);
 
 app.get("/health", (c) => ok(c, { service: "hisaab-gateway", status: "ok" }));

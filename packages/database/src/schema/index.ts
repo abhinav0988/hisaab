@@ -446,3 +446,133 @@ export const apiRateLimits = sqliteTable(
     index("api_rate_limits_expiry_idx").on(table.expiresAt),
   ],
 );
+
+export const investments = sqliteTable(
+  "investments",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    type: text("type").notNull(),
+    detail: text("detail"),
+    investedMinor: integer("invested_minor").notNull().default(0),
+    currentMinor: integer("current_minor").notNull().default(0),
+    sipMinor: integer("sip_minor").notNull().default(0),
+    sipDay: text("sip_day"),
+    currency: text("currency").notNull(),
+    ...timestamps,
+  },
+  (table) => [
+    index("investments_user_idx").on(table.userId),
+    check(
+      "investment_amounts_non_negative",
+      sql`${table.investedMinor} >= 0 AND ${table.currentMinor} >= 0 AND ${table.sipMinor} >= 0`,
+    ),
+  ],
+);
+
+export const ipoApplications = sqliteTable(
+  "ipo_applications",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    appliedOn: text("applied_on").notNull(),
+    allotmentOn: text("allotment_on"),
+    amountMinor: integer("amount_minor").notNull(),
+    lots: integer("lots").notNull().default(1),
+    status: text("status").notNull(),
+    currency: text("currency").notNull(),
+    ...timestamps,
+  },
+  (table) => [
+    index("ipo_applications_user_idx").on(table.userId),
+    check("ipo_amount_positive", sql`${table.amountMinor} > 0`),
+    check("ipo_lots_positive", sql`${table.lots} > 0`),
+  ],
+);
+
+export const loans = sqliteTable(
+  "loans",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    lender: text("lender").notNull(),
+    rate: text("rate").notNull(),
+    emiMinor: integer("emi_minor").notNull(),
+    outstandingMinor: integer("outstanding_minor").notNull(),
+    dueOn: text("due_on").notNull(),
+    remainingEmis: integer("remaining_emis").notNull().default(0),
+    progress: integer("progress").notNull().default(0),
+    currency: text("currency").notNull(),
+    ...timestamps,
+  },
+  (table) => [
+    index("loans_user_idx").on(table.userId),
+    check("loan_amounts_non_negative", sql`${table.emiMinor} >= 0 AND ${table.outstandingMinor} >= 0`),
+    check("loan_progress_range", sql`${table.progress} >= 0 AND ${table.progress} <= 100`),
+    check("loan_remaining_non_negative", sql`${table.remainingEmis} >= 0`),
+  ],
+);
+
+export const creditFacilities = sqliteTable(
+  "credit_facilities",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    kind: text("kind").notNull(),
+    name: text("name").notNull(),
+    provider: text("provider"),
+    mask: text("mask"),
+    accountId: text("account_id").references(() => accounts.id, { onDelete: "set null" }),
+    limitMinor: integer("limit_minor").notNull().default(0),
+    usedMinor: integer("used_minor").notNull().default(0),
+    todaySpendMinor: integer("today_spend_minor").notNull().default(0),
+    overdueMinor: integer("overdue_minor").notNull().default(0),
+    dueOn: text("due_on"),
+    currency: text("currency").notNull(),
+    ...timestamps,
+  },
+  (table) => [
+    index("credit_facilities_user_idx").on(table.userId, table.kind),
+    check("credit_kind_valid", sql`${table.kind} IN ('CARD', 'UPI')`),
+    check(
+      "credit_amounts_non_negative",
+      sql`${table.limitMinor} >= 0 AND ${table.usedMinor} >= 0 AND ${table.todaySpendMinor} >= 0 AND ${table.overdueMinor} >= 0`,
+    ),
+  ],
+);
+
+export const lendRecords = sqliteTable(
+  "lend_records",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    person: text("person").notNull(),
+    relation: text("relation"),
+    kind: text("kind").notNull(),
+    amountMinor: integer("amount_minor").notNull(),
+    givenOn: text("given_on").notNull(),
+    dueOn: text("due_on").notNull(),
+    status: text("status").notNull(),
+    currency: text("currency").notNull(),
+    ...timestamps,
+  },
+  (table) => [
+    index("lend_records_user_idx").on(table.userId),
+    check("lend_kind_valid", sql`${table.kind} IN ('lent', 'borrowed')`),
+    check("lend_status_valid", sql`${table.status} IN ('pending', 'due', 'settled')`),
+    check("lend_amount_positive", sql`${table.amountMinor} > 0`),
+  ],
+);

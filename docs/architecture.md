@@ -27,6 +27,7 @@ The browser talks to one public Worker (the gateway). Domain logic runs in inter
 | `backend/budgets`      | `hisaab-budgets`      | no     | `/api/v1/budgets`                                     |
 | `backend/reports`      | `hisaab-reports`      | no     | `/api/v1/dashboard/*`, `/api/v1/reports/*`            |
 | `backend/recurring`    | `hisaab-recurring`    | no     | `/api/v1/recurring-transactions`, cron `*/15 * * * *` |
+| `backend/finance`      | `hisaab-finance`      | no     | `/api/v1/investments`, `/ipos`, `/loans`, `/credit-facilities`, `/lend-records` |
 
 Shared packages: `packages/database`, `packages/validation`, `packages/types`, `packages/ui`, `packages/worker-lib`. All domain Workers and auth bind the same D1 database `hisaab`.
 

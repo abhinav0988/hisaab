@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "wrangler dev --port 8787 --persist-to ../../.wrangler/state -c wrangler.jsonc -c ../auth/wrangler.jsonc -c ../profile/wrangler.jsonc -c ../accounts/wrangler.jsonc -c ../categories/wrangler.jsonc -c ../transactions/wrangler.jsonc -c ../budgets/wrangler.jsonc -c ../reports/wrangler.jsonc -c ../recurring/wrangler.jsonc",
+    "dev": "wrangler dev --port 8787 --persist-to ../../.wrangler/state -c wrangler.jsonc -c ../auth/wrangler.jsonc -c ../profile/wrangler.jsonc -c ../accounts/wrangler.jsonc -c ../categories/wrangler.jsonc -c ../transactions/wrangler.jsonc -c ../budgets/wrangler.jsonc -c ../reports/wrangler.jsonc -c ../recurring/wrangler.jsonc -c ../finance/wrangler.jsonc",
     "build": "wrangler deploy --dry-run --env=\"\" --outdir dist",
     "lint": "eslint .",
     "typecheck": "tsc -p tsconfig.json",

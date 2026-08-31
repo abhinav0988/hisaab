@@ -36,6 +36,13 @@
       "when": 1787901000000,
       "tag": "0004_account_catalog",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "6",
+      "when": 1787902000000,
+      "tag": "0005_finance_modules",
+      "breakpoints": true
     }
   ]
 }
