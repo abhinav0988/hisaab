@@ -34,15 +34,19 @@ export function ProfileView() {
 
 function ProfileForm({ initial, onSaved }: { initial: Profile; onSaved: () => void }) {
   const router = useRouter();
-  const { setTheme } = useTheme();
+  const { theme: liveTheme, setTheme } = useTheme();
   const [name, setName] = useState(initial.name);
   const [profileNote, setNote] = useState(initial.profileNote ?? "");
   const [countryCode, setCountry] = useState(initial.countryCode);
   const [defaultCurrency, setCurrency] = useState(initial.defaultCurrency);
   const [timezone, setTimezone] = useState(initial.timezone);
   const [language, setLanguage] = useState(initial.language ?? "en");
-  const [theme, setThemeValue] = useState<"light" | "dark">(
-    initial.theme === "dark" ? "dark" : "light",
+  const [theme, setThemeValue] = useState<"light" | "dark">(() =>
+    liveTheme === "dark" || liveTheme === "light"
+      ? liveTheme
+      : initial.theme === "dark"
+        ? "dark"
+        : "light",
   );
   const [smartNotifications, setSmart] = useState(initial.smartNotifications ?? true);
   const [weeklySummary, setWeekly] = useState(initial.weeklySummary ?? true);
@@ -51,7 +55,9 @@ function ProfileForm({ initial, onSaved }: { initial: Profile; onSaved: () => vo
   const [sessionsOpen, setSessionsOpen] = useState(false);
   const [logoutOpen, setLogoutOpen] = useState(false);
   const pathname = usePathname();
-  useEffect(() => setTheme(theme), [theme, setTheme]);
+  useEffect(() => {
+    if (liveTheme === "dark" || liveTheme === "light") setThemeValue(liveTheme);
+  }, [liveTheme]);
   const mutation = useMutation({
     mutationFn: () =>
       profileService.update({
@@ -183,8 +189,13 @@ function ProfileForm({ initial, onSaved }: { initial: Profile; onSaved: () => vo
             <SettingRow title="Theme" description="Choose light or dark.">
               <Select
                 className="h-11"
+                aria-label="Theme"
                 value={theme}
-                onChange={(event) => setThemeValue(event.target.value === "dark" ? "dark" : "light")}
+                onChange={(event) => {
+                  const next = event.target.value === "dark" ? "dark" : "light";
+                  setThemeValue(next);
+                  setTheme(next);
+                }}
               >
                 <option value="light">Light</option>
                 <option value="dark">Dark</option>
