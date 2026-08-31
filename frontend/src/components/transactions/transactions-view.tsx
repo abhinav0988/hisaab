@@ -14,6 +14,7 @@ import {
   Pencil,
   Plus,
   RefreshCw,
+  Search,
   Shield,
   Sparkles,
   Trash2,
@@ -159,7 +160,15 @@ export function TransactionsView() {
         </div>
         <div className="tx-hero-side">
           <div className="tx-hero-art" aria-hidden>
-            <WalletMark />
+            <picture>
+              <source srcSet="/images/transactions-hero-wallet.webp" type="image/webp" />
+              <img
+                src="/images/transactions-hero-wallet.png"
+                alt=""
+                width={720}
+                height={480}
+              />
+            </picture>
           </div>
           <div className="tx-hero-actions">
             <Button variant="secondary" onClick={() => exportCsv(rows)}>
@@ -195,24 +204,34 @@ export function TransactionsView() {
         <div className="filters-grid">
           <label className="filter-field">
             <span>Search</span>
-            <Input
-              placeholder="Search merchant, category, note or account..."
-              aria-label="Search merchant or notes"
-              value={search}
-              onChange={(event) => {
-                setSearch(event.target.value);
-                setPage(1);
-              }}
-            />
+            <div className="date-shell">
+              <span className="calendar-icon" aria-hidden>
+                <Search size={13} />
+              </span>
+              <Input
+                placeholder="Search merchant, category, note or account..."
+                aria-label="Search merchant or notes"
+                value={search}
+                onChange={(event) => {
+                  setSearch(event.target.value);
+                  setPage(1);
+                }}
+              />
+            </div>
           </label>
           <label className="filter-field">
             <span>Period</span>
-            <Select value={period} onChange={(event) => setPeriod(event.target.value)}>
-              <option value="all">All dates</option>
-              <option value="month">This month</option>
-              <option value="week">This week</option>
-              <option value="today">Today</option>
-            </Select>
+            <div className="date-shell">
+              <span className="calendar-icon" aria-hidden>
+                <CalendarDays size={13} />
+              </span>
+              <Select value={period} onChange={(event) => setPeriod(event.target.value)}>
+                <option value="all">All dates</option>
+                <option value="month">This month</option>
+                <option value="week">This week</option>
+                <option value="today">Today</option>
+              </Select>
+            </div>
           </label>
           <label className="filter-field">
             <span>Type</span>
@@ -513,25 +532,15 @@ function CategoryFilterChip({
       style={!active && colour ? { borderColor: colour } : undefined}
     >
       {icon ? (
-        <span className="grid size-4 place-items-center" style={!active && colour ? { color: colour } : undefined}>
+        <span
+          className="tx-category-chip-icon"
+          style={!active && colour ? { color: colour } : undefined}
+        >
           {icon}
         </span>
       ) : null}
       {children}
     </button>
-  );
-}
-
-function WalletMark() {
-  return (
-    <svg viewBox="0 0 148 108" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <ellipse cx="118" cy="26" rx="16" ry="16" fill="var(--gold)" opacity="0.92" />
-      <ellipse cx="134" cy="44" rx="11" ry="11" fill="#e2b867" />
-      <rect x="6" y="30" width="104" height="68" rx="18" fill="var(--primary)" />
-      <rect x="6" y="42" width="104" height="14" fill="color-mix(in srgb, #000 14%, var(--primary))" />
-      <rect x="78" y="62" width="40" height="24" rx="8" fill="color-mix(in srgb, #fff 18%, var(--primary))" />
-      <circle cx="98" cy="74" r="6" fill="var(--gold)" />
-    </svg>
   );
 }
 

@@ -86,13 +86,22 @@ test.describe("responsive production shell", () => {
         expect(box.height).toBeGreaterThanOrEqual(44);
       }
 
-      await page.getByRole("button", { name: "Notifications" }).click();
+      const notifyButton = page.getByRole("button", { name: "Notifications" });
+      await notifyButton.click();
+      await expect(page.locator("[data-notification-panel][data-placed=true]")).toBeVisible();
       const notificationBox = await page.locator("[data-notification-panel]").boundingBox();
+      const bellBox = await notifyButton.boundingBox();
       expect(notificationBox).toBeTruthy();
+      expect(bellBox).toBeTruthy();
       expect(notificationBox!.x).toBeGreaterThanOrEqual(0);
       expect(notificationBox!.x + notificationBox!.width).toBeLessThanOrEqual(viewport.width);
       expect(notificationBox!.y + notificationBox!.height).toBeLessThanOrEqual(viewport.height);
-      await page.getByRole("button", { name: "Notifications" }).click();
+      if (!isMobile) {
+        expect(notificationBox!.x).toBeGreaterThan(258);
+        expect(notificationBox!.x + notificationBox!.width).toBeGreaterThan(bellBox!.x);
+        expect(Math.abs(notificationBox!.x + notificationBox!.width - (bellBox!.x + bellBox!.width))).toBeLessThan(32);
+      }
+      await notifyButton.click();
     }
 
     await page.setViewportSize({ width: 1440, height: 900 });

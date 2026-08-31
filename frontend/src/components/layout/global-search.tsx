@@ -130,7 +130,7 @@ export function GlobalSearch() {
   return (
     <div
       ref={wrapRef}
-      className={`topbar-search relative hidden max-w-[620px] flex-1 lg:block${open ? " search-open" : ""}`}
+      className={`topbar-search relative hidden min-w-0 max-w-[620px] flex-1 lg:block${open ? " search-open" : ""}`}
     >
       <form
         onSubmit={(event) => {
