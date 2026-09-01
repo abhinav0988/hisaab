@@ -2,7 +2,7 @@
 import type { Budget, Category } from "@hisaab/types";
 import { Button, Card, Field, Input, Select } from "@hisaab/ui";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Pencil, Trash2 } from "lucide-react";
+import { Lightbulb, Pencil, Plus, Sparkles, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { CardHead, Insight, ProLabel, ProgressBar } from "@/components/layout/chrome";
@@ -75,10 +75,10 @@ export function BudgetsView() {
               variant="secondary"
               onClick={() => toast.info("Smart budget suggestions are a Premium feature.")}
             >
-              ✦ Smart budget <ProLabel />
+              <Sparkles size={16} aria-hidden="true" /> Smart budget <ProLabel />
             </Button>
             <Button aria-label="Create budget" onClick={() => setOpen(true)}>
-              ＋ New category limit
+              <Plus size={16} aria-hidden="true" /> New category limit
             </Button>
           </>
         }
@@ -139,7 +139,7 @@ export function BudgetsView() {
           />
           <Insight
             gold
-            icon="✦"
+            icon={<Lightbulb size={17} aria-hidden="true" />}
             title={
               overall
                 ? under

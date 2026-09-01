@@ -2,6 +2,7 @@
 import { Button, Field, Input } from "@hisaab/ui";
 import Link from "next/link";
 import { useState } from "react";
+import { ArrowRight } from "lucide-react";
 import { AuthTrust, AuthWelcome } from "@/components/auth/auth-chrome";
 import { authService } from "@/services/auth.service";
 
@@ -54,7 +55,7 @@ export function ForgotPasswordForm() {
           </Field>
           {error ? <p className="rounded-xl bg-[var(--danger-soft)] p-3 text-sm text-[var(--danger)]" role="alert">{error}</p> : null}
           <Button className="min-h-[54px] w-full rounded-2xl text-[13px]" disabled={loading}>
-            {loading ? "Sending…" : "Send reset link →"}
+            {loading ? "Sending…" : <><span>Send reset link</span><ArrowRight size={16} aria-hidden="true" /></>}
           </Button>
         </form>
       )}

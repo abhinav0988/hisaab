@@ -5,6 +5,7 @@ import { majorToMinor } from "@hisaab/validation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { toast } from "sonner";
+import { ArrowUpRight, Plus, RefreshCw, Sparkles } from "lucide-react";
 import { CardHead, Insight, ProLabel, ProgressBar } from "@/components/layout/chrome";
 import { Modal } from "@/components/layout/modal";
 import { PageHeader } from "@/components/layout/page-header";
@@ -48,10 +49,10 @@ export function GoalsView() {
         actions={
           <>
             <Button variant="secondary" onClick={() => toast.info("Auto-save is a Premium feature.")}>
-              ↻ Auto-save <ProLabel />
+              <RefreshCw size={16} aria-hidden="true" /> Auto-save <ProLabel />
             </Button>
             <Button onClick={() => setOpen(true)} disabled={missingTable}>
-              ＋ Create goal
+              <Plus size={16} aria-hidden="true" /> Create goal
             </Button>
           </>
         }
@@ -120,8 +121,8 @@ export function GoalsView() {
                 key={item.id}
                 className="grid grid-cols-[42px_minmax(0,1fr)_auto] items-center gap-2.5 border-b border-[var(--border)] py-3 last:border-0"
               >
-                <span className="grid size-[38px] place-items-center rounded-xl bg-[var(--muted)] text-[var(--primary)]">
-                  ↗
+                <span className="premium-icon-tile size-[38px] rounded-xl">
+                  <ArrowUpRight size={16} aria-hidden="true" />
                 </span>
                 <div>
                   <b className="block text-xs">{item.goalName ?? "Goal"}</b>
@@ -145,7 +146,7 @@ export function GoalsView() {
           <CardHead title="Goal coach" description="Premium planning assistant" action={<ProLabel />} />
           <Insight
             gold
-            icon="✦"
+            icon={<Sparkles size={17} aria-hidden="true" />}
             title={
               list[0]
                 ? `${list[0].name} can finish earlier`

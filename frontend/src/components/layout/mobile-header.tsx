@@ -1,7 +1,7 @@
 "use client";
 
 import { Button } from "@hisaab/ui";
-import { Bell } from "lucide-react";
+import { Bell, Plus } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useLayoutEffect, useRef } from "react";
 import { GlobalSearch } from "./global-search";
@@ -138,7 +138,7 @@ export function MobileHeader({
       <GlobalSearch />
       <div className="ms-auto flex shrink-0 items-center gap-2.5">
         <Button className="hidden shrink-0 lg:inline-flex" onClick={() => router.push("/transactions?action=add")}>
-          ＋ Add transaction
+          <Plus size={16} aria-hidden="true" /> Add transaction
         </Button>
         <div className="notification-wrap relative z-50 shrink-0">
           <button

@@ -32,7 +32,7 @@ export function EmptyState({
 }) {
   return (
     <Card className="grid place-items-center p-8 text-center sm:p-10">
-      <span className="grid size-12 place-items-center rounded-2xl bg-[var(--muted)] text-[var(--muted-foreground)]">
+      <span className="premium-icon-tile size-12">
         <Inbox aria-hidden="true" />
       </span>
       <h3 className="mt-4 font-semibold">{title}</h3>
@@ -67,7 +67,7 @@ export function NoResults({
 export function OfflineState({ retry }: { retry: () => void }) {
   return (
     <Card className="grid place-items-center p-8 text-center sm:p-10" role="alert">
-      <WifiOff className="text-[var(--muted-foreground)]" aria-hidden="true" />
+      <span className="premium-icon-tile size-12"><WifiOff size={20} aria-hidden="true" /></span>
       <h3 className="mt-4 font-semibold">You’re offline</h3>
       <p className="mt-1 max-w-sm text-sm text-[var(--muted-foreground)]">
         Check your connection. Hisaab will load this page as soon as you’re back online.
@@ -84,7 +84,7 @@ export function ErrorState({ retry, message }: { retry: () => void; message?: st
   if (!online) return <OfflineState retry={retry} />;
   return (
     <Card className="grid place-items-center p-8 text-center sm:p-10" role="alert">
-      <TriangleAlert className="text-[var(--danger)]" aria-hidden="true" />
+      <span className="premium-icon-tile premium-icon-danger size-12"><TriangleAlert size={20} aria-hidden="true" /></span>
       <h3 className="mt-4 font-semibold">We couldn’t load this page</h3>
       <p className="mt-1 max-w-sm text-sm text-[var(--muted-foreground)]">
         {message ?? "Check your connection and try again."}
@@ -99,7 +99,7 @@ export function ErrorState({ retry, message }: { retry: () => void; message?: st
 export function PermissionDenied() {
   return (
     <Card className="grid place-items-center p-8 text-center sm:p-10" role="alert">
-      <Lock className="text-[var(--muted-foreground)]" aria-hidden="true" />
+      <span className="premium-icon-tile size-12"><Lock size={20} aria-hidden="true" /></span>
       <h3 className="mt-4 font-semibold">You don’t have access</h3>
       <p className="mt-1 max-w-sm text-sm text-[var(--muted-foreground)]">
         This area isn’t available for the current account. Return to Overview or contact support if
@@ -122,7 +122,7 @@ export function PremiumRequired({
 }) {
   return (
     <Card className="grid place-items-center p-8 text-center sm:p-10">
-      <Sparkles className="text-[var(--gold)]" aria-hidden="true" />
+      <span className="premium-icon-tile premium-icon-gold size-12"><Sparkles size={20} aria-hidden="true" /></span>
       <h3 className="mt-4 font-semibold">Premium required</h3>
       <p className="mt-1 max-w-sm text-sm text-[var(--muted-foreground)]">{description}</p>
       <Link

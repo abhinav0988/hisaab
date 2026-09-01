@@ -4,6 +4,7 @@ import { passwordSchema } from "@hisaab/validation";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
+import { ArrowRight, Check } from "lucide-react";
 import { AuthTrust, AuthWelcome } from "@/components/auth/auth-chrome";
 import { authService } from "@/services/auth.service";
 
@@ -87,12 +88,12 @@ export function ResetPasswordForm() {
           />
         </Field>
         <div className="grid grid-cols-2 gap-2">
-          <span className={`auth-strength-rule ${password.length >= 8 ? "is-valid" : ""}`}>✓ 8+ characters</span>
-          <span className={`auth-strength-rule ${/\d/.test(password) ? "is-valid" : ""}`}>✓ At least 1 number</span>
+          <span className={`auth-strength-rule ${password.length >= 8 ? "is-valid" : ""}`}><Check size={13} aria-hidden="true" /> 8+ characters</span>
+          <span className={`auth-strength-rule ${/\d/.test(password) ? "is-valid" : ""}`}><Check size={13} aria-hidden="true" /> At least 1 number</span>
         </div>
         {error ? <p className="rounded-xl bg-[var(--danger-soft)] p-3 text-sm text-[var(--danger)]" role="alert">{error}</p> : null}
         <Button className="min-h-[54px] w-full rounded-2xl text-[13px]" disabled={loading || !token}>
-          {loading ? "Updating…" : "Update password →"}
+          {loading ? "Updating…" : <><span>Update password</span><ArrowRight size={16} aria-hidden="true" /></>}
         </Button>
       </form>
       <AuthTrust />

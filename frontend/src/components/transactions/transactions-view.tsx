@@ -303,7 +303,7 @@ export function TransactionsView() {
             className="bg-[var(--mint)] hover:bg-[color-mix(in_srgb,var(--mint)_80%,var(--surface))]"
             onClick={() => setManualAdd(true)}
           >
-            ＋ New transaction
+            <Plus size={16} aria-hidden="true" /> New transaction
           </Button>
         </div>
       </Card>

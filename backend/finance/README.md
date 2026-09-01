@@ -12,7 +12,7 @@ Internal Worker for Overview finance tools: investments, IPO applications, loans
 | Credit facilities | `/api/v1/credit-facilities` |
 | Lend records | `/api/v1/lend-records` |
 
-Each resource supports `GET /`, `POST /`, `GET /:id`, `PATCH /:id`, and `DELETE /:id`. Credit facilities accept `?kind=CARD` or `?kind=UPI`.
+Each resource supports `GET /`, `POST /`, `GET /:id`, `PATCH /:id`, and `DELETE /:id`. Credit facilities accept `?kind=CARD` or `?kind=UPI`. Cards also expose `GET /dashboard` and `POST /:id/pay`.
 
 ## Bindings
 

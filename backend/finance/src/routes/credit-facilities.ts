@@ -4,8 +4,10 @@ import { Hono } from "hono";
 import {
   createCreditFacility,
   deleteCreditFacility,
+  getCreditDashboard,
   getCreditFacility,
   listCreditFacilities,
+  payCreditFacility,
   updateCreditFacility,
 } from "../services/service";
 
@@ -21,6 +23,12 @@ creditFacilityRoutes.post("/", async (c) => {
   if (!parsed.success) throw fromZod(parsed.error);
   return created(c, await createCreditFacility(c.env, c.get("userId"), parsed.data));
 });
+creditFacilityRoutes.get("/dashboard", async (c) =>
+  ok(c, await getCreditDashboard(c.env, c.get("userId"))),
+);
+creditFacilityRoutes.post("/:id/pay", async (c) =>
+  ok(c, await payCreditFacility(c.env, c.get("userId"), c.req.param("id"))),
+);
 creditFacilityRoutes.get("/:id", async (c) =>
   ok(c, await getCreditFacility(c.env, c.get("userId"), c.req.param("id"))),
 );

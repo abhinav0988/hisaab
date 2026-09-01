@@ -3,6 +3,7 @@
 import { Button } from "@hisaab/ui";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { toast } from "sonner";
+import { Mail, MailPlus } from "lucide-react";
 import { OtpInputs } from "@/components/auth/otp-inputs";
 import { authService } from "@/services/auth.service";
 
@@ -140,10 +141,7 @@ export function EmailOtpPanel({
           onClick={() => void send()}
         >
           <span className="email-code-icon" aria-hidden="true">
-            <svg viewBox="0 0 24 24">
-              <path d="M4 6h16v12H4z" />
-              <path d="m4 7 8 6 8-6" />
-            </svg>
+            <Mail size={17} />
           </span>
           <span>{sending ? "Sending..." : sent ? "Send again" : "Send code"}</span>
         </Button>
@@ -152,11 +150,7 @@ export function EmailOtpPanel({
         <div className="email-verify-card">
           <div className="email-verify-head">
             <div className="verify-icon" aria-hidden="true">
-              <svg viewBox="0 0 24 24">
-                <path d="M4 6h16v12H4z" />
-                <path d="m4 7 8 6 8-6" />
-                <path d="M17 4v4" />
-              </svg>
+              <MailPlus size={19} />
             </div>
             <div>
               <b>Verify your email</b>

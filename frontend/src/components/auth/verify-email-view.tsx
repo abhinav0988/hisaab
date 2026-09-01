@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
+import { MailCheck } from "lucide-react";
 import { AuthStatus, AuthTrust, AuthWelcome } from "@/components/auth/auth-chrome";
 import { EmailOtpPanel } from "@/components/auth/email-otp-panel";
 import { enterApp } from "@/lib/auth-navigation";
@@ -36,7 +37,7 @@ export function VerifyEmailView() {
         subtitle="Enter the 6-digit code we send. You need a confirmed inbox before Hisaab can open your workspace."
       />
       <AuthStatus
-        icon="✉"
+        icon={<MailCheck size={21} aria-hidden="true" />}
         title={verified ? "Email verified" : isPending ? "Checking your session…" : "Check your inbox"}
         description={
           verified

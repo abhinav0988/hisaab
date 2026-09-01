@@ -152,8 +152,8 @@ export function Insight({
     >
       <span
         className={cn(
-          "grid size-[39px] shrink-0 place-items-center rounded-[13px] text-sm",
-          gold ? "bg-[var(--gold-soft)] text-[var(--gold)]" : "bg-[var(--mint)] text-[var(--primary)]",
+          "premium-icon-tile size-[39px] shrink-0 rounded-[13px]",
+          gold && "premium-icon-gold",
         )}
       >
         {icon}

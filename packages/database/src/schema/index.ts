@@ -506,10 +506,13 @@ export const loans = sqliteTable(
     name: text("name").notNull(),
     lender: text("lender").notNull(),
     rate: text("rate").notNull(),
+    principalMinor: integer("principal_minor").notNull().default(0),
     emiMinor: integer("emi_minor").notNull(),
     outstandingMinor: integer("outstanding_minor").notNull(),
     dueOn: text("due_on").notNull(),
+    totalEmis: integer("total_emis").notNull().default(0),
     remainingEmis: integer("remaining_emis").notNull().default(0),
+    emiDay: integer("emi_day").notNull().default(1),
     progress: integer("progress").notNull().default(0),
     currency: text("currency").notNull(),
     ...timestamps,
@@ -538,7 +541,11 @@ export const creditFacilities = sqliteTable(
     usedMinor: integer("used_minor").notNull().default(0),
     todaySpendMinor: integer("today_spend_minor").notNull().default(0),
     overdueMinor: integer("overdue_minor").notNull().default(0),
+    holdMinor: integer("hold_minor").notNull().default(0),
+    minDueMinor: integer("min_due_minor").notNull().default(0),
     dueOn: text("due_on"),
+    cycleStartOn: text("cycle_start_on"),
+    lastPaidOn: text("last_paid_on"),
     currency: text("currency").notNull(),
     ...timestamps,
   },
@@ -547,7 +554,29 @@ export const creditFacilities = sqliteTable(
     check("credit_kind_valid", sql`${table.kind} IN ('CARD', 'UPI')`),
     check(
       "credit_amounts_non_negative",
-      sql`${table.limitMinor} >= 0 AND ${table.usedMinor} >= 0 AND ${table.todaySpendMinor} >= 0 AND ${table.overdueMinor} >= 0`,
+      sql`${table.limitMinor} >= 0 AND ${table.usedMinor} >= 0 AND ${table.todaySpendMinor} >= 0 AND ${table.overdueMinor} >= 0 AND ${table.holdMinor} >= 0 AND ${table.minDueMinor} >= 0`,
+    ),
+  ],
+);
+
+export const creditUtilisationMonths = sqliteTable(
+  "credit_utilisation_months",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    month: text("month").notNull(),
+    usedMinor: integer("used_minor").notNull().default(0),
+    limitMinor: integer("limit_minor").notNull().default(0),
+    overdueMinor: integer("overdue_minor").notNull().default(0),
+    ...timestamps,
+  },
+  (table) => [
+    uniqueIndex("credit_utilisation_user_month_unique").on(table.userId, table.month),
+    check(
+      "credit_utilisation_amounts_non_negative",
+      sql`${table.usedMinor} >= 0 AND ${table.limitMinor} >= 0 AND ${table.overdueMinor} >= 0`,
     ),
   ],
 );

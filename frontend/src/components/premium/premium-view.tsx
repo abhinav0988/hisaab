@@ -2,20 +2,35 @@
 import { Button, Card } from "@hisaab/ui";
 import { useState } from "react";
 import { toast } from "sonner";
+import {
+  BarChart3,
+  CalendarSync,
+  ChartSpline,
+  Columns3,
+  Crown,
+  Download,
+  FileScan,
+  History,
+  House,
+  Rocket,
+  Sparkles,
+  WandSparkles,
+  type LucideIcon,
+} from "lucide-react";
 import { ProLabel, ProgressBar } from "@/components/layout/chrome";
 import { Modal } from "@/components/layout/modal";
 
-const features = [
-  ["▥", "Advanced analytics", "Long-term trends, deep category views, comparisons and financial health scoring."],
-  ["✦", "Smart insights", "Personalized observations, anomaly detection and practical saving opportunities."],
-  ["▣", "Receipt capture", "Scan receipts and prepare transaction details automatically."],
-  ["∞", "Unlimited history", "Explore, search and export every month without time restrictions."],
-  ["⌂", "Private household", "Share selected budgets and goals safely with trusted family members."],
-  ["↻", "Custom automation", "Rules for categories, recurring bills, alerts, savings and goal contributions."],
-  ["⌁", "Bill intelligence", "Detect subscriptions, recurring bills and upcoming payment changes."],
-  ["◴", "Forecasting", "Predict month-end balance, category overspend risk and safe-to-spend pace."],
-  ["⇩", "Premium exports", "Export clean CSV and printable monthly summaries for personal records."],
-] as const;
+const features: Array<[LucideIcon, string, string]> = [
+  [BarChart3, "Advanced analytics", "Long-term trends, deep category views, comparisons and financial health scoring."],
+  [Sparkles, "Smart insights", "Personalized observations, anomaly detection and practical saving opportunities."],
+  [FileScan, "Receipt capture", "Scan receipts and prepare transaction details automatically."],
+  [History, "Unlimited history", "Explore, search and export every month without time restrictions."],
+  [House, "Private household", "Share selected budgets and goals safely with trusted family members."],
+  [WandSparkles, "Custom automation", "Rules for categories, recurring bills, alerts, savings and goal contributions."],
+  [CalendarSync, "Bill intelligence", "Detect subscriptions, recurring bills and upcoming payment changes."],
+  [ChartSpline, "Forecasting", "Predict month-end balance, category overspend risk and safe-to-spend pace."],
+  [Download, "Premium exports", "Export clean CSV and printable monthly summaries for personal records."],
+];
 
 export function PremiumView() {
   const [compare, setCompare] = useState(false);
@@ -23,7 +38,7 @@ export function PremiumView() {
     <div>
       <div className="grid items-center gap-[30px] rounded-[30px] bg-[radial-gradient(circle_at_85%_20%,rgba(235,203,135,.24),transparent_28%),linear-gradient(135deg,#0d3725,#226a47)] p-6 text-[#f2fff6] shadow-[0_25px_70px_rgba(8,55,34,.25)] sm:p-9 lg:grid-cols-[1.1fr_.9fr]">
         <div>
-          <ProLabel>◆ HISAAB PREMIUM</ProLabel>
+          <ProLabel><Crown size={12} aria-hidden="true" /> HISAAB PREMIUM</ProLabel>
           <h1 className="my-3 text-[clamp(28px,8vw,46px)] font-semibold tracking-[-0.05em]">
             Deeper clarity.
             <br />
@@ -35,17 +50,17 @@ export function PremiumView() {
           </p>
           <div className="mt-[18px] flex flex-wrap gap-2">
             <Button
-              className="bg-[#effff5] text-[#123b28] shadow-none"
+              className="bg-[#effff5] !text-[#123b28] shadow-none"
               onClick={() => toast.success("14-day trial will start once billing is connected.")}
             >
-              Start 14-day free trial
+              <Rocket size={16} aria-hidden="true" /> Start 14-day free trial
             </Button>
             <Button
               variant="secondary"
               className="border-white/25 bg-transparent text-white hover:bg-white/10"
               onClick={() => setCompare(true)}
             >
-              Compare plans
+              <Columns3 size={16} aria-hidden="true" /> Compare plans
             </Button>
           </div>
         </div>
@@ -62,10 +77,10 @@ export function PremiumView() {
         </div>
       </div>
       <div className="mt-[18px] grid gap-[18px] sm:grid-cols-2 xl:grid-cols-3">
-        {features.map(([icon, title, body]) => (
+        {features.map(([Icon, title, body]) => (
           <Card key={title} className="interactive-card p-[22px]">
-            <span className="grid size-[46px] place-items-center rounded-[15px] bg-[var(--gold-soft)] text-[var(--gold)]">
-              {icon}
+            <span className="premium-icon-tile premium-icon-gold size-[46px]">
+              <Icon size={20} strokeWidth={1.9} aria-hidden="true" />
             </span>
             <h3 className="mb-1 mt-[15px] text-[15px] font-semibold">{title}</h3>
             <p className="m-0 text-[11px] leading-[1.65] text-[var(--muted-foreground)]">{body}</p>

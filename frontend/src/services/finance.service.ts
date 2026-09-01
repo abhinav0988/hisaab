@@ -1,10 +1,12 @@
 import type {
+  CreditDashboard,
   CreditFacility,
   CreditFacilityKind,
   Investment,
   IpoApplication,
   LendRecord,
   Loan,
+  LoanSchedule,
 } from "@hisaab/types";
 import { api } from "@/lib/api-client";
 
@@ -22,11 +24,20 @@ export const financeService = {
   createIpo: (body: unknown) => post<IpoApplication>("/api/v1/ipos", body),
   listLoans: () => api<Loan[]>("/api/v1/loans"),
   createLoan: (body: unknown) => post<Loan>("/api/v1/loans", body),
+  updateLoan: (id: string, body: unknown) => patch<Loan>(`/api/v1/loans/${id}`, body),
+  deleteLoan: (id: string) => api(`/api/v1/loans/${id}`, { method: "DELETE" }),
+  getLoanSchedule: (id: string) => api<LoanSchedule>(`/api/v1/loans/${id}/schedule`),
+  payLoanEmi: (id: string) => post<Loan>(`/api/v1/loans/${id}/pay`, {}),
   listCreditFacilities: (kind?: CreditFacilityKind) =>
     api<CreditFacility[]>(
       kind ? `/api/v1/credit-facilities?kind=${kind}` : "/api/v1/credit-facilities",
     ),
+  getCreditDashboard: () => api<CreditDashboard>("/api/v1/credit-facilities/dashboard"),
   createCreditFacility: (body: unknown) => post<CreditFacility>("/api/v1/credit-facilities", body),
+  updateCreditFacility: (id: string, body: unknown) =>
+    patch<CreditFacility>(`/api/v1/credit-facilities/${id}`, body),
+  deleteCreditFacility: (id: string) => api(`/api/v1/credit-facilities/${id}`, { method: "DELETE" }),
+  payCreditFacility: (id: string) => post<CreditFacility>(`/api/v1/credit-facilities/${id}/pay`, {}),
   listLendRecords: () => api<LendRecord[]>("/api/v1/lend-records"),
   createLendRecord: (body: unknown) => post<LendRecord>("/api/v1/lend-records", body),
   patchLendRecord: (id: string, body: unknown) => patch<LendRecord>(`/api/v1/lend-records/${id}`, body),

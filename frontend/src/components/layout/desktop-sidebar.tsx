@@ -5,6 +5,7 @@ import Link from "next/link";
 import { desktopNavigation, financeToolsNavigation, isNavActive } from "./nav-config";
 import { Logo } from "./logo";
 import { initials } from "@/lib/format";
+import { ArrowRight, Gem } from "lucide-react";
 
 export function DesktopSidebar({
   pathname,
@@ -31,7 +32,7 @@ export function DesktopSidebar({
             Personal account
           </small>
           <small className="mt-1.5 inline-flex items-center gap-1 rounded-full border border-[rgba(201,154,67,.16)] bg-gradient-to-br from-[#fff6df] to-[#f7e6b8] px-2 py-0.5 text-[11px] font-black text-[#6f4b08]">
-            ◆ Free plan
+            <Gem size={10} aria-hidden="true" /> Free plan
           </small>
         </div>
       </div>
@@ -122,7 +123,7 @@ export function DesktopSidebar({
           className="grid grid-cols-[38px_minmax(0,1fr)_auto] items-center gap-2.5 rounded-[15px] border border-[rgba(201,154,67,.24)] bg-gradient-to-br from-[var(--gold-soft)] to-[color-mix(in_srgb,var(--surface)_82%,var(--gold-soft)_18%)] px-2.5 py-2.5 text-start hover:-translate-y-px hover:shadow-[0_10px_24px_rgba(201,154,67,.12)]"
         >
           <span className="grid size-[38px] place-items-center rounded-xl border border-[color-mix(in_srgb,var(--border)_75%,transparent)] bg-[var(--surface)] font-black text-[var(--gold)]">
-            ◆
+            <Gem size={17} aria-hidden="true" />
           </span>
           <span>
             <b className="block text-[11px]">Hisaab Premium</b>
@@ -130,7 +131,7 @@ export function DesktopSidebar({
               Explore premium features
             </small>
           </span>
-          <span className="text-base text-[var(--muted-foreground)] rtl:rotate-180">→</span>
+          <ArrowRight className="text-[var(--muted-foreground)] rtl:rotate-180" size={16} aria-hidden="true" />
         </Link>
       </div>
     </aside>

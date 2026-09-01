@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Gem } from "lucide-react";
 import { HisaabMark, Logo } from "./logo";
 import { ThemeToggle } from "./theme-toggle";
 
@@ -11,7 +12,7 @@ export function AuthShell({ children }: { children: React.ReactNode }) {
         <Logo inverse compact />
         <div className="max-w-[700px]">
           <div className="inline-flex w-max items-center gap-2 rounded-full border border-[rgba(245,218,153,.24)] bg-white/10 px-2.5 py-1.5 text-[10px] font-extrabold uppercase tracking-[0.11em] text-[#f4d58e] backdrop-blur">
-            ◆ Premium money intelligence
+            <Gem size={12} aria-hidden="true" /> Premium money intelligence
           </div>
           <h1 className="mt-4 max-w-[720px] text-[clamp(48px,5vw,74px)] font-semibold leading-[0.92] tracking-[-0.07em]">
             Money clarity

@@ -135,18 +135,28 @@ export const ipoSchema = z.object({
 });
 export const ipoPatchSchema = ipoSchema.partial();
 
-export const loanSchema = z.object({
+export const LOAN_TYPES = ["Home Loan", "Personal Loan", "Gadget EMI", "Two Wheeler", "Other"] as const;
+export type LoanTypeName = (typeof LOAN_TYPES)[number];
+
+export const loanFieldsSchema = z.object({
   name: z.string().trim().min(1).max(80),
   lender: z.string().trim().min(1).max(80),
-  rate: z.string().trim().min(1).max(20),
-  emiMinor: z.number().int().nonnegative().safe(),
-  outstandingMinor: z.number().int().nonnegative().safe(),
-  dueOn: isoDateSchema,
-  remainingEmis: z.number().int().nonnegative().max(600).optional(),
+  rate: z.string().trim().max(20).optional().default(""),
+  principalMinor: z.number().int().nonnegative().safe(),
+  emiMinor: z.number().int().positive().safe(),
+  totalEmis: z.number().int().positive().max(600),
+  remainingEmis: z.number().int().nonnegative().max(600),
+  emiDay: z.number().int().min(1).max(31),
+  outstandingMinor: z.number().int().nonnegative().safe().optional(),
+  dueOn: isoDateSchema.optional(),
   progress: z.number().int().min(0).max(100).optional(),
   currency: currencySchema,
 });
-export const loanPatchSchema = loanSchema.partial();
+export const loanSchema = loanFieldsSchema.refine((value) => value.remainingEmis <= value.totalEmis, {
+  message: "Remaining EMIs cannot exceed total EMIs",
+  path: ["remainingEmis"],
+});
+export const loanPatchSchema = loanFieldsSchema.partial();
 
 export const creditFacilitySchema = z.object({
   kind: creditFacilityKindSchema,
@@ -158,7 +168,10 @@ export const creditFacilitySchema = z.object({
   usedMinor: z.number().int().nonnegative().safe().optional(),
   todaySpendMinor: z.number().int().nonnegative().safe().optional(),
   overdueMinor: z.number().int().nonnegative().safe().optional(),
+  holdMinor: z.number().int().nonnegative().safe().optional(),
+  minDueMinor: z.number().int().nonnegative().safe().optional(),
   dueOn: isoDateSchema.nullable().optional(),
+  cycleStartOn: isoDateSchema.nullable().optional(),
   currency: currencySchema,
 });
 export const creditFacilityPatchSchema = creditFacilitySchema.partial().omit({ kind: true });
@@ -228,4 +241,256 @@ export function budgetUsage(amountMinor: number, spentMinor: number) {
   const percentageUsed =
     amountMinor <= 0 ? 0 : Math.round((spentMinor / amountMinor) * 10000) / 100;
   return { spentMinor, remainingMinor: amountMinor - spentMinor, percentageUsed };
+}
+
+export function ordinal(value: number) {
+  const n = Math.trunc(value);
+  const mod100 = n % 100;
+  if (mod100 >= 11 && mod100 <= 13) return `${n}th`;
+  switch (n % 10) {
+    case 1:
+      return `${n}st`;
+    case 2:
+      return `${n}nd`;
+    case 3:
+      return `${n}rd`;
+    default:
+      return `${n}th`;
+  }
+}
+
+export function isoDateFromParts(year: number, monthIndex: number, day: number) {
+  const lastDay = new Date(year, monthIndex + 1, 0).getDate();
+  const clamped = Math.min(Math.max(1, Math.trunc(day)), lastDay);
+  const date = new Date(year, monthIndex, clamped);
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+}
+
+export function calendarToday(from = new Date()) {
+  return isoDateFromParts(from.getFullYear(), from.getMonth(), from.getDate());
+}
+
+export function addCalendarMonths(iso: string, delta: number) {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso);
+  if (!match) return iso;
+  const monthIndex = Number(match[2]) - 1 + delta;
+  const year = Number(match[1]) + Math.floor(monthIndex / 12);
+  const month = ((monthIndex % 12) + 12) % 12;
+  return isoDateFromParts(year, month, Number(match[3]));
+}
+
+export function daysUntil(iso: string, from = new Date()) {
+  const today = Date.parse(`${calendarToday(from)}T00:00:00`);
+  const target = Date.parse(`${iso}T00:00:00`);
+  if (!Number.isFinite(today) || !Number.isFinite(target)) return 0;
+  return Math.round((target - today) / 86_400_000);
+}
+
+export function emiDueCopy(dueOn: string, from = new Date()) {
+  const days = daysUntil(dueOn, from);
+  if (days < 0) {
+    const n = Math.abs(days);
+    return { tone: "overdue" as const, label: `Overdue ${n} day${n === 1 ? "" : "s"}` };
+  }
+  if (days === 0) return { tone: "pending" as const, label: "Due today" };
+  return { tone: "upcoming" as const, label: `In ${days} day${days === 1 ? "" : "s"}` };
+}
+
+export type EmiInstallmentStatus = "paid" | "pending" | "overdue" | "upcoming";
+
+export function loanSchedule(input: {
+  emiMinor: number;
+  totalEmis: number;
+  remainingEmis: number;
+  dueOn: string;
+  now?: Date;
+}) {
+  const totalEmis = Math.max(0, Math.trunc(input.totalEmis) || 0);
+  const remainingEmis = Math.max(0, Math.trunc(input.remainingEmis) || 0);
+  const remaining = totalEmis > 0 ? Math.min(remainingEmis, totalEmis) : remainingEmis;
+  const paidEmis = totalEmis > 0 ? Math.max(0, totalEmis - remaining) : 0;
+  const today = calendarToday(input.now);
+  const amountMinor = Math.max(0, Math.trunc(input.emiMinor) || 0);
+  const items: Array<{
+    installment: number;
+    dueOn: string;
+    amountMinor: number;
+    status: EmiInstallmentStatus;
+  }> = [];
+  for (let paid = paidEmis; paid >= 1; paid -= 1) {
+    items.push({
+      installment: paid,
+      dueOn: addCalendarMonths(input.dueOn, -(paidEmis - paid + 1)),
+      amountMinor,
+      status: "paid",
+    });
+  }
+  for (let index = 0; index < remaining; index += 1) {
+    const dueOn = addCalendarMonths(input.dueOn, index);
+    items.push({
+      installment: paidEmis + index + 1,
+      dueOn,
+      amountMinor,
+      status: dueOn < today ? "overdue" : index === 0 ? "pending" : "upcoming",
+    });
+  }
+  return items.sort((left, right) => left.dueOn.localeCompare(right.dueOn) || left.installment - right.installment);
+}
+
+export function applyPaidEmi(input: {
+  remainingEmis: number;
+  dueOn: string;
+  emiMinor: number;
+  principalMinor: number;
+  totalEmis: number;
+  emiDay: number;
+}) {
+  if (input.remainingEmis <= 0) return null;
+  const remainingEmis = input.remainingEmis - 1;
+  const dueOn = remainingEmis > 0 ? addCalendarMonths(input.dueOn, 1) : input.dueOn;
+  const summary = loanSummary({
+    principalMinor: input.principalMinor,
+    emiMinor: input.emiMinor,
+    totalEmis: input.totalEmis,
+    remainingEmis,
+    emiDay: input.emiDay,
+  });
+  return {
+    remainingEmis,
+    dueOn,
+    outstandingMinor: summary.remainingPayableMinor,
+    progress: Math.min(100, Math.max(0, Math.round(summary.completionPct))),
+    paidMinor: summary.paidMinor,
+  };
+}
+
+export function nextEmiDate(emiDay: number, from = new Date()) {
+  const day = Math.min(31, Math.max(1, Math.trunc(emiDay) || 1));
+  const year = from.getFullYear();
+  const month = from.getMonth();
+  const today = `${year}-${String(month + 1).padStart(2, "0")}-${String(from.getDate()).padStart(2, "0")}`;
+  const thisMonth = isoDateFromParts(year, month, day);
+  if (thisMonth >= today) return thisMonth;
+  const nextMonth = month + 1;
+  return isoDateFromParts(year + Math.floor(nextMonth / 12), nextMonth % 12, day);
+}
+
+export type LoanSummaryInput = {
+  principalMinor: number;
+  emiMinor: number;
+  totalEmis: number;
+  remainingEmis: number;
+  emiDay: number;
+  now?: Date;
+};
+
+export function loanSummary(input: LoanSummaryInput) {
+  const emiMinor = Math.max(0, Math.trunc(input.emiMinor) || 0);
+  const principalMinor = Math.max(0, Math.trunc(input.principalMinor) || 0);
+  const totalEmis = Math.max(0, Math.trunc(input.totalEmis) || 0);
+  const remainingEmis = Math.max(0, Math.trunc(input.remainingEmis) || 0);
+  const cappedRemaining = totalEmis > 0 ? Math.min(remainingEmis, totalEmis) : remainingEmis;
+  const paidEmis = totalEmis > 0 ? Math.max(0, totalEmis - cappedRemaining) : 0;
+  const paidMinor = paidEmis * emiMinor;
+  const remainingPayableMinor = cappedRemaining * emiMinor;
+  const totalPayableMinor = totalEmis * emiMinor;
+  const interestMinor = Math.max(0, totalPayableMinor - principalMinor);
+  const completionPct = totalEmis > 0 ? Math.round((paidEmis / totalEmis) * 1000) / 10 : 0;
+  return {
+    paidEmis,
+    paidMinor,
+    remainingEmis: cappedRemaining,
+    remainingPayableMinor,
+    totalPayableMinor,
+    interestMinor,
+    completionPct,
+    nextDue: nextEmiDate(input.emiDay, input.now),
+  };
+}
+
+export function creditSummary(input: {
+  limitMinor: number;
+  usedMinor: number;
+  overdueMinor?: number;
+  todaySpendMinor?: number;
+  holdMinor?: number;
+  minDueMinor?: number;
+}) {
+  const limitMinor = Math.max(0, Math.trunc(input.limitMinor) || 0);
+  const usedMinor = Math.max(0, Math.trunc(input.usedMinor) || 0);
+  const overdueMinor = Math.max(0, Math.trunc(input.overdueMinor ?? 0) || 0);
+  const todaySpendMinor = Math.max(0, Math.trunc(input.todaySpendMinor ?? 0) || 0);
+  const holdMinor = Math.max(0, Math.trunc(input.holdMinor ?? 0) || 0);
+  const minDueMinor = Math.max(0, Math.trunc(input.minDueMinor ?? 0) || 0);
+  const committedMinor = usedMinor + holdMinor;
+  const availableMinor = Math.max(0, limitMinor - committedMinor);
+  const usedPct = limitMinor > 0 ? Math.round((committedMinor / limitMinor) * 1000) / 10 : 0;
+  return {
+    limitMinor,
+    usedMinor,
+    overdueMinor,
+    todaySpendMinor,
+    holdMinor,
+    minDueMinor,
+    availableMinor,
+    usedPct,
+  };
+}
+
+function pctOf(part: number, whole: number) {
+  return whole > 0 ? Math.round((part / whole) * 1000) / 10 : 0;
+}
+
+export function creditOverview(input: {
+  limitMinor: number;
+  usedMinor: number;
+  overdueMinor?: number;
+  holdMinor?: number;
+}) {
+  const summary = creditSummary(input);
+  return {
+    limitMinor: summary.limitMinor,
+    usedMinor: summary.usedMinor,
+    availableMinor: summary.availableMinor,
+    overdueMinor: summary.overdueMinor,
+    usedPct: summary.usedPct,
+    availablePct: pctOf(summary.availableMinor, summary.limitMinor),
+    overduePct: pctOf(summary.overdueMinor, summary.limitMinor),
+  };
+}
+
+export function cardDueAmount(input: { overdueMinor?: number; minDueMinor?: number }) {
+  const overdueMinor = Math.max(0, Math.trunc(input.overdueMinor ?? 0) || 0);
+  const minDueMinor = Math.max(0, Math.trunc(input.minDueMinor ?? 0) || 0);
+  return overdueMinor > 0 ? overdueMinor : minDueMinor;
+}
+
+export function cardPaidThisCycle(lastPaidOn: string | null | undefined, dueOn: string | null | undefined, from = new Date()) {
+  if (!lastPaidOn) return false;
+  const today = calendarToday(from);
+  if (dueOn && dueOn <= today) return false;
+  return lastPaidOn.slice(0, 7) === today.slice(0, 7);
+}
+
+export function applyCardPayment(input: {
+  usedMinor: number;
+  overdueMinor: number;
+  minDueMinor: number;
+  dueOn: string | null;
+  lastPaidOn?: string | null;
+  now?: Date;
+}) {
+  if (cardPaidThisCycle(input.lastPaidOn, input.dueOn, input.now)) return null;
+  const usedMinor = Math.max(0, Math.trunc(input.usedMinor) || 0);
+  const overdueMinor = Math.max(0, Math.trunc(input.overdueMinor) || 0);
+  const minDueMinor = Math.max(0, Math.trunc(input.minDueMinor) || 0);
+  const paidMinor = cardDueAmount({ overdueMinor, minDueMinor });
+  if (paidMinor <= 0) return null;
+  return {
+    usedMinor: Math.max(0, usedMinor - Math.min(paidMinor, usedMinor)),
+    overdueMinor: 0,
+    lastPaidOn: calendarToday(input.now),
+    dueOn: input.dueOn ? addCalendarMonths(input.dueOn, 1) : input.dueOn,
+    paidMinor,
+  };
 }

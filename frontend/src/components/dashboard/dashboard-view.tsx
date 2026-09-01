@@ -1,7 +1,7 @@
 "use client";
 import type { Account } from "@hisaab/types";
 import { Button, Card } from "@hisaab/ui";
-import { savingsRate } from "@hisaab/validation";
+import { creditSummary, savingsRate } from "@hisaab/validation";
 import { useQuery } from "@tanstack/react-query";
 import {
   Area,
@@ -10,6 +10,7 @@ import {
   ResponsiveContainer,
   Tooltip,
   XAxis,
+  YAxis,
 } from "recharts";
 import { toast } from "sonner";
 import {
@@ -367,14 +368,14 @@ export function DashboardView() {
             <div className="h-[220px] min-w-0">
               {chartData.length ? (
                 <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={chartData}>
+                  <AreaChart data={chartData} margin={{ top: 14, right: 8, left: 0, bottom: 0 }}>
                     <defs>
                       <linearGradient id="areaGradient" x1="0" y1="0" x2="0" y2="1">
                         <stop offset="0%" stopColor="#2d8455" stopOpacity={0.22} />
                         <stop offset="100%" stopColor="#2d8455" stopOpacity={0} />
                       </linearGradient>
                     </defs>
-                    <CartesianGrid vertical={false} stroke="var(--border)" />
+                    <CartesianGrid vertical={false} stroke="var(--border)" strokeDasharray="4 5" />
                     <XAxis
                       dataKey="label"
                       tickLine={false}
@@ -383,14 +384,25 @@ export function DashboardView() {
                       interval="preserveStartEnd"
                       minTickGap={16}
                       tickFormatter={(value) => trendLabelFor(String(value), range)}
+                      tick={{ fill: "var(--muted-foreground)", fontSize: 11, fontWeight: 700 }}
+                    />
+                    <YAxis
+                      axisLine={false}
+                      tickLine={false}
+                      width={52}
+                      tick={{ fill: "var(--subtle)", fontSize: 10 }}
+                      tickFormatter={(value) => new Intl.NumberFormat("en", { notation: "compact", maximumFractionDigits: 1 }).format(Number(value) / 100)}
                     />
                     <Tooltip
                       formatter={(value) => money(Number(value), currency)}
+                      cursor={{ stroke: "var(--primary)", strokeOpacity: 0.18, strokeWidth: 18 }}
                       contentStyle={{
-                        borderRadius: 8,
-                        background: "var(--foreground)",
-                        color: "var(--surface)",
-                        border: 0,
+                        borderRadius: 16,
+                        background: "var(--surface)",
+                        color: "var(--foreground)",
+                        border: "1px solid var(--border)",
+                        boxShadow: "var(--shadow-lg)",
+                        fontSize: 12,
                       }}
                     />
                     <Area
@@ -399,6 +411,8 @@ export function DashboardView() {
                       stroke="var(--primary)"
                       strokeWidth={3.3}
                       fill="url(#areaGradient)"
+                      activeDot={{ r: 6, fill: "var(--surface)", stroke: "var(--primary)", strokeWidth: 3 }}
+                      dot={{ r: 2.5, fill: "var(--primary)", strokeWidth: 0 }}
                     />
                   </AreaChart>
                 </ResponsiveContainer>
@@ -425,7 +439,7 @@ export function DashboardView() {
               description="Where your money went"
               action={
                 <Link href="/reports" className="oc-link">
-                  View full report →
+                  View full report <ArrowRight size={13} aria-hidden="true" />
                 </Link>
               }
             />
@@ -593,7 +607,7 @@ export function DashboardView() {
                   <span>
                     {item.name}
                     <small>
-                      {item.lender} · {item.rate} · {item.remainingEmis} left
+                      {[item.lender, item.rate || null, `${item.remainingEmis} left`].filter(Boolean).join(" · ")}
                     </small>
                   </span>
                   <span>
@@ -615,7 +629,7 @@ export function DashboardView() {
               description={`Total limit ${money(cardLimit, currency)}`}
               action={
                 <Link href="/cards" className="oc-link">
-                  View details →
+                  View details <ArrowRight size={13} aria-hidden="true" />
                 </Link>
               }
             />
@@ -650,7 +664,7 @@ export function DashboardView() {
                     ) : null}
                     <div className="oc-credit-row">
                       <span>Available · Due {displayDate(card.dueOn)}</span>
-                      <b>{money(Math.max(0, card.limitMinor - card.usedMinor), currency)}</b>
+                      <b>{money(creditSummary(card).availableMinor, currency)}</b>
                     </div>
                   </div>
                 );
@@ -665,7 +679,7 @@ export function DashboardView() {
               description={`Total limit ${money(upiLimit, currency)}`}
               action={
                 <Link href="/upi-credit" className="oc-link">
-                  View details →
+                  View details <ArrowRight size={13} aria-hidden="true" />
                 </Link>
               }
             />
@@ -850,7 +864,7 @@ export function DashboardView() {
             </div>
             <div className="mt-3 text-center">
               <Link href="/coach" className="oc-link">
-                Chat with AI Coach →
+                Chat with AI Coach <ArrowRight size={13} aria-hidden="true" />
               </Link>
             </div>
           </Card>
@@ -909,7 +923,7 @@ function ModuleCard({
       <div className="oc-list">{children}</div>
       <div className="oc-feature-links">
         <Link href={href} className="oc-link">
-          View all →
+          View all <ArrowRight size={13} aria-hidden="true" />
         </Link>
       </div>
     </Card>

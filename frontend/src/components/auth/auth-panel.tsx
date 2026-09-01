@@ -5,6 +5,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
+import { ArrowRight, Check } from "lucide-react";
 import { z } from "zod";
 import { AuthTrust, AuthWelcome } from "@/components/auth/auth-chrome";
 import { EmailOtpPanel } from "@/components/auth/email-otp-panel";
@@ -284,9 +285,9 @@ export function AuthPanel({ initialMode = "signin" }: { initialMode?: "signin" |
               </span>
             </div>
             <div className="grid gap-2 sm:grid-cols-3">
-              <span className={`auth-strength-rule ${hasLength ? "is-valid" : ""}`}>✓ 8+ characters</span>
-              <span className={`auth-strength-rule ${hasNumber ? "is-valid" : ""}`}>✓ At least 1 number</span>
-              <span className={`auth-strength-rule ${passwordsMatch ? "is-valid" : ""}`}>✓ Passwords match</span>
+              <span className={`auth-strength-rule ${hasLength ? "is-valid" : ""}`}><Check size={13} aria-hidden="true" /> 8+ characters</span>
+              <span className={`auth-strength-rule ${hasNumber ? "is-valid" : ""}`}><Check size={13} aria-hidden="true" /> At least 1 number</span>
+              <span className={`auth-strength-rule ${passwordsMatch ? "is-valid" : ""}`}><Check size={13} aria-hidden="true" /> Passwords match</span>
             </div>
           </div>
         ) : null}
@@ -330,15 +331,16 @@ export function AuthPanel({ initialMode = "signin" }: { initialMode?: "signin" |
           className={`min-h-[54px] w-full rounded-2xl text-[13px] shadow-[0_16px_32px_color-mix(in_srgb,var(--primary)_24%,transparent)]${registerMode && !emailVerified ? " verification-required" : ""}`}
           disabled={isSubmitting || (registerMode && !emailVerified)}
         >
-          {isSubmitting
+          <span>{isSubmitting
             ? registerMode
               ? "Creating account…"
               : "Signing in…"
             : registerMode
               ? emailVerified
-                ? "Create my secure account →"
+                ? "Create my secure account"
                 : "Verify email to continue"
-              : "Continue securely →"}
+              : "Continue securely"}</span>
+          {!isSubmitting && (!registerMode || emailVerified) ? <ArrowRight size={16} aria-hidden="true" /> : null}
         </Button>
       </form>
       <p className="mt-6 text-center text-[11px] leading-relaxed text-[var(--muted-foreground)]">

@@ -2,6 +2,7 @@
 
 import { useTheme } from "next-themes";
 import { useSyncExternalStore } from "react";
+import { Moon, Sun } from "lucide-react";
 
 export function ThemeToggle({ className = "" }: { className?: string }) {
   const { theme, setTheme } = useTheme();
@@ -21,21 +22,9 @@ export function ThemeToggle({ className = "" }: { className?: string }) {
       title="Toggle theme"
     >
       {dark ? (
-        <svg viewBox="0 0 24 24" aria-hidden="true">
-          <path d="M21 12.8A9 9 0 1 1 11.2 3 7 7 0 0 0 21 12.8z" />
-        </svg>
+        <Moon size={19} aria-hidden="true" />
       ) : (
-        <svg viewBox="0 0 24 24" aria-hidden="true">
-          <circle cx="12" cy="12" r="4" />
-          <path d="M12 2v2.2" />
-          <path d="M12 19.8V22" />
-          <path d="M4.9 4.9l1.5 1.5" />
-          <path d="M17.6 17.6l1.5 1.5" />
-          <path d="M2 12h2.2" />
-          <path d="M19.8 12H22" />
-          <path d="M4.9 19.1l1.5-1.5" />
-          <path d="M17.6 6.4l1.5-1.5" />
-        </svg>
+        <Sun size={19} aria-hidden="true" />
       )}
     </button>
   );

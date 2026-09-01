@@ -42,6 +42,14 @@ export function displayDate(value: string | null | undefined) {
   return new Intl.DateTimeFormat("en-GB", { day: "2-digit", month: "short" }).format(date);
 }
 
+export function displayDateLong(value: string | null | undefined) {
+  if (!value) return "—";
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+  if (!match) return value;
+  const date = new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
+  return new Intl.DateTimeFormat("en-GB", { day: "2-digit", month: "short", year: "numeric" }).format(date);
+}
+
 export function displayCreditCards(
   liveCards: Array<{ id: string; name: string; currentBalanceMinor: number; currency?: Currency }>,
   facilities: CreditFacility[],
@@ -66,7 +74,11 @@ export function displayCreditCards(
       usedMinor: Math.abs(account.currentBalanceMinor),
       todaySpendMinor: extra?.todaySpendMinor ?? 0,
       overdueMinor: extra?.overdueMinor ?? 0,
+      holdMinor: extra?.holdMinor ?? 0,
+      minDueMinor: extra?.minDueMinor ?? 0,
       dueOn: extra?.dueOn ?? null,
+      cycleStartOn: extra?.cycleStartOn ?? null,
+      lastPaidOn: extra?.lastPaidOn ?? null,
       currency: extra?.currency ?? account.currency ?? ("INR" satisfies Currency),
       createdAt: extra?.createdAt ?? "",
       updatedAt: extra?.updatedAt ?? "",

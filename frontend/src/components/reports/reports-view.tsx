@@ -3,6 +3,25 @@ import { Button, Card, Select } from "@hisaab/ui";
 import { useQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
+import {
+  ArrowDownToLine,
+  CalendarSync,
+  ChartNoAxesCombined,
+  Lightbulb,
+  PiggyBank,
+  TrendingUp,
+  Utensils,
+} from "lucide-react";
+import {
+  Bar,
+  BarChart,
+  CartesianGrid,
+  Legend,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from "recharts";
 import { CardHead, Insight, KpiCard, ProLabel, ProgressBar } from "@/components/layout/chrome";
 import { PageHeader } from "@/components/layout/page-header";
 import { ErrorState, PageSkeleton } from "@/components/layout/states";
@@ -51,7 +70,6 @@ export function ReportsView() {
     return <ErrorState retry={() => void report.refetch()} />;
   const currency = profile.data.defaultCurrency;
   const months = monthly.data.slice(-6);
-  const maxBar = Math.max(1, ...months.flatMap((item) => [item.income, item.expense]));
   const top = categories.data[0];
   const best = months.reduce(
     (winner, item) => {
@@ -83,7 +101,7 @@ export function ReportsView() {
               variant="secondary"
               onClick={() => window.open(reportService.exportUrl(range), "_blank")}
             >
-              ⇩ Export report
+              <ArrowDownToLine size={16} aria-hidden="true" /> Export report
             </Button>
           </>
         }
@@ -94,26 +112,26 @@ export function ReportsView() {
           value={money(report.data.averageDailySpending * 30, currency)}
           note={`${report.data.savingsRate >= 0 ? "↓" : "↑"} savings rate ${report.data.savingsRate}%`}
           tone="positive"
-          icon="∿"
+          icon={<ChartNoAxesCombined size={19} aria-hidden="true" />}
         />
         <KpiCard
           label="Highest category"
           value={top?.name ?? "—"}
           note={top ? `${money(top.value, currency)} this period` : "No expenses yet"}
-          icon="🍽"
+          icon={<Utensils size={19} aria-hidden="true" />}
         />
         <KpiCard
           label="Best saving month"
           value={best.month}
           note={best.saved > 0 ? `${money(best.saved, currency)} saved` : "Add more history"}
           tone="positive"
-          icon="✦"
+          icon={<PiggyBank size={19} aria-hidden="true" />}
         />
         <KpiCard
           label="Recurring bills"
           value={money(bills, currency)}
           note={bills ? `${billShare}% of income` : "No active recurring bills"}
-          icon="↻"
+          icon={<CalendarSync size={19} aria-hidden="true" />}
         />
       </section>
       <section className="analytics-grid mt-[18px] grid gap-[18px] xl:grid-cols-[minmax(0,1.3fr)_minmax(280px,.7fr)]">
@@ -123,43 +141,46 @@ export function ReportsView() {
             description="Six-month comparison"
             action={<ProLabel />}
           />
-          <div className="min-w-0 overflow-x-auto">
-            <div className="bars">
-              {months.length ? (
-                months.map((item) => (
-                  <div
-                    key={item.month}
-                    className="bar-set"
-                    data-income={money(item.income, currency)}
-                    data-expense={money(item.expense, currency)}
-                  >
-                    <span
-                      className="bar income"
-                      style={{ height: `${Math.max(4, (item.income / maxBar) * 100)}%` }}
-                    />
-                    <span
-                      className="bar expense"
-                      style={{ height: `${Math.max(4, (item.expense / maxBar) * 100)}%` }}
-                    />
-                    <span className="bar-label">{shortMonth(item.month)}</span>
-                  </div>
-                ))
-              ) : (
-                <p className="w-full self-center text-center text-sm text-[var(--muted-foreground)]">
-                  Not enough history yet.
-                </p>
-              )}
-            </div>
-          </div>
-          <div className="analytics-legend">
-            <span>
-              <i style={{ background: "#77c795" }} />
-              Income
-            </span>
-            <span>
-              <i style={{ background: "#e0a267" }} />
-              Expenses
-            </span>
+          <div className="premium-chart h-[300px] min-w-0" role="img" aria-label="Income and expenses by month">
+            {months.length ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={months} margin={{ top: 12, right: 4, left: 0, bottom: 0 }} barGap={5}>
+                  <defs>
+                    <linearGradient id="reportIncome" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="var(--primary-hover)" />
+                      <stop offset="100%" stopColor="var(--primary)" />
+                    </linearGradient>
+                    <linearGradient id="reportExpense" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="#e4ae6d" />
+                      <stop offset="100%" stopColor="#c7792b" />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid vertical={false} stroke="var(--border)" strokeDasharray="4 5" />
+                  <XAxis
+                    dataKey="month"
+                    axisLine={false}
+                    tickLine={false}
+                    tick={{ fill: "var(--muted-foreground)", fontSize: 11, fontWeight: 700 }}
+                    tickFormatter={shortMonth}
+                  />
+                  <YAxis
+                    axisLine={false}
+                    tickLine={false}
+                    width={54}
+                    tick={{ fill: "var(--subtle)", fontSize: 10 }}
+                    tickFormatter={compactAmount}
+                  />
+                  <Tooltip content={<ReportTooltip currency={currency} />} cursor={{ fill: "var(--muted)", opacity: 0.5 }} />
+                  <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: 11, paddingTop: 12 }} />
+                  <Bar dataKey="income" name="Income" fill="url(#reportIncome)" radius={[8, 8, 3, 3]} maxBarSize={34} />
+                  <Bar dataKey="expense" name="Expenses" fill="url(#reportExpense)" radius={[8, 8, 3, 3]} maxBarSize={34} />
+                </BarChart>
+              </ResponsiveContainer>
+            ) : (
+              <p className="grid h-full place-items-center text-sm text-[var(--muted-foreground)]">
+                Not enough history yet.
+              </p>
+            )}
           </div>
         </Card>
         <Card className="p-[22px]">
@@ -192,7 +213,7 @@ export function ReportsView() {
           />
           <div className="grid gap-2">
             <Insight
-              icon="↗"
+              icon={<TrendingUp size={17} aria-hidden="true" />}
               title={top ? `${top.name} leads spending` : "Start tracking"}
               body={
                 top
@@ -202,7 +223,7 @@ export function ReportsView() {
             />
             <Insight
               gold
-              icon="₹"
+              icon={<Lightbulb size={17} aria-hidden="true" />}
               title="One easy saving opportunity"
               body="Reducing your top category by a little each week can lift next month’s savings without changing your lifestyle."
             />
@@ -227,6 +248,30 @@ export function ReportsView() {
           </Button>
         </Card>
       </section>
+    </div>
+  );
+}
+
+function compactAmount(value: number) {
+  return new Intl.NumberFormat("en", { notation: "compact", maximumFractionDigits: 1 }).format(value / 100);
+}
+
+function ReportTooltip({ active, payload, label, currency }: {
+  active?: boolean;
+  payload?: Array<{ name: string; value: number; color: string }>;
+  label?: string;
+  currency: string;
+}) {
+  if (!active || !payload?.length) return null;
+  return (
+    <div className="chart-tooltip">
+      <b>{label ? shortMonth(label) : "Month"}</b>
+      {payload.map((item) => (
+        <span key={item.name}>
+          <i style={{ background: item.color }} />
+          {item.name}<strong>{money(item.value, currency)}</strong>
+        </span>
+      ))}
     </div>
   );
 }

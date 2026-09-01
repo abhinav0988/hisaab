@@ -164,14 +164,31 @@ export interface Loan {
   name: string;
   lender: string;
   rate: string;
+  principalMinor: number;
   emiMinor: number;
   outstandingMinor: number;
   dueOn: string;
+  totalEmis: number;
   remainingEmis: number;
+  emiDay: number;
   progress: number;
   currency: Currency;
   createdAt: string;
   updatedAt: string;
+}
+
+export type EmiInstallmentStatus = "paid" | "pending" | "overdue" | "upcoming";
+
+export interface LoanScheduleEntry {
+  installment: number;
+  dueOn: string;
+  amountMinor: number;
+  status: EmiInstallmentStatus;
+}
+
+export interface LoanSchedule {
+  loanId: string;
+  items: LoanScheduleEntry[];
 }
 
 export interface CreditFacility {
@@ -185,10 +202,46 @@ export interface CreditFacility {
   usedMinor: number;
   todaySpendMinor: number;
   overdueMinor: number;
+  holdMinor: number;
+  minDueMinor: number;
   dueOn: string | null;
+  cycleStartOn: string | null;
+  lastPaidOn: string | null;
   currency: Currency;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface CreditOverview {
+  limitMinor: number;
+  usedMinor: number;
+  availableMinor: number;
+  overdueMinor: number;
+  usedPct: number;
+  availablePct: number;
+  overduePct: number;
+}
+
+export interface CreditUtilisationMonth {
+  month: string;
+  usedMinor: number;
+  limitMinor: number;
+  overdueMinor: number;
+  usedPct: number;
+}
+
+export interface CreditSpendingSlice {
+  id: string;
+  name: string;
+  colour: string | null;
+  amountMinor: number;
+}
+
+export interface CreditDashboard {
+  cards: CreditFacility[];
+  overview: CreditOverview;
+  trend: CreditUtilisationMonth[];
+  spending: CreditSpendingSlice[];
 }
 
 export interface LendRecord {

@@ -1,9 +1,10 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { Search } from "lucide-react";
+import { ArrowRight, Search, Target, WalletCards } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { CategoryGlyph } from "@/components/finance/category-glyph";
 import { money } from "@/lib/format";
 import { budgetService } from "@/services/budget.service";
 import { categoryService } from "@/services/category.service";
@@ -14,18 +15,8 @@ type SearchItem = {
   label: string;
   sub: string;
   type: string;
-  icon: string;
+  icon: ReactNode;
   href: string;
-};
-
-const PAGE_ICONS: Record<string, string> = {
-  "/dashboard": "⌂",
-  "/transactions": "⇄",
-  "/budgets": "◷",
-  "/reports": "▥",
-  "/goals": "◎",
-  "/premium": "◆",
-  "/settings": "⚙",
 };
 
 export function GlobalSearch() {
@@ -57,14 +48,14 @@ export function GlobalSearch() {
       label: item.label,
       sub: item.hint,
       type: item.href === "/premium" ? "Feature" : "Page",
-      icon: PAGE_ICONS[item.href] ?? "→",
+      icon: <item.icon size={17} aria-hidden="true" />,
       href: item.href,
     }));
     const cats: SearchItem[] = (categories.data ?? []).map((item) => ({
       label: item.name,
       sub: `View ${item.name} category activity`,
       type: "Category",
-      icon: (item.icon || item.name[0] || "C").slice(0, 1),
+      icon: <CategoryGlyph name={item.icon || item.name} size={17} />,
       href: `/transactions?q=${encodeURIComponent(item.name)}`,
     }));
     const limits: SearchItem[] = (budgets.data ?? [])
@@ -74,14 +65,14 @@ export function GlobalSearch() {
         sub: `${Math.round(item.percentageUsed)}% of monthly limit used`,
         type: "Budget",
         href: "/budgets",
-        icon: "B",
+        icon: <WalletCards size={17} aria-hidden="true" />,
       }));
     const savings: SearchItem[] = (goals.data ?? []).map((item) => ({
       label: item.name,
       sub: `${money(item.savedAmountMinor, item.currency)} of ${money(item.targetAmountMinor, item.currency)} saved`,
       type: "Goal",
       href: "/goals",
-      icon: (item.icon || "G").slice(0, 1),
+      icon: item.icon ? <CategoryGlyph name={item.icon} size={17} /> : <Target size={17} aria-hidden="true" />,
     }));
     const all = [...pages, ...cats, ...limits, ...savings];
     const q = query.trim().toLowerCase();
@@ -195,6 +186,7 @@ export function GlobalSearch() {
                   <small>{item.sub}</small>
                 </span>
                 <span className="search-result-type">{item.type}</span>
+                <ArrowRight className="search-result-arrow" size={14} aria-hidden="true" />
               </button>
             ))
           ) : (
