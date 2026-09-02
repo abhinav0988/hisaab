@@ -25,8 +25,17 @@ export function bankLast4(name: string) {
   return match?.[1] ?? null;
 }
 
+export function bankMaskDisplay(last4: string | null) {
+  return last4 ? `**** ${last4}` : "**** ••••";
+}
+
 export function bankLabel(account: Pick<Account, "name" | "institutionName">) {
-  return account.institutionName?.trim() || account.name.replace(LAST4_RE, "").trim() || "Bank";
+  const institution = account.institutionName?.trim();
+  if (institution) {
+    const base = institution.split(" ·")[0]?.trim();
+    return base || institution;
+  }
+  return account.name.replace(LAST4_RE, "").trim() || "Bank";
 }
 
 export function bankSubtype(account: Pick<Account, "name">) {

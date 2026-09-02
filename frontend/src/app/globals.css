@@ -4235,7 +4235,6 @@ html[data-theme="dark"] .loan-section-num {
   grid-template-columns: minmax(0, 1fr) auto;
   gap: 16px;
   align-items: center;
-  margin-bottom: 16px;
   padding: 22px 24px;
   border-radius: 24px;
   border: 1px solid color-mix(in srgb, var(--primary) 22%, var(--border));
@@ -4245,6 +4244,122 @@ html[data-theme="dark"] .loan-section-num {
     color-mix(in srgb, var(--primary) 42%, var(--surface))
   );
   color: white;
+  margin-bottom: 0;
+}
+.bank-top {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(260px, 0.8fr);
+  gap: 12px;
+  margin-bottom: 12px;
+  align-items: stretch;
+}
+.bank-top-kpis {
+  display: grid;
+  gap: 12px;
+}
+.bank-mini-kpi {
+  display: grid;
+  gap: 6px;
+  padding: 16px 18px;
+  border-radius: 20px;
+}
+.bank-mini-kpi small {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted-foreground);
+}
+.bank-mini-kpi strong {
+  font-size: 22px;
+  letter-spacing: -0.04em;
+}
+.bank-mini-kpi span {
+  font-size: 11px;
+  color: var(--muted-foreground);
+}
+.bank-mini-kpi.is-income {
+  border-color: color-mix(in srgb, var(--primary) 20%, var(--border));
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--mint) 55%, var(--surface)),
+    var(--surface)
+  );
+}
+.bank-mini-kpi.is-expense {
+  border-color: color-mix(in srgb, var(--warning) 22%, var(--border));
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--gold-soft) 70%, var(--surface)),
+    var(--surface)
+  );
+}
+.bank-summary-strip {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 16px;
+}
+.bank-strip-kpi {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 12px;
+  align-items: start;
+  padding: 14px 16px;
+  border-radius: 18px;
+}
+.bank-strip-kpi svg {
+  margin-top: 2px;
+  color: var(--primary);
+}
+.bank-strip-kpi small {
+  display: block;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--muted-foreground);
+}
+.bank-strip-kpi strong {
+  display: block;
+  margin-top: 4px;
+  font-size: 18px;
+  letter-spacing: -0.03em;
+}
+.bank-strip-kpi span {
+  display: block;
+  margin-top: 4px;
+  font-size: 11px;
+  color: var(--muted-foreground);
+}
+.bank-picker {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+.bank-picker-item {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 10px;
+  align-items: center;
+  padding: 10px 12px;
+  border-radius: 14px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  font-size: 12px;
+  font-weight: 700;
+  text-align: left;
+  color: var(--foreground);
+}
+.bank-picker-item.is-selected {
+  border-color: color-mix(in srgb, var(--primary) 28%, var(--border));
+  background: color-mix(in srgb, var(--mint) 60%, var(--surface));
+  box-shadow: 0 8px 20px color-mix(in srgb, var(--primary) 10%, transparent);
+}
+.bank-picker-item .bank-badge {
+  width: 34px;
+  height: 34px;
+  font-size: 10px;
 }
 .bank-hero small {
   display: block;
@@ -4640,6 +4755,9 @@ html[data-theme="dark"] .loan-section-num {
   margin-top: 4px;
 }
 @media (max-width: 1180px) {
+  .bank-top {
+    grid-template-columns: 1fr;
+  }
   .bank-kpis {
     grid-template-columns: 1fr 1fr;
   }
@@ -4662,6 +4780,12 @@ html[data-theme="dark"] .loan-section-num {
   }
 }
 @media (max-width: 640px) {
+  .bank-summary-strip {
+    grid-template-columns: 1fr;
+  }
+  .bank-picker {
+    grid-template-columns: 1fr;
+  }
   .bank-kpis,
   .bank-actions-grid {
     grid-template-columns: 1fr;

@@ -47,6 +47,7 @@ import {
   bankBrandTone,
   bankLabel,
   bankLast4,
+  bankMaskDisplay,
   bankSubtype,
   deltaPct,
   downloadBankCsv,
@@ -136,6 +137,45 @@ function DeltaNote({ value, invert }: { value: number; invert?: boolean }) {
   );
 }
 
+function isoToday() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+function lastUpdatedLabel(accounts: Account[]) {
+  const stamp = accounts
+    .map((item) => item.updatedAt)
+    .filter(Boolean)
+    .sort()
+    .at(-1);
+  if (!stamp) return "Just now";
+  const date = new Date(stamp);
+  const now = new Date();
+  const sameDay =
+    date.getDate() === now.getDate() &&
+    date.getMonth() === now.getMonth() &&
+    date.getFullYear() === now.getFullYear();
+  if (sameDay) {
+    return `Today, ${new Intl.DateTimeFormat("en-GB", { hour: "2-digit", minute: "2-digit" }).format(date)}`;
+  }
+  return new Intl.DateTimeFormat("en-GB", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(date);
+}
+
+function accountLabelForTxn(txn: Transaction, accounts: Account[]) {
+  const match = accounts.find((item) => item.id === txn.accountId);
+  if (match) {
+    const label = bankLabel(match);
+    const last4 = bankLast4(match.name);
+    return `${label} ${bankMaskDisplay(last4)}`;
+  }
+  return txn.accountName ?? "Bank account";
+}
+
 export function BankView() {
   const router = useRouter();
   const client = useQueryClient();
@@ -211,95 +251,75 @@ export function BankView() {
     <div>
       <PageHeader
         title="Bank"
-        description="Your linked bank balances. Use this account when salary, transfers, or bank payments move through your account."
+        description="Linked balances, cash flow and recent activity across your bank accounts."
         actions={
-          <>
-            <Button variant="secondary" onClick={() => setAddOpen(true)}>
-              <Plus size={14} />
-              Add account
-            </Button>
-            <Button onClick={() => router.push("/transactions?action=add")}>
-              <Plus size={14} />
-              Add transaction
-            </Button>
-          </>
+          <Button onClick={() => router.push("/transactions?action=add")}>
+            <Plus size={14} />
+            Add transaction
+          </Button>
         }
       />
 
-      <Card className="bank-hero">
-        <div className="bank-hero-copy">
-          <small>Total Bank Balance</small>
-          <div className="bank-hero-row">
-            <strong>{hideBalance ? "₹ ••••••" : money(totalMinor, currency)}</strong>
-            <button
-              type="button"
-              className="bank-hero-eye"
-              aria-label={hideBalance ? "Show balance" : "Hide balance"}
-              onClick={() => setHideBalance((value) => !value)}
-            >
-              {hideBalance ? <EyeOff size={18} /> : <Eye size={18} />}
-            </button>
+      <div className="bank-top">
+        <Card className="bank-hero">
+          <div className="bank-hero-copy">
+            <small>Total bank balance</small>
+            <div className="bank-hero-row">
+              <strong>{hideBalance ? "₹ ••••••" : money(totalMinor, currency)}</strong>
+              <button
+                type="button"
+                className="bank-hero-eye"
+                aria-label={hideBalance ? "Show balance" : "Hide balance"}
+                onClick={() => setHideBalance((value) => !value)}
+              >
+                {hideBalance ? <EyeOff size={18} /> : <Eye size={18} />}
+              </button>
+            </div>
+            <span>
+              Across {accounts.length} linked account{accounts.length === 1 ? "" : "s"} · Last
+              updated {lastUpdatedLabel(accounts)}
+            </span>
           </div>
-          <span>Across {accounts.length} linked account{accounts.length === 1 ? "" : "s"}</span>
-        </div>
-        <div className="bank-hero-art" aria-hidden="true">
-          <Landmark size={72} strokeWidth={1.2} />
-        </div>
-      </Card>
+          <div className="bank-hero-art" aria-hidden="true">
+            <Landmark size={72} strokeWidth={1.2} />
+          </div>
+        </Card>
 
-      <div className="bank-kpis">
-        {(
-          [
-            {
-              label: "Income This Month",
-              value: money(data.incomeThisMonth, currency),
-              delta: incomeDelta,
-              invert: false,
-              icon: Wallet,
-              tone: "green",
-            },
-            {
-              label: "Expense This Month",
-              value: money(data.spentThisMonth, currency),
-              delta: expenseDelta,
-              invert: true,
-              icon: ArrowDownRight,
-              tone: "orange",
-            },
-            {
-              label: "Net Savings",
-              value: money(data.netSavings, currency),
-              delta: savingsDelta,
-              invert: false,
-              icon: Trophy,
-              tone: "purple",
-            },
-            {
-              label: "Avg. Monthly Balance",
-              value: money(avgBalance, currency),
-              delta: avgDelta,
-              invert: false,
-              icon: BarChart3,
-              tone: "blue",
-            },
-          ] as const
-        ).map((item) => {
-          const Icon = item.icon;
-          return (
-            <Card key={item.label} className="loans-kpi">
-              <span className={`loans-kpi-icon is-${item.tone}`}>
-                <Icon size={16} />
-              </span>
-              <div>
-                <small>{item.label}</small>
-                <strong>{item.value}</strong>
-                <span>
-                  <DeltaNote value={item.delta} invert={item.invert} /> vs last month
-                </span>
-              </div>
-            </Card>
-          );
-        })}
+        <div className="bank-top-kpis">
+          <Card className="bank-mini-kpi is-income">
+            <small>Income this month</small>
+            <strong>{money(data.incomeThisMonth, currency)}</strong>
+            <span>
+              <DeltaNote value={incomeDelta} /> vs last month
+            </span>
+          </Card>
+          <Card className="bank-mini-kpi is-expense">
+            <small>Expenses this month</small>
+            <strong>{money(data.spentThisMonth, currency)}</strong>
+            <span>
+              <DeltaNote value={expenseDelta} invert /> vs last month
+            </span>
+          </Card>
+        </div>
+      </div>
+
+      <div className="bank-summary-strip">
+        <Card className="bank-strip-kpi">
+          <Wallet size={15} />
+          <div>
+            <small>Net savings</small>
+            <strong>{money(data.netSavings, currency)}</strong>
+            <span><DeltaNote value={savingsDelta} /> vs last month</span>
+          </div>
+        </Card>
+        <Card className="bank-strip-kpi">
+          <BarChart3 size={15} />
+          <div>
+            <small>Avg. monthly balance</small>
+            <strong>{money(avgBalance, currency)}</strong>
+            <span><DeltaNote value={avgDelta} /> vs last month</span>
+          </div>
+        </Card>
       </div>
 
       <div className="bank-board">
@@ -432,11 +452,8 @@ export function BankView() {
                     <div>
                       <strong>{item.merchant || item.categoryName || "Transaction"}</strong>
                       <small>
-                        {bankLabel({
-                          name: item.accountName ?? "Bank",
-                          institutionName: item.accountName ?? null,
-                        })}{" "}
-                        · {displayDateLong(item.transactionAt.slice(0, 10))}
+                        {accountLabelForTxn(item, accounts)} ·{" "}
+                        {displayDateLong(item.transactionAt.slice(0, 10))}
                       </small>
                     </div>
                     <b className={item.type === "INCOME" ? "is-in" : "is-out"}>
@@ -524,7 +541,7 @@ function BankAccountRow({
         </strong>
         <small>
           {bankSubtype(account)}
-          {last4 ? ` ···${last4}` : ""}
+          {last4 ? ` · ${bankMaskDisplay(last4)}` : ""}
         </small>
       </div>
       <div className="bank-account-chart">
@@ -594,6 +611,9 @@ function AddBankAccountModal({
   const [ifsc, setIfsc] = useState("");
   const [accountType, setAccountType] = useState<string>(BANK_ACCOUNT_TYPES[0]);
   const [nickname, setNickname] = useState("");
+  const [branch, setBranch] = useState("");
+  const [linkingDate, setLinkingDate] = useState(isoToday());
+  const [trackingDate, setTrackingDate] = useState(isoToday());
   const [opening, setOpening] = useState("");
   const [errors, setErrors] = useState<Record<string, string>>({});
 
@@ -605,7 +625,7 @@ function AddBankAccountModal({
       return accountService.createBank({
         name: formatBankAccountName(accountType, last4, nickname || holder),
         type: "BANK",
-        institutionName: bank,
+        institutionName: branch.trim() ? `${bank} · ${branch.trim()}` : bank,
         openingBalanceMinor: openingMinor,
         currency,
         isActive: true,
@@ -631,57 +651,74 @@ function AddBankAccountModal({
   }
 
   return (
-    <Modal open={open} onClose={onClose} title="Add Bank Account">
+    <Modal open={open} onClose={onClose} title="Add Bank Account" size="lg">
       <p className="bank-modal-lead">
-        Add your bank account to track balance and transactions.
+        Link a bank account to track balances, cash flow and transactions.
       </p>
       <form className="bank-form" onSubmit={submit}>
-        <Field label="Select Bank" error={errors.bank}>
-          <Select value={bank} onChange={(event) => setBank(event.target.value)}>
-            {INDIAN_BANKS.map((item) => (
-              <option key={item} value={item}>{item}</option>
-            ))}
-          </Select>
-        </Field>
-        <Field label="Account Holder Name" error={errors.holder}>
-          <Input value={holder} onChange={(event) => setHolder(event.target.value)} placeholder="Full name" />
-        </Field>
-        <Field label="Account Number" error={errors.accountNumber}>
-          <div className="bank-number-shell">
-            <Input
-              type={showNumber ? "text" : "password"}
-              value={accountNumber}
-              onChange={(event) => setAccountNumber(event.target.value)}
-              placeholder="Enter account number"
-              inputMode="numeric"
-            />
-            <button
-              type="button"
-              className="bank-number-toggle"
-              aria-label={showNumber ? "Hide account number" : "Show account number"}
-              onClick={() => setShowNumber((value) => !value)}
-            >
-              {showNumber ? <EyeOff size={16} /> : <Eye size={16} />}
-            </button>
+        <Field label="Select bank" error={errors.bank}>
+          <div className="bank-picker">
+            {INDIAN_BANKS.map((item) => {
+              const tone = bankBrandTone(item);
+              const selected = bank === item;
+              return (
+                <button
+                  key={item}
+                  type="button"
+                  className={`bank-picker-item${selected ? " is-selected" : ""}`}
+                  onClick={() => setBank(item)}
+                >
+                  <span className={`bank-badge is-${tone}`}>{bankAbbrev(item)}</span>
+                  <span>{item}</span>
+                </button>
+              );
+            })}
           </div>
         </Field>
+        <Field label="Account holder name" error={errors.holder}>
+          <Input value={holder} onChange={(event) => setHolder(event.target.value)} placeholder="Full name" />
+        </Field>
         <div className="bank-form-split">
-          <Field label="IFSC Code" error={errors.ifsc}>
-            <Input value={ifsc} onChange={(event) => setIfsc(event.target.value.toUpperCase())} placeholder="e.g. HDFC0001234" />
-          </Field>
-          <Field label="Account Type">
+          <Field label="Account type">
             <Select value={accountType} onChange={(event) => setAccountType(event.target.value)}>
               {BANK_ACCOUNT_TYPES.map((item) => (
                 <option key={item} value={item}>{item}</option>
               ))}
             </Select>
           </Field>
+          <Field label="Account number" error={errors.accountNumber}>
+            <div className="bank-number-shell">
+              <Input
+                type={showNumber ? "text" : "password"}
+                value={accountNumber}
+                onChange={(event) => setAccountNumber(event.target.value)}
+                placeholder="Enter account number"
+                inputMode="numeric"
+              />
+              <button
+                type="button"
+                className="bank-number-toggle"
+                aria-label={showNumber ? "Hide account number" : "Show account number"}
+                onClick={() => setShowNumber((value) => !value)}
+              >
+                {showNumber ? <EyeOff size={16} /> : <Eye size={16} />}
+              </button>
+            </div>
+          </Field>
         </div>
         <div className="bank-form-split">
-          <Field label="Nickname (optional)">
-            <Input value={nickname} onChange={(event) => setNickname(event.target.value)} placeholder="e.g. Salary account" />
+          <Field label="IFSC code" error={errors.ifsc}>
+            <Input value={ifsc} onChange={(event) => setIfsc(event.target.value.toUpperCase())} placeholder="e.g. HDFC0001234" />
           </Field>
-          <Field label="Opening Balance (₹)">
+          <Field label="Branch name">
+            <Input value={branch} onChange={(event) => setBranch(event.target.value)} placeholder="e.g. Koramangala" />
+          </Field>
+        </div>
+        <Field label="Nickname (optional)">
+          <Input value={nickname} onChange={(event) => setNickname(event.target.value)} placeholder="e.g. Salary account" />
+        </Field>
+        <div className="bank-form-split">
+          <Field label="Opening balance (₹)">
             <Input
               inputMode="decimal"
               value={opening}
@@ -689,7 +726,13 @@ function AddBankAccountModal({
               placeholder="0.00"
             />
           </Field>
+          <Field label="Linking date">
+            <Input type="date" value={linkingDate} onChange={(event) => setLinkingDate(event.target.value)} />
+          </Field>
         </div>
+        <Field label="Start tracking date">
+          <Input type="date" value={trackingDate} onChange={(event) => setTrackingDate(event.target.value)} />
+        </Field>
         <div className="bank-security">
           <ShieldCheck size={18} aria-hidden="true" />
           <p>
