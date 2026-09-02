@@ -217,9 +217,11 @@ export interface CreditOverview {
   usedMinor: number;
   availableMinor: number;
   overdueMinor: number;
+  holdMinor: number;
   usedPct: number;
   availablePct: number;
   overduePct: number;
+  holdPct: number;
 }
 
 export interface CreditUtilisationMonth {
@@ -237,11 +239,39 @@ export interface CreditSpendingSlice {
   amountMinor: number;
 }
 
+export interface CreditRecentTransaction {
+  id: string;
+  merchant: string | null;
+  cardName: string;
+  amountMinor: number;
+  transactionAt: string;
+}
+
+export interface CreditCycleSummary {
+  pendingMinor: number;
+  spendMinor: number;
+  transactionCount: number;
+  dueOn: string | null;
+}
+
 export interface CreditDashboard {
   cards: CreditFacility[];
   overview: CreditOverview;
   trend: CreditUtilisationMonth[];
   spending: CreditSpendingSlice[];
+  recent: CreditRecentTransaction[];
+  cycle: CreditCycleSummary;
+}
+
+export interface CreditSpendImpact {
+  facilityId: string;
+  kind: CreditFacilityKind;
+  name: string;
+  spentMinor: number;
+  usedMinor: number;
+  availableMinor: number;
+  pendingMinor: number;
+  dueOn: string | null;
 }
 
 export interface LendRecord {

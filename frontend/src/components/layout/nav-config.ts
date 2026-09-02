@@ -16,17 +16,24 @@ import {
   UserRound,
 } from "lucide-react";
 
-export const desktopNavigation = [
+export const desktopPrimaryNavigation = [
   { href: "/dashboard", label: "Overview", hint: "Money snapshot", icon: Home },
   { href: "/transactions", label: "Transactions", hint: "Track activity", icon: ArrowLeftRight },
+  { href: "/bank", label: "Bank", hint: "Balances & accounts", icon: Landmark },
   { href: "/budgets", label: "Spending Limits", hint: "Weekly and monthly", icon: Timer },
   { href: "/reports", label: "Analytics", hint: "Deep insights", icon: BarChart3, pro: true },
   { href: "/goals", label: "Savings Goals", hint: "Save smarter", icon: Target },
   { href: "/premium", label: "Premium", hint: "Upgrade tools", icon: Sparkles },
+] as const;
+
+export const desktopSettingsNavigation = [
   { href: "/settings", label: "Settings", hint: "Profile & security", icon: Settings },
 ] as const;
 
+export const desktopNavigation = [...desktopPrimaryNavigation, ...desktopSettingsNavigation] as const;
+
 export const moreNavigation = [
+  { href: "/bank", label: "Bank", hint: "Balances and bank accounts", icon: Landmark },
   { href: "/reports", label: "Analytics", hint: "Trends and category insights", icon: BarChart3 },
   { href: "/goals", label: "Savings Goals", hint: "Targets and contributions", icon: Target },
   { href: "/premium", label: "Premium", hint: "Unlock deeper tools", icon: Sparkles },

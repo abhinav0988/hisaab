@@ -68,7 +68,7 @@ test.describe("overview command center", () => {
     await expect(page.getByRole("dialog")).toHaveCount(0);
     await page.getByRole("navigation", { name: "Main" }).getByRole("link", { name: "Analytics" }).click();
     await expect(page).toHaveURL(/\/reports$/);
-    await page.getByRole("navigation", { name: "Main" }).getByRole("link", { name: "Settings" }).click();
+    await page.getByRole("navigation", { name: "Settings" }).getByRole("link", { name: "Settings" }).click();
     await expect(page.getByRole("heading", { name: "Settings", level: 1 })).toBeVisible();
     await expect(
       page.getByRole("complementary", { name: "Desktop" }).getByRole("button", { name: "Log out" }),

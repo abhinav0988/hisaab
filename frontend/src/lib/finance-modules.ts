@@ -1,4 +1,5 @@
-import type { CreditFacility, Currency, IpoStatus, LendRecord } from "@hisaab/types";
+import type { CreditFacility, CreditSpendImpact, Currency, IpoStatus, LendRecord } from "@hisaab/types";
+import { money } from "./format";
 
 export type { CreditFacility, IpoStatus, LendKind, LendStatus } from "@hisaab/types";
 export type { Investment, IpoApplication, LendRecord, Loan } from "@hisaab/types";
@@ -85,4 +86,29 @@ export function displayCreditCards(
     };
   });
   return [...merged, ...extras.filter((item) => !usedIds.has(item.id))];
+}
+
+export function cardLast4(mask: string | null | undefined) {
+  const digits = (mask ?? "").replace(/\D/g, "");
+  return digits.slice(-4);
+}
+
+export function creditFacilityLabel(
+  card: { name: string; mask?: string | null; limitMinor?: number; usedMinor?: number; holdMinor?: number },
+  currency = "INR",
+) {
+  const last4 = cardLast4(card.mask);
+  const digits = last4 ? ` · •••• ${last4}` : "";
+  if (card.limitMinor == null) return `${card.name}${digits}`;
+  const available = Math.max(0, card.limitMinor - (card.usedMinor ?? 0) - (card.holdMinor ?? 0));
+  return `${card.name}${digits} · ${money(available, currency)} available`;
+}
+
+export function creditSpendCopy(credit: CreditSpendImpact, currency = "INR") {
+  const due = credit.dueOn ? ` · due ${displayDateLong(credit.dueOn)}` : "";
+  const pending = `Pending ${money(credit.pendingMinor, currency)}${due}`;
+  if (credit.spentMinor > 0) {
+    return `${money(credit.spentMinor, currency)} spent on ${credit.name}. Available ${money(credit.availableMinor, currency)}. ${pending}.`;
+  }
+  return `${credit.name} updated. Available ${money(credit.availableMinor, currency)}. ${pending}.`;
 }

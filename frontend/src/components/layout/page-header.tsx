@@ -20,6 +20,7 @@ import {
 
 const pageIcons: Record<string, LucideIcon> = {
   accounts: Landmark,
+  bank: Landmark,
   analytics: BarChart3,
   "bills & reminders": BellRing,
   recurring: BellRing,

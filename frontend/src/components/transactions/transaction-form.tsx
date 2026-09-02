@@ -1,17 +1,23 @@
 "use client";
-import type { Account, Category, Transaction } from "@hisaab/types";
+import type { Account, Category, CreditSpendImpact, Transaction } from "@hisaab/types";
 import { Button, Field, Input, Select, Textarea } from "@hisaab/ui";
-import { majorToMinor } from "@hisaab/validation";
+import { creditSpendDelta, majorToMinor, nextCreditBalances } from "@hisaab/validation";
+import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 import { Calendar, Clock } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { ApiError } from "@/lib/api-client";
 import {
   accountDisplayName,
+  creditKindForAccount,
   isPaymentMethodType,
   paymentMethodAccounts,
   uniqueCatalogAccounts,
 } from "@/lib/accounts";
+import { bankAccountLabel, bankSpendCopy } from "@/lib/bank";
+import { creditFacilityLabel, displayDateLong } from "@/lib/finance-modules";
+import { money } from "@/lib/format";
+import { financeService } from "@/services/finance.service";
 import { transactionService } from "@/services/transaction.service";
 
 function localParts(iso: string) {
@@ -30,6 +36,7 @@ function shiftDate(value: string, days: number) {
 
 export function TransactionForm({
   accounts,
+  bankAccounts,
   categories,
   currency,
   initial,
@@ -37,11 +44,12 @@ export function TransactionForm({
   onSaved,
 }: {
   accounts: Account[];
+  bankAccounts: Account[];
   categories: Category[];
   currency: string;
   initial?: Transaction;
   defaultType?: "INCOME" | "EXPENSE";
-  onSaved: () => void;
+  onSaved: (credit?: CreditSpendImpact | null, bankMessage?: string) => void;
 }) {
   const options = useMemo(
     () => uniqueCatalogAccounts(accounts, initial?.accountId),
@@ -49,11 +57,11 @@ export function TransactionForm({
   );
   const [type, setType] = useState<"INCOME" | "EXPENSE">(initial?.type ?? defaultType);
   const [amount, setAmount] = useState(initial ? String(initial.amountMinor / 100) : "");
-  const [accountId, setAccountId] = useState(
-    initial?.accountId ?? options[0]?.id ?? "",
+  const [channelAccountId, setChannelAccountId] = useState("");
+  const [bankAccountId, setBankAccountId] = useState("");
+  const [categoryId, setCategoryId] = useState(
+    initial?.categoryId ?? categories.find((item) => item.type === (initial?.type ?? defaultType))?.id ?? "",
   );
-  const relevant = categories.filter((item) => item.type === type);
-  const [categoryId, setCategoryId] = useState(initial?.categoryId ?? relevant[0]?.id ?? "");
   const [merchant, setMerchant] = useState(initial?.merchant ?? "");
   const [notes, setNotes] = useState(initial?.notes ?? "");
   const initialStamp = localParts(initial?.transactionAt ?? new Date().toISOString());
@@ -62,10 +70,100 @@ export function TransactionForm({
   const [tags, setTags] = useState(initial?.tags?.join(", ") ?? "");
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
+  const [creditFacilityId, setCreditFacilityId] = useState("");
+
+  useEffect(() => {
+    if (channelAccountId) return;
+    if (initial) {
+      const hit =
+        accounts.find((item) => item.id === initial.accountId) ??
+        bankAccounts.find((item) => item.id === initial.accountId);
+      if (hit?.type === "BANK") {
+        setChannelAccountId(options.find((item) => item.type === "BANK")?.id ?? hit.id);
+        setBankAccountId(hit.id);
+        return;
+      }
+      setChannelAccountId(initial.accountId);
+      return;
+    }
+    setChannelAccountId(options[0]?.id ?? "");
+  }, [channelAccountId, initial, accounts, bankAccounts, options]);
+
   const methodOptions = paymentMethodAccounts(options);
-  const selectedAccount = options.find((item) => item.id === accountId);
+  const selectedChannel = options.find((item) => item.id === channelAccountId);
+  const isBankChannel = selectedChannel?.type === "BANK";
+  const activeBankId = isBankChannel
+    ? bankAccountId || bankAccounts[0]?.id || ""
+    : "";
+  const accountId = isBankChannel ? activeBankId : channelAccountId;
   const paymentMethod =
-    selectedAccount && isPaymentMethodType(selectedAccount.type) ? selectedAccount.type : "";
+    selectedChannel && isPaymentMethodType(selectedChannel.type) ? selectedChannel.type : "";
+  const facilities = useQuery({
+    queryKey: ["credit-facilities"],
+    queryFn: () => financeService.listCreditFacilities(),
+    retry: false,
+  });
+  const creditKind = selectedChannel ? creditKindForAccount(selectedChannel.type) : null;
+  const creditOptions = (facilities.data ?? []).filter((item) => item.kind === creditKind);
+  const selectedBank = isBankChannel
+    ? bankAccounts.find((item) => item.id === activeBankId)
+    : undefined;
+  const bankPreview = useMemo(() => {
+    if (!selectedBank) return null;
+    try {
+      const deltaMinor =
+        type === "EXPENSE" ? -majorToMinor(amount || "0") : majorToMinor(amount || "0");
+      return {
+        deltaMinor,
+        nextBalanceMinor: selectedBank.currentBalanceMinor + deltaMinor,
+      };
+    } catch {
+      return {
+        deltaMinor: 0,
+        nextBalanceMinor: selectedBank.currentBalanceMinor,
+      };
+    }
+  }, [amount, selectedBank, type]);
+  const selectedFacility =
+    creditKind === "CARD"
+      ? (creditOptions.find((item) => item.id === creditFacilityId) ??
+        creditOptions.find((item) => item.accountId === accountId) ??
+        creditOptions[0])
+      : creditKind === "UPI"
+        ? creditOptions.find((item) => item.id === creditFacilityId)
+        : undefined;
+  const creditPreview = useMemo(() => {
+    if (!selectedFacility) return null;
+    try {
+      const deltaMinor = creditSpendDelta(type, majorToMinor(amount || "0"));
+      const next = nextCreditBalances({
+        usedMinor: selectedFacility.usedMinor,
+        holdMinor: selectedFacility.holdMinor,
+        limitMinor: selectedFacility.limitMinor,
+        todaySpendMinor: selectedFacility.todaySpendMinor,
+        overdueMinor: selectedFacility.overdueMinor,
+        minDueMinor: selectedFacility.minDueMinor,
+        deltaMinor,
+      });
+      return { ...next, name: selectedFacility.name, dueOn: selectedFacility.dueOn, deltaMinor };
+    } catch {
+      return {
+        spentMinor: 0,
+        usedMinor: selectedFacility.usedMinor,
+        availableMinor: Math.max(
+          0,
+          selectedFacility.limitMinor - selectedFacility.usedMinor - (selectedFacility.holdMinor ?? 0),
+        ),
+        pendingMinor:
+          selectedFacility.overdueMinor > 0
+            ? selectedFacility.overdueMinor
+            : selectedFacility.minDueMinor || selectedFacility.usedMinor,
+        name: selectedFacility.name,
+        dueOn: selectedFacility.dueOn,
+        deltaMinor: 0,
+      };
+    }
+  }, [amount, selectedFacility, type]);
   const setKind = (next: "INCOME" | "EXPENSE") => {
     setType(next);
     setCategoryId(categories.find((item) => item.type === next)?.id ?? "");
@@ -110,10 +208,21 @@ export function TransactionForm({
           .split(",")
           .map((tag) => tag.trim())
           .filter(Boolean),
+        ...(selectedFacility ? { creditFacilityId: selectedFacility.id } : {}),
       };
-      if (initial) await transactionService.update(initial.id, body);
-      else await transactionService.create(body);
-      onSaved();
+      const saved = initial
+        ? await transactionService.update(initial.id, body)
+        : await transactionService.create(body);
+      const bankMessage =
+        selectedBank && bankPreview && !selectedFacility
+          ? bankSpendCopy(
+              selectedBank,
+              bankPreview.deltaMinor,
+              bankPreview.nextBalanceMinor,
+              currency,
+            )
+          : undefined;
+      onSaved(saved.credit, bankMessage);
     } catch (cause) {
       const details =
         cause instanceof ApiError
@@ -209,11 +318,21 @@ export function TransactionForm({
                 {options.length ? (
                   <Select
                     required
-                    value={accountId}
-                    onChange={(event) => setAccountId(event.target.value)}
+                    value={channelAccountId}
+                    onChange={(event) => {
+                      const nextId = event.target.value;
+                      setChannelAccountId(nextId);
+                      setCreditFacilityId("");
+                      const next = options.find((item) => item.id === nextId);
+                      if (next?.type === "BANK" && bankAccounts[0]) {
+                        setBankAccountId(bankAccounts[0].id);
+                      } else {
+                        setBankAccountId("");
+                      }
+                    }}
                     aria-label="Account"
                   >
-                    {!accountId ? (
+                    {!channelAccountId ? (
                       <option value="" disabled>
                         Select an account
                       </option>
@@ -236,24 +355,183 @@ export function TransactionForm({
               {methodOptions.length ? (
                 <Field
                   label="Payment method"
-                  hint="Quick select for UPI or credit card."
+                  hint="Bank, UPI and credit card let you pick a saved account or card."
                 >
                   <Select
                     aria-label="Payment method"
                     value={paymentMethod}
                     onChange={(event) => {
-                      const match = options.find((item) => item.type === event.target.value);
-                      if (match) setAccountId(match.id);
+                      const value = event.target.value;
+                      if (!value) {
+                        const fallback =
+                          options.find((item) => item.type === "CASH") ??
+                          options.find((item) => item.type === "DEBIT_CARD") ??
+                          options.find((item) => !isPaymentMethodType(item.type));
+                        if (fallback) {
+                          setChannelAccountId(fallback.id);
+                          setBankAccountId("");
+                        }
+                        setCreditFacilityId("");
+                        return;
+                      }
+                      const match = options.find((item) => item.type === value);
+                      if (match) {
+                        setChannelAccountId(match.id);
+                        setCreditFacilityId("");
+                        if (match.type === "BANK" && bankAccounts[0]) {
+                          setBankAccountId(bankAccounts[0].id);
+                        } else {
+                          setBankAccountId("");
+                        }
+                      }
                     }}
                   >
-                    <option value="">Select UPI or credit card</option>
+                    <option value="">Normal payment (cash, debit)</option>
                     {methodOptions.map((item) => (
                       <option key={item.id} value={item.type}>
-                        {accountDisplayName(item)}
+                        {item.type === "CREDIT_CARD"
+                          ? "Credit card"
+                          : item.type === "BANK"
+                            ? "Bank"
+                            : "UPI"}
                       </option>
                     ))}
                   </Select>
                 </Field>
+              ) : null}
+              {isBankChannel && !bankAccounts.length ? (
+                <div className="full credit-spend-note">
+                  <b>Add a bank account first</b>
+                  <p>
+                    Save your bank accounts on the Bank page, then pick which one this transaction
+                    affects.{" "}
+                    <Link className="font-extrabold text-[var(--primary)]" href="/bank">
+                      Open Bank
+                    </Link>
+                  </p>
+                </div>
+              ) : null}
+              {isBankChannel && bankAccounts.length ? (
+                <div className="full">
+                  <Field
+                    label="Bank account"
+                    hint="Pick the saved bank account. Expense reduces balance; income increases it."
+                  >
+                    <Select
+                      aria-label="Bank account"
+                      required
+                      value={activeBankId}
+                      onChange={(event) => setBankAccountId(event.target.value)}
+                    >
+                      {bankAccounts.map((item) => (
+                        <option key={item.id} value={item.id}>
+                          {bankAccountLabel(item, currency)}
+                        </option>
+                      ))}
+                    </Select>
+                  </Field>
+                  {selectedBank && bankPreview ? (
+                    <div className="credit-spend-note">
+                      <b>{bankAccountLabel(selectedBank, currency)}</b>
+                      <p>
+                        {type === "EXPENSE" && bankPreview.deltaMinor < 0
+                          ? `${money(Math.abs(bankPreview.deltaMinor), currency)} will be deducted from this account. `
+                          : type === "INCOME" && bankPreview.deltaMinor > 0
+                            ? `${money(bankPreview.deltaMinor, currency)} will be added to this account. `
+                            : null}
+                        Available balance will be {money(bankPreview.nextBalanceMinor, currency)}.
+                      </p>
+                    </div>
+                  ) : null}
+                </div>
+              ) : null}
+              {creditKind === "CARD" && !creditOptions.length ? (
+                <div className="full credit-spend-note">
+                  <b>Choose a saved credit card</b>
+                  <p>
+                    Add a card under Credit Cards first. Then this payment will show last 4 digits
+                    and reduce that card’s available limit.
+                  </p>
+                </div>
+              ) : null}
+              {creditKind === "CARD" && creditOptions.length ? (
+                <div className="full">
+                  <Field
+                    label="Credit card"
+                    hint="Pick the saved card. Last 4 digits identify it, and this amount comes off that card’s available limit."
+                  >
+                    <Select
+                      aria-label="Credit card"
+                      required
+                      value={selectedFacility?.id ?? ""}
+                      onChange={(event) => setCreditFacilityId(event.target.value)}
+                    >
+                      {creditOptions.map((item) => (
+                        <option key={item.id} value={item.id}>
+                          {creditFacilityLabel(item, currency)}
+                        </option>
+                      ))}
+                    </Select>
+                  </Field>
+                  {creditPreview ? (
+                    <div className="credit-spend-note">
+                      <b>
+                        {selectedFacility?.mask
+                          ? `${creditPreview.name} · ${selectedFacility.mask}`
+                          : creditPreview.name}
+                      </b>
+                      <p>
+                        {type === "EXPENSE" && creditPreview.deltaMinor > 0
+                          ? `${money(creditPreview.deltaMinor, currency)} will be deducted from this card. `
+                          : type === "INCOME" && creditPreview.deltaMinor < 0
+                            ? `${money(Math.abs(creditPreview.deltaMinor), currency)} will reduce used credit on this card. `
+                            : null}
+                        Available will be {money(creditPreview.availableMinor, currency)}. Pending{" "}
+                        {money(creditPreview.pendingMinor, currency)}
+                        {creditPreview.dueOn
+                          ? ` · due ${displayDateLong(creditPreview.dueOn)}`
+                          : ""}
+                        .
+                      </p>
+                    </div>
+                  ) : null}
+                </div>
+              ) : null}
+              {creditKind === "UPI" && creditOptions.length ? (
+                <div className="full">
+                  <Field
+                    label="UPI credit line"
+                    hint="Only UPI Credit is deducted. Regular UPI stays a normal payment."
+                  >
+                    <Select
+                      aria-label="UPI credit line"
+                      value={selectedFacility?.id ?? ""}
+                      onChange={(event) => setCreditFacilityId(event.target.value)}
+                    >
+                      <option value="">Regular UPI — do not use credit</option>
+                      {creditOptions.map((item) => (
+                        <option key={item.id} value={item.id}>
+                          {creditFacilityLabel(item, currency)}
+                        </option>
+                      ))}
+                    </Select>
+                  </Field>
+                  {selectedFacility && creditPreview ? (
+                    <div className="credit-spend-note">
+                      <b>
+                        {selectedFacility.mask
+                          ? `${creditPreview.name} · ${selectedFacility.mask}`
+                          : creditPreview.name}
+                      </b>
+                      <p>
+                        {type === "EXPENSE" && creditPreview.deltaMinor > 0
+                          ? `${money(creditPreview.deltaMinor, currency)} will be deducted from this UPI credit line. `
+                          : null}
+                        Available will be {money(creditPreview.availableMinor, currency)}.
+                      </p>
+                    </div>
+                  ) : null}
+                </div>
               ) : null}
               <Field label="Tags (comma separated)">
                 <Input value={tags} onChange={(event) => setTags(event.target.value)} />
@@ -392,7 +670,15 @@ export function TransactionForm({
         </p>
       ) : null}
       <div className="flex justify-end gap-2">
-        <Button disabled={saving || !accountId || !categoryId || !options.length}>
+        <Button
+          disabled={
+            saving ||
+            !accountId ||
+            !categoryId ||
+            !options.length ||
+            (isBankChannel && !bankAccounts.length)
+          }
+        >
           {saving ? "Saving…" : initial ? "Save changes" : `Add ${type.toLowerCase()}`}
         </Button>
       </div>

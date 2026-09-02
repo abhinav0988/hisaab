@@ -5,13 +5,15 @@ import {
   ensureAccountCatalog,
   provisionUserAccounts,
   transactions,
+  userPreferences,
 } from "@hisaab/database";
 import type { z } from "zod";
-import type { accountPatchSchema } from "@hisaab/validation";
+import type { accountPatchSchema, accountSchema } from "@hisaab/validation";
 import { and, asc, eq, isNull, sql } from "drizzle-orm";
 import { AppError, audit, notFound, now } from "@hisaab/worker-lib";
 
 type PatchAccount = z.infer<typeof accountPatchSchema>;
+type CreateAccount = z.infer<typeof accountSchema>;
 
 function flagOn(value: unknown) {
   return value === true || Number(value) === 1;
@@ -118,6 +120,79 @@ export async function updateAccount(env: Env, userId: string, id: string, input:
 }
 export async function deactivateAccount(env: Env, userId: string, id: string) {
   return updateAccount(env, userId, id, { isActive: false });
+}
+
+export async function listBankAccounts(env: Env, userId: string) {
+  const db = createDatabase(env.DB);
+  await provisionUserAccounts(db, userId);
+  const rows = await db
+    .select({
+      id: accounts.id,
+      catalogId: accounts.catalogId,
+      name: accounts.name,
+      type: accounts.type,
+      institutionName: accounts.institutionName,
+      openingBalanceMinor: accounts.openingBalanceMinor,
+      currentBalanceMinor: sql<number>`${accounts.openingBalanceMinor} + coalesce(sum(case when ${transactions.type} = 'INCOME' then ${transactions.amountMinor} else -${transactions.amountMinor} end), 0)`,
+      currency: accounts.currency,
+      isActive: accounts.isActive,
+      createdAt: accounts.createdAt,
+      updatedAt: accounts.updatedAt,
+    })
+    .from(accounts)
+    .leftJoin(
+      transactions,
+      and(eq(transactions.accountId, accounts.id), isNull(transactions.deletedAt)),
+    )
+    .where(and(eq(accounts.userId, userId), eq(accounts.type, "BANK")))
+    .groupBy(accounts.id)
+    .orderBy(accounts.name)
+    .then((items) =>
+      items
+        .filter((item) => Number(item.isActive) === 1)
+        .map((row) => ({
+          ...row,
+          isActive: true,
+          currentBalanceMinor: Number(row.currentBalanceMinor ?? 0),
+        })),
+    );
+  return rows;
+}
+
+export async function createBankAccount(env: Env, userId: string, input: CreateAccount) {
+  if (input.type !== "BANK") {
+    throw new AppError(400, "INVALID_ACCOUNT_TYPE", "Only bank accounts can be added here.");
+  }
+  const db = createDatabase(env.DB);
+  await provisionUserAccounts(db, userId);
+  const prefs = await db.query.userPreferences.findFirst({
+    where: eq(userPreferences.userId, userId),
+  });
+  const value = {
+    id: crypto.randomUUID(),
+    userId,
+    catalogId: null,
+    name: input.name,
+    type: "BANK" as const,
+    institutionName: input.institutionName ?? null,
+    openingBalanceMinor: input.openingBalanceMinor,
+    currency: input.currency ?? prefs?.defaultCurrency ?? "INR",
+    isActive: input.isActive ?? true,
+    createdAt: now(),
+    updatedAt: now(),
+  };
+  await db.insert(accounts).values(value);
+  await audit(db, {
+    userId,
+    action: "CREATE",
+    entityType: "ACCOUNT",
+    entityId: value.id,
+    newValue: { name: value.name, type: value.type, institutionName: value.institutionName },
+  });
+  return {
+    ...value,
+    currentBalanceMinor: value.openingBalanceMinor,
+  };
 }
 
 export function catalogOnlyError() {

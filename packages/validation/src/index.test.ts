@@ -84,12 +84,32 @@ describe("finance module validation", () => {
       availableMinor: 10250000,
       usedPct: 31.7,
     });
+    const { nextCreditBalances, creditSpendDelta } = await import("./index");
+    expect(creditSpendDelta("EXPENSE", 850000)).toBe(850000);
+    expect(
+      nextCreditBalances({
+        limitMinor: 15000000,
+        usedMinor: 4500000,
+        holdMinor: 250000,
+        todaySpendMinor: 850000,
+        minDueMinor: 300000,
+        deltaMinor: 850000,
+      }),
+    ).toMatchObject({
+      usedMinor: 5350000,
+      todaySpendMinor: 1700000,
+      availableMinor: 9400000,
+      pendingMinor: 300000,
+      spentMinor: 850000,
+    });
   });
 
   it("marks a card payment as done and advances the due date", async () => {
-    const { applyCardPayment, cardDueAmount, cardPaidThisCycle, creditOverview } = await import("./index");
+    const { applyCardPayment, cardDueAmount, cardPaidThisCycle, cardPendingMinor, creditOverview } = await import("./index");
     expect(cardDueAmount({ overdueMinor: 525000, minDueMinor: 300000 })).toBe(525000);
     expect(cardDueAmount({ overdueMinor: 0, minDueMinor: 300000 })).toBe(300000);
+    expect(cardPendingMinor({ overdueMinor: 0, minDueMinor: 300000, usedMinor: 4580000 })).toBe(300000);
+    expect(cardPendingMinor({ overdueMinor: 0, minDueMinor: 0, usedMinor: 4580000 })).toBe(4580000);
     expect(
       creditOverview({ limitMinor: 25000000, usedMinor: 9245000, overdueMinor: 525000 }),
     ).toEqual({
@@ -97,9 +117,11 @@ describe("finance module validation", () => {
       usedMinor: 9245000,
       availableMinor: 15755000,
       overdueMinor: 525000,
+      holdMinor: 0,
       usedPct: 37,
       availablePct: 63,
       overduePct: 2.1,
+      holdPct: 0,
     });
     expect(
       applyCardPayment({

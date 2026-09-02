@@ -17,7 +17,7 @@ test.describe("settings theme", () => {
     await register(page, "theme-settings");
     await page.getByRole("button", { name: "Switch to dark theme" }).click();
     await expect.poll(() => page.locator("html").getAttribute("class")).toMatch(/\bdark\b/);
-    await page.getByRole("navigation", { name: "Main" }).getByRole("link", { name: /Settings/ }).click();
+    await page.getByRole("navigation", { name: "Settings" }).getByRole("link", { name: /Settings/ }).click();
     await expect(page).toHaveURL(/\/settings$/);
     await expect(page.getByRole("heading", { name: "Settings", level: 1 })).toBeVisible();
     await expect.poll(() => page.locator("html").getAttribute("class")).toMatch(/\bdark\b/);

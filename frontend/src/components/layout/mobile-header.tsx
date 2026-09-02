@@ -14,6 +14,7 @@ function titleForPath(pathname: string) {
     (item) => pathname === item.href || pathname.startsWith(`${item.href}/`),
   );
   if (pathname.startsWith("/accounts")) return "Accounts";
+  if (pathname.startsWith("/bank")) return "Bank";
   if (pathname.startsWith("/categories")) return "Categories";
   if (pathname.startsWith("/recurring")) return "Recurring";
   return match?.label ?? "Hisaab";

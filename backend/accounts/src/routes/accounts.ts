@@ -1,18 +1,26 @@
-import { accountPatchSchema } from "@hisaab/validation";
+import { accountPatchSchema, accountSchema } from "@hisaab/validation";
 import { Hono } from "hono";
 import { fromZod, ok } from "@hisaab/worker-lib";
 import {
   catalogOnlyError,
+  createBankAccount,
   deactivateAccount,
   getAccount,
   listAccountCatalog,
   listAccounts,
+  listBankAccounts,
   updateAccount,
 } from "../services/service";
 
 export const accountRoutes = new Hono<{ Bindings: Env; Variables: { userId: string } }>();
 accountRoutes.get("/catalog", async (c) => ok(c, await listAccountCatalog(c.env)));
+accountRoutes.get("/banks", async (c) => ok(c, await listBankAccounts(c.env, c.get("userId"))));
 accountRoutes.get("/", async (c) => ok(c, await listAccounts(c.env, c.get("userId"))));
+accountRoutes.post("/banks", async (c) => {
+  const parsed = accountSchema.safeParse(await c.req.json());
+  if (!parsed.success) throw fromZod(parsed.error);
+  return ok(c, await createBankAccount(c.env, c.get("userId"), parsed.data));
+});
 accountRoutes.post("/", () => {
   throw catalogOnlyError();
 });

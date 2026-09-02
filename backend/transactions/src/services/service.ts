@@ -1,7 +1,9 @@
 import {
   accounts,
+  adjustCreditSpend,
   categories,
   createDatabase,
+  creditSpendDelta,
   tags,
   transactionTags,
   transactions,
@@ -118,7 +120,7 @@ export async function getTransaction(env: Env, userId: string, id: string) {
 export async function createTransaction(env: Env, userId: string, input: CreateTransaction) {
   await validateReferences(env, userId, input);
   const db = createDatabase(env.DB);
-  const { tags: tagNames, ...data } = input;
+  const { tags: tagNames, creditFacilityId, ...data } = input;
   delete data.recurring;
   const value = {
     id: newId(),
@@ -145,6 +147,12 @@ export async function createTransaction(env: Env, userId: string, input: CreateT
       .values({ transactionId: value.id, tagId: tag.id })
       .onConflictDoNothing();
   }
+  const credit = await adjustCreditSpend(db, {
+    userId,
+    accountId: value.accountId,
+    facilityId: creditFacilityId,
+    deltaMinor: creditSpendDelta(value.type, value.amountMinor),
+  });
   await audit(db, {
     userId,
     action: "CREATE",
@@ -157,7 +165,7 @@ export async function createTransaction(env: Env, userId: string, input: CreateT
       categoryId: value.categoryId,
     },
   });
-  return value;
+  return { ...value, credit };
 }
 export async function updateTransaction(
   env: Env,
@@ -174,7 +182,7 @@ export async function updateTransaction(
   };
   await validateReferences(env, userId, merged);
   const db = createDatabase(env.DB);
-  const { tags: tagNames, ...data } = input;
+  const { tags: tagNames, creditFacilityId, ...data } = input;
   delete data.recurring;
   await db
     .update(transactions)
@@ -196,6 +204,18 @@ export async function updateTransaction(
         .onConflictDoNothing();
     }
   }
+  await adjustCreditSpend(db, {
+    userId,
+    accountId: existing.accountId,
+    facilityId: existing.accountId === merged.accountId ? creditFacilityId : undefined,
+    deltaMinor: -creditSpendDelta(existing.type, existing.amountMinor),
+  });
+  const credit = await adjustCreditSpend(db, {
+    userId,
+    accountId: merged.accountId,
+    facilityId: creditFacilityId,
+    deltaMinor: creditSpendDelta(merged.type, input.amountMinor ?? existing.amountMinor),
+  });
   await audit(db, {
     userId,
     action: "UPDATE",
@@ -204,14 +224,20 @@ export async function updateTransaction(
     oldValue: { type: existing.type, amountMinor: existing.amountMinor },
     newValue: data,
   });
-  return getTransaction(env, userId, id);
+  const next = await getTransaction(env, userId, id);
+  return { ...next, credit };
 }
 export async function deleteTransaction(env: Env, userId: string, id: string) {
-  await getTransaction(env, userId, id);
+  const existing = await getTransaction(env, userId, id);
   const db = createDatabase(env.DB);
   await db
     .update(transactions)
     .set({ deletedAt: now(), updatedAt: now() })
     .where(and(eq(transactions.id, id), eq(transactions.userId, userId)));
+  await adjustCreditSpend(db, {
+    userId,
+    accountId: existing.accountId,
+    deltaMinor: -creditSpendDelta(existing.type, existing.amountMinor),
+  });
   await audit(db, { userId, action: "DELETE", entityType: "TRANSACTION", entityId: id });
 }

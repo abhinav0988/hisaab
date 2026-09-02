@@ -26,6 +26,7 @@ import {
   applyCardPayment,
   applyPaidEmi,
   cardPaidThisCycle,
+  cardPendingMinor,
   creditOverview,
   loanSchedule,
   loanSummary,
@@ -387,9 +388,128 @@ async function cardSpending(env: Env, userId: string) {
   }));
 }
 
+async function cardRecentAndCycle(env: Env, userId: string) {
+  const timezone = await userTimezone(env, userId);
+  const bounds = monthBounds(currentMonth(timezone), timezone);
+  const cycle = await env.DB.prepare(
+    `SELECT count(*) AS n, coalesce(sum(t.amount_minor), 0) AS spend
+     FROM transactions t
+     WHERE t.user_id = ?
+       AND t.deleted_at IS NULL
+       AND t.type = 'EXPENSE'
+       AND t.transaction_at >= ?
+       AND t.transaction_at < ?
+       AND t.account_id IN (
+         SELECT id FROM accounts WHERE user_id = ? AND type = 'CREDIT_CARD'
+         UNION
+         SELECT account_id FROM credit_facilities
+         WHERE user_id = ? AND kind = 'CARD' AND account_id IS NOT NULL
+       )`,
+  )
+    .bind(userId, bounds.from, bounds.to, userId, userId)
+    .first<{ n: number; spend: number }>();
+  const recent = await env.DB.prepare(
+    `SELECT t.id AS id,
+            t.merchant AS merchant,
+            t.amount_minor AS amountMinor,
+            t.transaction_at AS transactionAt,
+            coalesce(
+              (
+                SELECT name FROM credit_facilities
+                WHERE user_id = t.user_id AND kind = 'CARD' AND account_id = t.account_id
+                LIMIT 1
+              ),
+              a.name
+            ) AS cardName
+     FROM transactions t
+     JOIN accounts a ON a.id = t.account_id
+     WHERE t.user_id = ?
+       AND t.deleted_at IS NULL
+       AND t.type = 'EXPENSE'
+       AND t.account_id IN (
+         SELECT id FROM accounts WHERE user_id = ? AND type = 'CREDIT_CARD'
+         UNION
+         SELECT account_id FROM credit_facilities
+         WHERE user_id = ? AND kind = 'CARD' AND account_id IS NOT NULL
+       )
+     ORDER BY t.transaction_at DESC
+     LIMIT 8`,
+  )
+    .bind(userId, userId, userId)
+    .all<{
+      id: string;
+      merchant: string | null;
+      amountMinor: number;
+      transactionAt: string;
+      cardName: string;
+    }>();
+  return {
+    spendMinor: Number(cycle?.spend ?? 0),
+    transactionCount: Number(cycle?.n ?? 0),
+    recent: (recent.results ?? []).map((row) => ({
+      id: row.id,
+      merchant: row.merchant,
+      cardName: row.cardName,
+      amountMinor: Number(row.amountMinor ?? 0),
+      transactionAt: row.transactionAt,
+    })),
+  };
+}
+
+export async function getCreditDashboard(env: Env, userId: string) {
+  const cards = await listCreditFacilities(env, userId, "CARD");
+  const overview = creditOverview({
+    limitMinor: cards.reduce((sum, item) => sum + item.limitMinor, 0),
+    usedMinor: cards.reduce((sum, item) => sum + item.usedMinor, 0),
+    overdueMinor: cards.reduce((sum, item) => sum + item.overdueMinor, 0),
+    holdMinor: cards.reduce((sum, item) => sum + (item.holdMinor ?? 0), 0),
+  });
+  const db = createDatabase(env.DB);
+  const months = await db
+    .select()
+    .from(creditUtilisationMonths)
+    .where(eq(creditUtilisationMonths.userId, userId))
+    .orderBy(creditUtilisationMonths.month);
+  const trend = months.slice(-6).map((row) => ({
+    month: row.month,
+    usedMinor: row.usedMinor,
+    limitMinor: row.limitMinor,
+    overdueMinor: row.overdueMinor,
+    usedPct: creditOverview({
+      limitMinor: row.limitMinor,
+      usedMinor: row.usedMinor,
+      overdueMinor: row.overdueMinor,
+    }).usedPct,
+  }));
+  const activity = await cardRecentAndCycle(env, userId);
+  const dueOn = [...cards]
+    .map((card) => card.dueOn)
+    .filter((value): value is string => Boolean(value))
+    .sort()[0] ?? null;
+  return {
+    cards,
+    overview,
+    trend,
+    spending: await cardSpending(env, userId),
+    recent: activity.recent,
+    cycle: {
+      pendingMinor: cards.reduce((sum, card) => sum + cardPendingMinor(card), 0),
+      spendMinor: activity.spendMinor,
+      transactionCount: activity.transactionCount,
+      dueOn,
+    },
+  };
+}
+
 export async function createCreditFacility(env: Env, userId: string, input: CreditInput) {
   await assertOwnAccount(env, userId, input.accountId);
   const db = createDatabase(env.DB);
+  const catalogType = input.kind === "CARD" ? "CREDIT_CARD" : input.kind === "UPI" ? "UPI" : null;
+  const catalog = catalogType
+    ? await db.query.accounts.findFirst({
+        where: and(eq(accounts.userId, userId), eq(accounts.type, catalogType)),
+      })
+    : undefined;
   const value = {
     id: newId(),
     userId,
@@ -397,7 +517,7 @@ export async function createCreditFacility(env: Env, userId: string, input: Cred
     name: input.name,
     provider: input.provider ?? null,
     mask: input.mask ?? null,
-    accountId: input.accountId ?? null,
+    accountId: input.accountId ?? catalog?.id ?? null,
     limitMinor: input.limitMinor,
     usedMinor: input.usedMinor ?? 0,
     todaySpendMinor: input.todaySpendMinor ?? 0,
@@ -471,33 +591,6 @@ export async function payCreditFacility(env: Env, userId: string, id: string) {
     .where(and(eq(creditFacilities.id, id), eq(creditFacilities.userId, userId)));
   await snapshotCardUtilisation(env, userId);
   return { ...existing, ...changes };
-}
-
-export async function getCreditDashboard(env: Env, userId: string) {
-  const cards = await listCreditFacilities(env, userId, "CARD");
-  const overview = creditOverview({
-    limitMinor: cards.reduce((sum, item) => sum + item.limitMinor, 0),
-    usedMinor: cards.reduce((sum, item) => sum + item.usedMinor, 0),
-    overdueMinor: cards.reduce((sum, item) => sum + item.overdueMinor, 0),
-  });
-  const db = createDatabase(env.DB);
-  const months = await db
-    .select()
-    .from(creditUtilisationMonths)
-    .where(eq(creditUtilisationMonths.userId, userId))
-    .orderBy(creditUtilisationMonths.month);
-  const trend = months.slice(-6).map((row) => ({
-    month: row.month,
-    usedMinor: row.usedMinor,
-    limitMinor: row.limitMinor,
-    overdueMinor: row.overdueMinor,
-    usedPct: creditOverview({
-      limitMinor: row.limitMinor,
-      usedMinor: row.usedMinor,
-      overdueMinor: row.overdueMinor,
-    }).usedPct,
-  }));
-  return { cards, overview, trend, spending: await cardSpending(env, userId) };
 }
 
 export async function listLendRecords(env: Env, userId: string) {

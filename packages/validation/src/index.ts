@@ -81,6 +81,7 @@ export const transactionSchema = z.object({
   transactionAt: z.iso.datetime({ offset: true }),
   tags: z.array(z.string().trim().min(1).max(30)).max(10).optional(),
   recurring: z.boolean().optional(),
+  creditFacilityId: idSchema.optional(),
 });
 export const transactionPatchSchema = transactionSchema.partial();
 
@@ -189,7 +190,7 @@ export const lendRecordSchema = z.object({
 export const lendRecordPatchSchema = lendRecordSchema.partial();
 
 export const recurringSchema = transactionSchema
-  .omit({ tags: true, recurring: true, transactionAt: true })
+  .omit({ tags: true, recurring: true, transactionAt: true, creditFacilityId: true })
   .extend({
     frequency: frequencySchema,
     startAt: z.iso.datetime({ offset: true }),
@@ -437,6 +438,36 @@ export function creditSummary(input: {
   };
 }
 
+export function creditSpendDelta(type: string, amountMinor: number) {
+  const amount = Math.max(0, Math.trunc(amountMinor) || 0);
+  if (type === "EXPENSE") return amount;
+  if (type === "INCOME") return -amount;
+  return 0;
+}
+
+export function nextCreditBalances(input: {
+  usedMinor: number;
+  holdMinor?: number;
+  limitMinor: number;
+  todaySpendMinor?: number;
+  overdueMinor?: number;
+  minDueMinor?: number;
+  deltaMinor: number;
+}) {
+  const summary = creditSummary(input);
+  const usedMinor = Math.max(0, summary.usedMinor + Math.trunc(input.deltaMinor || 0));
+  const todaySpendMinor = Math.max(0, summary.todaySpendMinor + Math.trunc(input.deltaMinor || 0));
+  const availableMinor = Math.max(0, summary.limitMinor - usedMinor - summary.holdMinor);
+  const pendingMinor = cardDueAmount(summary) || usedMinor;
+  return {
+    usedMinor,
+    todaySpendMinor,
+    availableMinor,
+    pendingMinor,
+    spentMinor: Math.max(0, Math.trunc(input.deltaMinor || 0)),
+  };
+}
+
 function pctOf(part: number, whole: number) {
   return whole > 0 ? Math.round((part / whole) * 1000) / 10 : 0;
 }
@@ -453,9 +484,11 @@ export function creditOverview(input: {
     usedMinor: summary.usedMinor,
     availableMinor: summary.availableMinor,
     overdueMinor: summary.overdueMinor,
+    holdMinor: summary.holdMinor,
     usedPct: summary.usedPct,
     availablePct: pctOf(summary.availableMinor, summary.limitMinor),
     overduePct: pctOf(summary.overdueMinor, summary.limitMinor),
+    holdPct: pctOf(summary.holdMinor, summary.limitMinor),
   };
 }
 
@@ -463,6 +496,14 @@ export function cardDueAmount(input: { overdueMinor?: number; minDueMinor?: numb
   const overdueMinor = Math.max(0, Math.trunc(input.overdueMinor ?? 0) || 0);
   const minDueMinor = Math.max(0, Math.trunc(input.minDueMinor ?? 0) || 0);
   return overdueMinor > 0 ? overdueMinor : minDueMinor;
+}
+
+export function cardPendingMinor(input: {
+  overdueMinor?: number;
+  minDueMinor?: number;
+  usedMinor?: number;
+}) {
+  return cardDueAmount(input) || Math.max(0, Math.trunc(input.usedMinor ?? 0) || 0);
 }
 
 export function cardPaidThisCycle(lastPaidOn: string | null | undefined, dueOn: string | null | undefined, from = new Date()) {

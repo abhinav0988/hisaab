@@ -61,6 +61,7 @@ export async function provisionUserAccounts(db: Database, userId: string, curren
       }
       for (const extra of byType) {
         if (extra.id === primary.id) continue;
+        if (!extra.catalogId) continue;
         if (flagOn(extra.isActive)) {
           await db
             .update(accounts)

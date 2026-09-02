@@ -1,4 +1,5 @@
 import type { Account, AccountType } from "@hisaab/types";
+import { bankLabel } from "./bank";
 
 const ACCOUNT_LABELS: Record<AccountType, string> = {
   CASH: "Cash",
@@ -52,6 +53,7 @@ export function resolveAccountLabel(
   fallback?: string | null,
 ) {
   const match = accounts?.find((item) => item.id === accountId);
+  if (match?.type === "BANK") return bankLabel(match);
   if (match) return accountDisplayName(match);
   return tidyAccountLabel(fallback);
 }
@@ -60,14 +62,32 @@ export function isOpenAccount(account: Account) {
   return account.isActive === true || Number(account.isActive) === 1;
 }
 
-export const PAYMENT_METHOD_TYPES = ["UPI", "CREDIT_CARD"] as const;
+export const PAYMENT_METHOD_TYPES = ["BANK", "UPI", "CREDIT_CARD"] as const;
 
 export function isPaymentMethodType(type: string) {
   return (PAYMENT_METHOD_TYPES as readonly string[]).includes(type);
 }
 
+export function creditKindForAccount(type: string) {
+  if (type === "CREDIT_CARD") return "CARD" as const;
+  if (type === "UPI") return "UPI" as const;
+  return null;
+}
+
 export function paymentMethodAccounts(accounts: Account[]) {
   return uniqueCatalogAccounts(accounts).filter((item) => isPaymentMethodType(item.type));
+}
+
+export function accountsForTransactions(catalogAccounts: Account[], bankAccounts: Account[]) {
+  const channelOptions = uniqueCatalogAccounts(catalogAccounts);
+  const banks = bankAccounts.filter(isOpenAccount);
+  const withoutBank = channelOptions.filter((item) => item.type !== "BANK");
+  const catalogBank = channelOptions.find((item) => item.type === "BANK");
+  const merged = [...withoutBank, ...banks];
+  if (catalogBank && !merged.some((item) => item.id === catalogBank.id)) {
+    merged.push(catalogBank);
+  }
+  return { channelOptions, bankAccounts: banks, allAccounts: merged };
 }
 
 export function uniqueCatalogAccounts(accounts: Account[], keepId?: string) {

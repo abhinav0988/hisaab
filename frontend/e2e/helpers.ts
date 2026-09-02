@@ -17,6 +17,7 @@ const appRoutes = {
   "/reports": { desktop: /Analytics/, mobile: /Analytics/, more: true },
   "/goals": { desktop: /Savings Goals/, mobile: /Savings Goals/, more: true },
   "/premium": { desktop: /^Premium/, mobile: /Premium/, more: true },
+  "/bank": { desktop: /Bank/, mobile: /Bank/, more: true },
   "/settings": { desktop: /Settings/, mobile: /Settings/, more: true },
 } as const;
 
@@ -90,7 +91,8 @@ export async function openAppRoute(
       await nav.getByRole("link", { name: target.mobile, exact: true }).click({ timeout: 10_000 });
     }
   } else {
-    await page.getByRole("navigation", { name: "Main" }).getByRole("link", { name: target.desktop }).click();
+    const navName = route === "/settings" ? "Settings" : "Main";
+    await page.getByRole("navigation", { name: navName }).getByRole("link", { name: target.desktop }).click();
   }
   await expect(page).toHaveURL(new RegExp(`${route.replace("/", "\\/")}(\\?|$)`));
   await expectAppShell(page);

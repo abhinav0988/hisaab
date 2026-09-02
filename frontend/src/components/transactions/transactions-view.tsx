@@ -1,5 +1,5 @@
 "use client";
-import type { Category, Transaction } from "@hisaab/types";
+import type { Category, CreditSpendImpact, Transaction } from "@hisaab/types";
 import { Button, Card, Input, Select } from "@hisaab/ui";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
@@ -28,7 +28,8 @@ import { ConfirmDialog, Modal } from "@/components/layout/modal";
 import { EmptyState, ErrorState, NoResults, PageSkeleton } from "@/components/layout/states";
 import { CategoryGlyph } from "@/components/finance/category-glyph";
 import { dayGroupLabel, money, signedMoney, transactionStamp } from "@/lib/format";
-import { uniqueCatalogAccounts, accountDisplayName, resolveAccountLabel, tidyAccountLabel } from "@/lib/accounts";
+import { accountDisplayName, resolveAccountLabel, tidyAccountLabel, accountsForTransactions } from "@/lib/accounts";
+import { creditSpendCopy } from "@/lib/finance-modules";
 import { accountService } from "@/services/account.service";
 import { categoryService } from "@/services/category.service";
 import { profileService } from "@/services/profile.service";
@@ -103,6 +104,10 @@ export function TransactionsView() {
     queryFn: () => transactionService.list(filters),
   });
   const accounts = useQuery({ queryKey: ["accounts"], queryFn: () => accountService.list() });
+  const bankAccounts = useQuery({
+    queryKey: ["bank-accounts"],
+    queryFn: () => accountService.listBanks(),
+  });
   const categories = useQuery({ queryKey: ["categories"], queryFn: () => categoryService.list() });
   const profile = useQuery({ queryKey: ["profile"], queryFn: () => profileService.get() });
   const remove = useMutation({
@@ -112,24 +117,38 @@ export function TransactionsView() {
       setDeleting(null);
       void queryClient.invalidateQueries({ queryKey: ["transactions"] });
       void queryClient.invalidateQueries({ queryKey: ["dashboard"] });
+      void queryClient.invalidateQueries({ queryKey: ["credit-facilities"] });
+      void queryClient.invalidateQueries({ queryKey: ["credit-dashboard"] });
     },
   });
-  if (transactions.isLoading || accounts.isLoading || categories.isLoading || profile.isLoading)
+  if (transactions.isLoading || accounts.isLoading || bankAccounts.isLoading || categories.isLoading || profile.isLoading)
     return <PageSkeleton />;
   if (
     transactions.isError ||
     !transactions.data ||
     !accounts.data ||
+    !bankAccounts.data ||
     !categories.data ||
     !profile.data
   )
     return <ErrorState retry={() => void transactions.refetch()} />;
-  const saved = () => {
+  const currency = profile.data.defaultCurrency;
+  const { channelOptions, bankAccounts: banks, allAccounts } = accountsForTransactions(
+    accounts.data,
+    bankAccounts.data,
+  );
+  const saved = (credit?: CreditSpendImpact | null, bankMessage?: string) => {
     closeAdd();
     setEditing(null);
-    toast.success("Transaction saved");
+    toast.success(
+      credit ? creditSpendCopy(credit, currency) : bankMessage ?? "Transaction saved",
+    );
     void queryClient.invalidateQueries({ queryKey: ["transactions"] });
     void queryClient.invalidateQueries({ queryKey: ["dashboard"] });
+    void queryClient.invalidateQueries({ queryKey: ["accounts"] });
+    void queryClient.invalidateQueries({ queryKey: ["bank-accounts"] });
+    void queryClient.invalidateQueries({ queryKey: ["credit-facilities"] });
+    void queryClient.invalidateQueries({ queryKey: ["credit-dashboard"] });
   };
   const resetFilters = () => {
     setSearch("");
@@ -245,7 +264,7 @@ export function TransactionsView() {
             <span>Account</span>
             <Select aria-label="Account" value={account} onChange={(event) => setAccount(event.target.value)}>
               <option value="">All accounts</option>
-              {uniqueCatalogAccounts(accounts.data).map((item) => (
+              {allAccounts.map((item) => (
                 <option key={item.id} value={item.id}>
                   {accountDisplayName(item)}
                 </option>
@@ -333,7 +352,7 @@ export function TransactionsView() {
                       {item.merchant || item.notes || "Untitled transaction"}
                     </b>
                     <small className="mt-1 block truncate text-[11px] text-[var(--muted-foreground)]">
-                      {item.categoryName} • {resolveAccountLabel(accounts.data, item.accountId, item.accountName)} •{" "}
+                      {item.categoryName} • {resolveAccountLabel(allAccounts, item.accountId, item.accountName)} •{" "}
                       {transactionStamp(item.transactionAt)}
                     </small>
                   </div>
@@ -471,7 +490,8 @@ export function TransactionsView() {
       </div>
       <Modal open={add} onClose={closeAdd} title="Add transaction" size="lg">
         <TransactionForm
-          accounts={accounts.data}
+          accounts={channelOptions}
+          bankAccounts={banks}
           categories={categories.data}
           currency={profile.data.defaultCurrency}
           defaultType={defaultType}
@@ -480,7 +500,8 @@ export function TransactionsView() {
       </Modal>
       <Modal open={Boolean(editing)} onClose={() => setEditing(null)} title="Edit transaction" size="lg">
         <TransactionForm
-          accounts={accounts.data}
+          accounts={channelOptions}
+          bankAccounts={banks}
           categories={categories.data}
           currency={profile.data.defaultCurrency}
           initial={editing ?? undefined}
