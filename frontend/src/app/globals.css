@@ -3864,6 +3864,154 @@ html[data-theme="dark"] .loan-section-num {
 .cards-cycle button {
   min-width: 140px;
 }
+.cards-cycle-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  position: relative;
+}
+.cards-cycle-menu-btn {
+  display: grid;
+  width: 42px;
+  height: 42px;
+  place-items: center;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--muted-foreground);
+}
+.cards-cycle-menu-pop {
+  right: 0;
+  top: calc(100% + 8px);
+}
+.cards-add-new {
+  display: grid;
+  gap: 6px;
+  width: 100%;
+  margin-top: 12px;
+  padding: 18px 16px;
+  border-radius: 18px;
+  border: 1px dashed color-mix(in srgb, var(--primary) 38%, var(--border));
+  background: color-mix(in srgb, var(--mint) 40%, var(--surface));
+  text-align: center;
+  cursor: pointer;
+  color: var(--primary);
+}
+.cards-add-new strong {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 800;
+}
+.cards-add-new span {
+  font-size: 12px;
+  color: var(--muted-foreground);
+  line-height: 1.45;
+}
+.cards-smart {
+  padding: 16px;
+}
+.cards-smart h2 {
+  margin: 0;
+  font-size: 16px;
+  letter-spacing: -0.03em;
+}
+.cards-insight-list {
+  display: grid;
+  gap: 8px;
+  margin: 12px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.cards-insight-item {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 10px;
+  align-items: start;
+  padding: 12px;
+  border-radius: 14px;
+  border: 1px solid var(--border);
+  background: var(--muted);
+}
+.cards-insight-item.is-danger {
+  border-color: color-mix(in srgb, var(--danger) 22%, var(--border));
+  background: color-mix(in srgb, var(--danger) 8%, var(--surface));
+}
+.cards-insight-item.is-warning {
+  border-color: color-mix(in srgb, var(--warning) 22%, var(--border));
+  background: color-mix(in srgb, var(--gold-soft) 55%, var(--surface));
+}
+.cards-insight-item.is-info {
+  border-color: color-mix(in srgb, #3b82f6 22%, var(--border));
+  background: color-mix(in srgb, #3b82f6 10%, var(--surface));
+}
+.cards-insight-icon {
+  display: grid;
+  width: 32px;
+  height: 32px;
+  place-items: center;
+  border-radius: 10px;
+  background: var(--surface);
+}
+.cards-insight-item.is-danger .cards-insight-icon {
+  color: var(--danger);
+}
+.cards-insight-item.is-warning .cards-insight-icon {
+  color: var(--warning);
+}
+.cards-insight-item.is-info .cards-insight-icon {
+  color: #3b82f6;
+}
+.cards-insight-item strong {
+  display: block;
+  font-size: 13px;
+}
+.cards-insight-item p {
+  margin: 4px 0 0;
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--muted-foreground);
+}
+.cards-footer-tips {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 16px;
+}
+.cards-footer-tips article {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 10px;
+  align-items: start;
+  padding: 14px 16px;
+  border-radius: 16px;
+  border: 1px solid var(--border);
+  background: linear-gradient(180deg, var(--surface), var(--surface-2));
+}
+.cards-footer-tips article.is-warn {
+  border-color: color-mix(in srgb, var(--warning) 24%, var(--border));
+  background: color-mix(in srgb, var(--gold-soft) 50%, var(--surface));
+}
+.cards-footer-tips svg {
+  margin-top: 2px;
+  color: var(--primary);
+}
+.cards-footer-tips article.is-warn svg {
+  color: var(--warning);
+}
+.cards-footer-tips strong {
+  display: block;
+  font-size: 12px;
+  letter-spacing: -0.02em;
+}
+.cards-footer-tips p {
+  margin: 4px 0 0;
+  font-size: 11px;
+  line-height: 1.45;
+  color: var(--muted-foreground);
+}
 .cards-board {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 320px;
@@ -4222,10 +4370,20 @@ html[data-theme="dark"] .loan-section-num {
   .cards-cycle button {
     width: 100%;
   }
+  .cards-cycle-actions {
+    width: 100%;
+    justify-content: stretch;
+  }
+  .cards-footer-tips {
+    grid-template-columns: 1fr 1fr;
+  }
 }
 @media (max-width: 640px) {
   .cards-hero,
   .cards-insights {
+    grid-template-columns: 1fr;
+  }
+  .cards-footer-tips {
     grid-template-columns: 1fr;
   }
 }

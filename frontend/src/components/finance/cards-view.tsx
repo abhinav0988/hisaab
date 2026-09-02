@@ -4,6 +4,7 @@ import type {
   CreditFacility,
   CreditRecentTransaction,
   CreditSpendingSlice,
+  CreditUtilisationMonth,
 } from "@hisaab/types";
 import { Badge, Button, Card, Field, Input } from "@hisaab/ui";
 import {
@@ -37,8 +38,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { forwardRef, useEffect, useMemo, useRef, useState, type CSSProperties, type InputHTMLAttributes, type ReactNode } from "react";
+import { forwardRef, useEffect, useMemo, useRef, useState, type InputHTMLAttributes, type ReactNode } from "react";
 import {
   Area,
   CartesianGrid,
@@ -131,6 +131,11 @@ function formatPct(value: number) {
   return `${value % 1 === 0 ? value.toFixed(0) : value.toFixed(1)}%`;
 }
 
+function deltaPct(current: number, previous: number) {
+  if (!previous) return current ? 100 : 0;
+  return Math.round(((current - previous) / Math.abs(previous)) * 1000) / 10;
+}
+
 function isCardOverdue(card: CreditFacility) {
   if (card.overdueMinor > 0) return true;
   return Boolean(card.dueOn && daysUntil(card.dueOn) < 0);
@@ -150,12 +155,6 @@ function dueCountdown(dueOn: string | null) {
 
 function estimateCreditScore(usedPct: number) {
   return Math.max(300, Math.min(850, Math.round(900 - usedPct * 2.5 - (usedPct > 55 ? 25 : 0))));
-}
-
-function creditScoreLabel(score: number) {
-  if (score >= 750) return "Good";
-  if (score >= 650) return "Fair";
-  return "Needs work";
 }
 
 function buildSpendingTrend(
@@ -261,7 +260,6 @@ const IconInput = forwardRef<
 
 export function CardsView() {
   const client = useQueryClient();
-  const router = useRouter();
   const profile = useQuery({ queryKey: ["profile"], queryFn: () => profileService.get() });
   const facilities = useQuery({
     queryKey: ["credit-facilities"],
@@ -362,9 +360,9 @@ export function CardsView() {
         title="Credit Cards"
         description="Track limits, usage, bills, rewards and spending in one place."
         actions={
-          <Button onClick={() => router.push("/transactions?action=add")}>
+          <Button variant="secondary" onClick={openAdd}>
             <Plus size={14} />
-            Add transaction
+            Add Card
           </Button>
         }
       />
@@ -445,13 +443,18 @@ export function CardsView() {
             dueOn={nextDue}
             canPay={Boolean(payable)}
             onPay={() => payable && setPaying(payable)}
+            onAdd={openAdd}
+            onDownload={() => {
+              downloadCardsCsv(list);
+              toast.success("Card summary downloaded");
+            }}
           />
           <div className="cards-dashboard">
             <div className="cards-dashboard-main">
               <YourCardsSection
                 cards={list}
                 currency={currency}
-                onManage={openAdd}
+                onAdd={openAdd}
                 onEdit={openEdit}
                 onPay={setPaying}
                 onDelete={setDeleting}
@@ -467,8 +470,15 @@ export function CardsView() {
             </div>
             <aside className="cards-dashboard-side">
               <SpendingByCategory currency={currency} spending={dashboard.data?.spending ?? []} compact />
-              <RewardsWidget currency={currency} rewardsMinor={rewardsMinor} />
-              <CreditScoreWidget score={creditScore} usedPct={overview.usedPct} />
+              <CardSmartInsights
+                currency={currency}
+                rewardsMinor={rewardsMinor}
+                usedPct={overview.usedPct}
+                spendMinor={dashboard.data?.cycle.spendMinor ?? cycleSpend}
+                trend={dashboard.data?.trend ?? []}
+                dueOn={nextDue}
+                pendingMinor={pendingBill}
+              />
               <QuickActions
                 onAddCard={openAdd}
                 onReport={() =>
@@ -482,6 +492,11 @@ export function CardsView() {
               />
             </aside>
           </div>
+          <CardsFooterTips
+            usedPct={overview.usedPct}
+            dueOn={nextDue}
+            creditScore={creditScore}
+          />
         </>
       ) : (
         <EmptyState
@@ -652,14 +667,14 @@ function SpendingTrendChart({
 function YourCardsSection({
   cards,
   currency,
-  onManage,
+  onAdd,
   onEdit,
   onPay,
   onDelete,
 }: {
   cards: CreditFacility[];
   currency: string;
-  onManage: () => void;
+  onAdd: () => void;
   onEdit: (card: CreditFacility) => void;
   onPay: (card: CreditFacility) => void;
   onDelete: (card: CreditFacility) => void;
@@ -668,12 +683,9 @@ function YourCardsSection({
     <Card className="cards-your" id="cards-your-list">
       <header className="cards-table-head">
         <div>
-          <h2>Your credit cards</h2>
+          <h2>Your credit card</h2>
           <small>Limits, usage and due dates for each saved card.</small>
         </div>
-        <Button type="button" variant="secondary" onClick={onManage}>
-          Manage cards
-        </Button>
       </header>
       <div className="cards-your-list">
         {cards.map((card) => {
@@ -731,55 +743,156 @@ function YourCardsSection({
           );
         })}
       </div>
-      <p className="cards-table-note">
-        Card spend from Transactions reduces available limit automatically.
-      </p>
-    </Card>
-  );
-}
-
-function RewardsWidget({ currency, rewardsMinor }: { currency: string; rewardsMinor: number }) {
-  return (
-    <Card className="cards-rewards">
-      <header>
-        <Gift size={16} />
-        <div>
-          <h2>Rewards earned</h2>
-          <small>This month from card spend.</small>
-        </div>
-      </header>
-      <strong>{money(rewardsMinor, currency)}</strong>
-      <button type="button" className="cards-link-btn" onClick={() => toast.info("Rewards sync from your card issuer.")}>
-        View details
+      <button type="button" className="cards-add-new" onClick={onAdd}>
+        <strong>
+          <Plus size={16} aria-hidden="true" />
+          Add New Card
+        </strong>
+        <span>Track another card and manage all your spends in one place.</span>
       </button>
     </Card>
   );
 }
 
-function CreditScoreWidget({ score, usedPct }: { score: number; usedPct: number }) {
-  const label = creditScoreLabel(score);
-  const gaugePct = Math.round((score / 850) * 100);
+function CardSmartInsights({
+  currency,
+  rewardsMinor,
+  usedPct,
+  spendMinor,
+  trend,
+  dueOn,
+  pendingMinor,
+}: {
+  currency: string;
+  rewardsMinor: number;
+  usedPct: number;
+  spendMinor: number;
+  trend: CreditUtilisationMonth[];
+  dueOn: string | null;
+  pendingMinor: number;
+}) {
+  const lastMonth = trend.at(-2);
+  const spendDelta = lastMonth ? deltaPct(spendMinor, lastMonth.usedMinor) : 0;
+  const due = dueOn ? dueCountdown(dueOn) : null;
+  const insights: Array<{
+    id: string;
+    tone: "danger" | "warning" | "info";
+    title: string;
+    body: string;
+    icon: LucideIcon;
+  }> = [];
+
+  if (spendDelta >= 20 && spendMinor > 0) {
+    insights.push({
+      id: "spending",
+      tone: "danger",
+      title: "High spending alert",
+      body: `Card spend is ${spendDelta}% higher than last month. Review recent transactions.`,
+      icon: AlertTriangle,
+    });
+  }
+  if (dueOn && due) {
+    insights.push({
+      id: "due",
+      tone: "warning",
+      title: "Payment due soon",
+      body: `${money(pendingMinor, currency)} due on ${displayDateLong(dueOn)} — ${due.label}.`,
+      icon: Calendar,
+    });
+  }
+  if (rewardsMinor > 0) {
+    insights.push({
+      id: "rewards",
+      tone: "info",
+      title: "Rewards earned",
+      body: `You earned ${money(rewardsMinor, currency)} in rewards this month from card spend.`,
+      icon: Gift,
+    });
+  }
+  if (!insights.length) {
+    insights.push({
+      id: "tip",
+      tone: "info",
+      title: "Keep utilisation low",
+      body:
+        usedPct < 30
+          ? "Great job — your card utilisation is below 30%."
+          : "Try to keep utilisation below 30% for a healthier credit profile.",
+      icon: Lightbulb,
+    });
+  }
+
   return (
-    <Card className="cards-score">
+    <Card className="cards-smart">
       <header>
-        <Sparkles size={16} />
         <div>
-          <h2>Credit score booster</h2>
-          <small>Estimated from your utilisation.</small>
+          <h2>Smart insights</h2>
+          <small>Alerts and highlights for your cards.</small>
         </div>
       </header>
-      <div className="cards-score-gauge">
-        <div className="cards-score-ring" style={{ "--score-pct": `${gaugePct}%` } as CSSProperties}>
-          <strong>{score}</strong>
-          <small>{label}</small>
-        </div>
-      </div>
-      <p>
-        {usedPct < 30
-          ? "Great job — utilisation is below 30%."
-          : "Keep utilisation below 30% to maintain a good score."}
-      </p>
+      <ul className="cards-insight-list">
+        {insights.map((item) => {
+          const Icon = item.icon;
+          return (
+            <li key={item.id} className={`cards-insight-item is-${item.tone}`}>
+              <span className="cards-insight-icon" aria-hidden="true">
+                <Icon size={16} />
+              </span>
+              <div>
+                <strong>{item.title}</strong>
+                <p>{item.body}</p>
+              </div>
+            </li>
+          );
+        })}
+      </ul>
     </Card>
+  );
+}
+
+function CardsFooterTips({
+  usedPct,
+  dueOn,
+  creditScore,
+}: {
+  usedPct: number;
+  dueOn: string | null;
+  creditScore: number;
+}) {
+  const due = dueOn ? dueCountdown(dueOn) : null;
+  return (
+    <section className="cards-footer-tips" aria-label="Card tips">
+      <article>
+        <Lightbulb size={15} aria-hidden="true" />
+        <div>
+          <strong>Save on interest</strong>
+          <p>Pay before the due date to avoid interest and late fees.</p>
+        </div>
+      </article>
+      <article className={usedPct > 30 ? "is-warn" : undefined}>
+        <AlertTriangle size={15} aria-hidden="true" />
+        <div>
+          <strong>High utilisation</strong>
+          <p>{formatPct(usedPct)} of your limit is in use this month.</p>
+        </div>
+      </article>
+      <article>
+        <Calendar size={15} aria-hidden="true" />
+        <div>
+          <strong>Upcoming due</strong>
+          <p>{due ? `${due.label} to pay your card bill.` : "Set a due date on your card."}</p>
+        </div>
+      </article>
+      <article>
+        <Sparkles size={15} aria-hidden="true" />
+        <div>
+          <strong>Credit score booster</strong>
+          <p>
+            Score ~{creditScore}. Keep utilisation below 30% to maintain a good score.
+          </p>
+        </div>
+      </article>
+    </section>
   );
 }
 
@@ -964,6 +1077,8 @@ function CycleBanner({
   dueOn,
   canPay,
   onPay,
+  onAdd,
+  onDownload,
 }: {
   currency: string;
   pendingMinor: number;
@@ -972,8 +1087,21 @@ function CycleBanner({
   dueOn: string | null;
   canPay: boolean;
   onPay: () => void;
+  onAdd: () => void;
+  onDownload: () => void;
 }) {
   const due = dueCountdown(dueOn);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!menuOpen) return;
+    function onDoc(event: MouseEvent) {
+      if (!menuRef.current?.contains(event.target as Node)) setMenuOpen(false);
+    }
+    document.addEventListener("mousedown", onDoc);
+    return () => document.removeEventListener("mousedown", onDoc);
+  }, [menuOpen]);
+
   return (
     <section className="cards-cycle">
       <div>
@@ -992,9 +1120,27 @@ function CycleBanner({
         <strong>{dueOn ? displayDateLong(dueOn) : "—"}</strong>
         <span>{due?.label ?? "Set a due date on a card"}</span>
       </div>
-      <Button type="button" disabled={!canPay} onClick={onPay}>
-        Pay card bill
-      </Button>
+      <div className="cards-cycle-actions" ref={menuRef}>
+        <Button type="button" disabled={!canPay} onClick={onPay}>
+          Pay card bill
+        </Button>
+        <button
+          type="button"
+          className="cards-cycle-menu-btn"
+          aria-label="More payment options"
+          aria-expanded={menuOpen}
+          onClick={() => setMenuOpen((value) => !value)}
+        >
+          <MoreVertical size={18} />
+        </button>
+        {menuOpen ? (
+          <div className="bank-menu-pop cards-cycle-menu-pop">
+            <Link href="/transactions" onClick={() => setMenuOpen(false)}>View transactions</Link>
+            <button type="button" onClick={() => { setMenuOpen(false); onAdd(); }}>Add card</button>
+            <button type="button" onClick={() => { setMenuOpen(false); onDownload(); }}>Download summary</button>
+          </div>
+        ) : null}
+      </div>
     </section>
   );
 }
