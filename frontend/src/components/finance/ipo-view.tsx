@@ -77,6 +77,33 @@ function failMessage(error: unknown) {
   return error instanceof ApiError ? error.message : "Could not save. Try again.";
 }
 
+function isAllottedStatus(status: IpoStatus) {
+  return status === "Allotted" || status === "Listed";
+}
+
+function shouldBlockBankHold(status: IpoStatus) {
+  return status === "Applied" || status === "In progress";
+}
+
+function shouldReleaseBankHold(status: IpoStatus) {
+  return status === "Not Allotted";
+}
+
+function incomeCategoryId(categories: { id: string; name: string; type: string }[]) {
+  return (
+    categories.find((item) => item.name === "Salary" && item.type === "INCOME") ??
+    categories.find((item) => item.name === "Other" && item.type === "INCOME") ??
+    categories.find((item) => item.type === "INCOME")
+  )?.id;
+}
+
+function expenseCategoryId(categories: { id: string; name: string; type: string }[]) {
+  return (
+    categories.find((item) => item.name === "Other" && item.type === "EXPENSE") ??
+    categories.find((item) => item.type === "EXPENSE")
+  )?.id;
+}
+
 export function IpoView() {
   const router = useRouter();
   const client = useQueryClient();
@@ -100,21 +127,24 @@ export function IpoView() {
         name: string;
         appliedOn: string;
         currency: string;
+        status: IpoStatus;
       };
       const ipo = await financeService.createIpo(payload.body);
-      if (payload.bankAccountId && categories.data) {
-        const category =
-          categories.data.find((item) => item.name === "Other" && item.type === "EXPENSE") ??
-          categories.data.find((item) => item.type === "EXPENSE");
-        if (category) {
+      if (
+        payload.bankAccountId &&
+        categories.data &&
+        shouldBlockBankHold(body.status)
+      ) {
+        const categoryId = expenseCategoryId(categories.data);
+        if (categoryId) {
           await transactionService.create({
             type: "EXPENSE",
             accountId: payload.bankAccountId,
-            categoryId: category.id,
+            categoryId,
             amountMinor: body.amountMinor,
             currency: body.currency,
             merchant: `IPO: ${body.name}`,
-            notes: "IPO application amount blocked",
+            notes: "IPO application amount blocked in bank",
             transactionAt: new Date(`${body.appliedOn}T12:00:00`).toISOString(),
           });
         }
@@ -130,7 +160,48 @@ export function IpoView() {
   });
 
   const update = useMutation({
-    mutationFn: ({ id, body }: { id: string; body: unknown }) => financeService.updateIpo(id, body),
+    mutationFn: async ({
+      id,
+      body,
+      previous,
+    }: {
+      id: string;
+      body: unknown;
+      previous: IpoApplication;
+    }) => {
+      const patch = body as { status?: IpoStatus };
+      const nextStatus = patch.status ?? previous.status;
+      const result = await financeService.updateIpo(id, body);
+
+      const bankId = previous.paymentSource;
+      const bankHeld =
+        bankId &&
+        (banks.data ?? []).some((item) => item.id === bankId) &&
+        shouldBlockBankHold(previous.status) &&
+        !Boolean(previous.holdReleased);
+
+      if (
+        bankHeld &&
+        shouldReleaseBankHold(nextStatus) &&
+        categories.data
+      ) {
+        const categoryId = incomeCategoryId(categories.data);
+        if (categoryId) {
+          await transactionService.create({
+            type: "INCOME",
+            accountId: bankId,
+            categoryId,
+            amountMinor: previous.amountMinor,
+            currency: previous.currency,
+            merchant: `IPO refund: ${previous.name}`,
+            notes: "IPO not allotted — application amount credited back to bank",
+            transactionAt: new Date().toISOString(),
+          });
+          await financeService.updateIpo(id, { holdReleased: true });
+        }
+      }
+      return result;
+    },
     onSuccess: async () => {
       await refresh();
       setEditing(null);
@@ -155,6 +226,15 @@ export function IpoView() {
     await client.invalidateQueries({ queryKey: ["bank-accounts"] });
     await client.invalidateQueries({ queryKey: ["transactions"] });
   }
+
+  const bankOptions = useMemo(
+    () =>
+      (banks.data ?? []).map((item) => ({
+        id: item.id,
+        label: bankLabel(item),
+      })),
+    [banks.data],
+  );
 
   const paymentLookup = useMemo(() => {
     const bankList = banks.data ?? [];
@@ -628,7 +708,7 @@ export function IpoView() {
         open={addOpen}
         title="Add IPO application"
         currency={currency}
-        paymentOptions={paymentLookup}
+        bankOptions={bankOptions}
         pending={create.isPending}
         onClose={() => setAddOpen(false)}
         onSave={(body, bankAccountId) => create.mutate({ body, bankAccountId })}
@@ -638,12 +718,12 @@ export function IpoView() {
         open={Boolean(editing)}
         title="Edit IPO application"
         currency={currency}
-        paymentOptions={paymentLookup}
+        bankOptions={bankOptions}
         initial={editing ?? undefined}
         pending={update.isPending}
         onClose={() => setEditing(null)}
         onSave={(body) => {
-          if (editing) update.mutate({ id: editing.id, body });
+          if (editing) update.mutate({ id: editing.id, body, previous: editing });
         }}
       />
     </div>
@@ -654,7 +734,7 @@ function IpoFormModal({
   open,
   title,
   currency,
-  paymentOptions,
+  bankOptions,
   initial,
   pending,
   onClose,
@@ -663,7 +743,7 @@ function IpoFormModal({
   open: boolean;
   title: string;
   currency: string;
-  paymentOptions: Array<{ id: string; label: string; group: "bank" | "upi" | "broker" }>;
+  bankOptions: Array<{ id: string; label: string }>;
   initial?: IpoApplication;
   pending: boolean;
   onClose: () => void;
@@ -686,14 +766,15 @@ function IpoFormModal({
   );
   const [status, setStatus] = useState<IpoStatus>(initial?.status ?? "Applied");
   const [appliedOn, setAppliedOn] = useState(initial?.appliedOn ?? isoToday());
-  const [paymentSource, setPaymentSource] = useState(initial?.paymentSource ?? "");
+  const [bankAccountId, setBankAccountId] = useState(
+    initial?.paymentSource && bankOptions.some((item) => item.id === initial.paymentSource)
+      ? initial.paymentSource
+      : "",
+  );
   const [errors, setErrors] = useState<Record<string, string>>({});
 
-  const bankIds = useMemo(
-    () => paymentOptions.filter((item) => item.group === "bank").map((item) => item.id),
-    [paymentOptions],
-  );
-  const deductBankId = bankIds.includes(paymentSource) ? paymentSource : undefined;
+  const allottedView = isAllottedStatus(status);
+  const selectedBankLabel = bankOptions.find((item) => item.id === bankAccountId)?.label;
 
   function parseOptionalMinor(raw: string) {
     const cleaned = raw.replace(/,/g, "").trim();
@@ -706,8 +787,13 @@ function IpoFormModal({
     const next: Record<string, string> = {};
     if (!name.trim()) next.name = "Enter IPO name.";
     if (!amount.trim()) next.amount = "Enter applied amount.";
+    if (!initial && !bankAccountId) next.bank = "Select a bank account.";
+    if (allottedView && allotted.trim() && Number.isNaN(parseOptionalMinor(allotted))) {
+      next.allotted = "Enter a valid allotted amount.";
+    }
     setErrors(next);
     if (Object.keys(next).length) return;
+
     const body = {
       name: name.trim(),
       appliedOn,
@@ -716,13 +802,13 @@ function IpoFormModal({
       lots: Number(lots) || 1,
       status,
       marketCategory,
-      allottedAmountMinor: parseOptionalMinor(allotted),
-      listingPriceMinor: parseOptionalMinor(listing),
-      currentPriceMinor: parseOptionalMinor(current),
-      paymentSource: paymentSource || null,
+      allottedAmountMinor: allottedView ? parseOptionalMinor(allotted) : null,
+      listingPriceMinor: allottedView ? parseOptionalMinor(listing) : null,
+      currentPriceMinor: allottedView ? parseOptionalMinor(current) : null,
+      paymentSource: bankAccountId || initial?.paymentSource || null,
       currency,
     };
-    onSave(body, initial ? undefined : deductBankId);
+    onSave(body, initial ? undefined : bankAccountId || undefined);
   }
 
   return (
@@ -753,22 +839,6 @@ function IpoFormModal({
               ))}
             </Select>
           </Field>
-          <Field label={`Applied Amount (${currency})`} error={errors.amount}>
-            <Input
-              inputMode="decimal"
-              value={amount}
-              onChange={(event) => setAmount(event.target.value)}
-              placeholder="Enter total applied amount"
-            />
-          </Field>
-          <Field label={`Allotted Amount (${currency})`}>
-            <Input
-              inputMode="decimal"
-              value={allotted}
-              onChange={(event) => setAllotted(event.target.value)}
-              placeholder="If allotted"
-            />
-          </Field>
           <Field label="Status">
             <Select
               value={status}
@@ -779,24 +849,46 @@ function IpoFormModal({
               ))}
             </Select>
           </Field>
-          <Field label="Listing Price (₹)">
-            <Input
-              inputMode="decimal"
-              value={listing}
-              onChange={(event) => setListing(event.target.value)}
-              placeholder="Per share"
-            />
-          </Field>
-          <Field label="Current Price (₹)">
-            <Input
-              inputMode="decimal"
-              value={current}
-              onChange={(event) => setCurrent(event.target.value)}
-              placeholder="Live price"
-            />
-          </Field>
+          {!allottedView || !amount.trim() ? (
+            <Field label={`Applied Amount (${currency})`} error={errors.amount}>
+              <Input
+                inputMode="decimal"
+                value={amount}
+                onChange={(event) => setAmount(event.target.value)}
+                placeholder="Enter total applied amount"
+              />
+            </Field>
+          ) : null}
+          {allottedView ? (
+            <>
+              <Field label={`Allotted Amount (${currency})`} error={errors.allotted}>
+                <Input
+                  inputMode="decimal"
+                  value={allotted}
+                  onChange={(event) => setAllotted(event.target.value)}
+                  placeholder="Amount allotted"
+                />
+              </Field>
+              <Field label="Listing Price (₹)">
+                <Input
+                  inputMode="decimal"
+                  value={listing}
+                  onChange={(event) => setListing(event.target.value)}
+                  placeholder="Per share"
+                />
+              </Field>
+              <Field label="Current Price (₹)">
+                <Input
+                  inputMode="decimal"
+                  value={current}
+                  onChange={(event) => setCurrent(event.target.value)}
+                  placeholder="Live price"
+                />
+              </Field>
+            </>
+          ) : null}
         </div>
-        <p className="ipo-form-section">Additional Details (Optional)</p>
+        <p className="ipo-form-section">Additional Details</p>
         <div className="ipo-form-grid">
           <Field label="Application Date">
             <div className="date-shell">
@@ -810,33 +902,40 @@ function IpoFormModal({
               />
             </div>
           </Field>
-          <Field
-            label="Bank / UPI / Broker"
-            hint="Choosing a bank deducts applied amount on first save."
-          >
-            <Select
-              value={paymentSource}
-              onChange={(event) => setPaymentSource(event.target.value)}
-              disabled={Boolean(initial)}
+          {initial ? (
+            <Field label="Bank account">
+              <Input value={selectedBankLabel ?? "—"} disabled />
+            </Field>
+          ) : (
+            <Field
+              label="Bank account"
+              error={errors.bank}
+              hint={
+                shouldBlockBankHold(status)
+                  ? "Applied amount will be deducted from this bank until allotment."
+                  : "Select the savings bank account used for this IPO."
+              }
             >
-              <option value="">Select bank or broker</option>
-              {paymentOptions.map((item) => (
-                <option key={item.id} value={item.id}>
-                  {item.group === "broker"
-                    ? item.label
-                    : item.group === "upi"
-                      ? `UPI · ${item.label}`
-                      : `Bank · ${item.label}`}
-                </option>
-              ))}
-            </Select>
-          </Field>
+              <Select
+                value={bankAccountId}
+                onChange={(event) => setBankAccountId(event.target.value)}
+              >
+                <option value="">Select bank account</option>
+                {bankOptions.map((item) => (
+                  <option key={item.id} value={item.id}>{item.label}</option>
+                ))}
+              </Select>
+            </Field>
+          )}
         </div>
+        {initial?.holdReleased ? (
+          <p className="ipo-form-note">Application amount was credited back to your bank.</p>
+        ) : null}
         <div className="ipo-security">
           <ShieldCheck size={18} aria-hidden="true" />
           <p>
             <strong>We keep your data safe and secure.</strong> Your IPO details are encrypted and
-            stored securely.
+            stored securely. If the IPO is not allotted, the blocked amount returns to your bank.
           </p>
         </div>
         <div className="ipo-form-actions">

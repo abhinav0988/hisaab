@@ -160,6 +160,7 @@ export interface IpoApplication {
   listingPriceMinor: number | null;
   currentPriceMinor: number | null;
   paymentSource: string | null;
+  holdReleased: boolean;
   currency: Currency;
   createdAt: string;
   updatedAt: string;

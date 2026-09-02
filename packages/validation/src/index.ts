@@ -138,6 +138,7 @@ export const ipoSchema = z.object({
   listingPriceMinor: z.number().int().nonnegative().safe().nullable().optional(),
   currentPriceMinor: z.number().int().nonnegative().safe().nullable().optional(),
   paymentSource: z.string().trim().max(120).nullable().optional(),
+  holdReleased: z.boolean().optional(),
   currency: currencySchema,
 });
 export const ipoPatchSchema = ipoSchema.partial();

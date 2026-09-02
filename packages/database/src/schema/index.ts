@@ -493,6 +493,7 @@ export const ipoApplications = sqliteTable(
     listingPriceMinor: integer("listing_price_minor"),
     currentPriceMinor: integer("current_price_minor"),
     paymentSource: text("payment_source"),
+    holdReleased: integer("hold_released", { mode: "boolean" }).notNull().default(false),
     currency: text("currency").notNull(),
     ...timestamps,
   },

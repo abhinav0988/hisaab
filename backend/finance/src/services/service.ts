@@ -155,6 +155,7 @@ export async function createIpo(env: Env, userId: string, input: IpoInput) {
     listingPriceMinor: input.listingPriceMinor ?? null,
     currentPriceMinor: input.currentPriceMinor ?? null,
     paymentSource: input.paymentSource ?? null,
+    holdReleased: input.holdReleased ?? false,
     currency: input.currency,
     createdAt: now(),
     updatedAt: now(),

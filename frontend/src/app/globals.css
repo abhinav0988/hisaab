@@ -5486,6 +5486,15 @@ html[data-theme="dark"] .loan-section-num {
   font-weight: 800;
   color: var(--muted-foreground);
 }
+.ipo-form-note {
+  margin: 8px 0 0;
+  padding: 10px 12px;
+  border-radius: 12px;
+  font-size: 12px;
+  color: var(--primary);
+  background: color-mix(in srgb, var(--mint) 50%, var(--surface));
+  border: 1px solid color-mix(in srgb, var(--primary) 18%, var(--border));
+}
 .ipo-security {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
