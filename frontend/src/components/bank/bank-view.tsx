@@ -23,7 +23,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Area,
   AreaChart,
@@ -92,30 +92,6 @@ function formatAccountUpdated(stamp: string | null | undefined) {
     month: "short",
     year: "numeric",
   }).format(new Date(stamp));
-}
-
-function buildDailyCashFlow(transactions: Transaction[]) {
-  const now = new Date();
-  const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
-  const byDay = Array.from({ length: daysInMonth }, (_, index) => ({
-    label: String(index + 1),
-    income: 0,
-    expense: 0,
-    savings: 0,
-  }));
-  for (const item of transactions) {
-    const date = new Date(item.transactionAt);
-    if (date.getMonth() !== now.getMonth() || date.getFullYear() !== now.getFullYear()) continue;
-    const slot = byDay[date.getDate() - 1];
-    if (!slot) continue;
-    if (item.type === "INCOME") slot.income += item.amountMinor;
-    else slot.expense += item.amountMinor;
-  }
-  let cumulative = 0;
-  return byDay.map((item) => {
-    cumulative += item.income - item.expense;
-    return { ...item, savings: item.income - item.expense, cumulativeSavings: cumulative };
-  });
 }
 
 function buildMonthlyBalanceTrend(
@@ -319,6 +295,11 @@ export function BankView() {
   const [addOpen, setAddOpen] = useState(false);
   const [menuId, setMenuId] = useState<string | null>(null);
   const [balanceRange, setBalanceRange] = useState<BalanceRange>("1M");
+  const [chartsReady, setChartsReady] = useState(false);
+
+  useEffect(() => {
+    setChartsReady(true);
+  }, []);
 
   const profile = useQuery({ queryKey: ["profile"], queryFn: () => profileService.get() });
   const banks = useQuery({ queryKey: ["bank-accounts"], queryFn: () => accountService.listBanks() });
@@ -361,7 +342,12 @@ export function BankView() {
   const txns = transactions.data ?? [];
   const bankTxns = txns.filter((item) => bankIds.has(item.accountId));
   const recent = bankTxns.slice(0, 5);
-  const dailyCashFlow = buildDailyCashFlow(txns);
+  const cashFlowChart = monthly.map((item) => ({
+    label: item.month,
+    income: item.income,
+    expense: item.expense,
+    savings: item.income - item.expense,
+  }));
   const balanceTrend = balanceTrendForRange(
     balanceRange,
     totalMinor,
@@ -523,15 +509,15 @@ export function BankView() {
             <header>
               <div>
                 <h2>Monthly Cash Flow</h2>
-                <small>Daily income, expense and net savings this month.</small>
+                <small>Income, expense and net savings by month.</small>
               </div>
             </header>
             <div className="bank-chart-body">
-              <div className="bank-chart-shell">
-                <ResponsiveContainer width="100%" height="100%">
+              {chartsReady ? (
+                <ResponsiveContainer width="100%" height={280}>
                   <ComposedChart
-                    data={dailyCashFlow}
-                    margin={{ top: 8, right: 12, left: 4, bottom: 0 }}
+                    data={cashFlowChart}
+                    margin={{ top: 8, right: 12, left: 4, bottom: 4 }}
                   >
                     <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
                     <XAxis
@@ -540,7 +526,7 @@ export function BankView() {
                       axisLine={false}
                       tickLine={false}
                       interval="preserveStartEnd"
-                      minTickGap={12}
+                      minTickGap={16}
                     />
                     <YAxis
                       width={56}
@@ -564,31 +550,20 @@ export function BankView() {
                             : "Net savings",
                       ]}
                     />
-                    <Bar
-                      dataKey="income"
-                      fill="var(--primary)"
-                      radius={[4, 4, 0, 0]}
-                      barSize={8}
-                      minPointSize={2}
-                    />
-                    <Bar
-                      dataKey="expense"
-                      fill="var(--danger)"
-                      radius={[4, 4, 0, 0]}
-                      barSize={8}
-                      minPointSize={2}
-                    />
+                    <Bar dataKey="income" fill="#2d8455" radius={[4, 4, 0, 0]} barSize={18} />
+                    <Bar dataKey="expense" fill="#e5484d" radius={[4, 4, 0, 0]} barSize={18} />
                     <Line
                       type="monotone"
-                      dataKey="cumulativeSavings"
+                      dataKey="savings"
                       stroke="#f0f4f8"
                       strokeWidth={2}
-                      strokeDasharray="4 4"
                       dot={false}
                     />
                   </ComposedChart>
                 </ResponsiveContainer>
-              </div>
+              ) : (
+                <div className="bank-chart-shell" aria-hidden="true" />
+              )}
             </div>
             <footer className="bank-chart-foot">
               <span>
@@ -668,8 +643,9 @@ export function BankView() {
               ))}
             </div>
             <div className="bank-trend-shell">
-              <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={balanceTrend} margin={{ top: 4, right: 8, left: 4, bottom: 0 }}>
+              {chartsReady ? (
+                <ResponsiveContainer width="100%" height={180}>
+                  <AreaChart data={balanceTrend} margin={{ top: 4, right: 8, left: 4, bottom: 0 }}>
                 <defs>
                   <linearGradient id="bankBalanceFill" x1="0" y1="0" x2="0" y2="1">
                     <stop
@@ -701,7 +677,8 @@ export function BankView() {
                   strokeWidth={2}
                 />
                 </AreaChart>
-              </ResponsiveContainer>
+                </ResponsiveContainer>
+              ) : null}
             </div>
           </Card>
 

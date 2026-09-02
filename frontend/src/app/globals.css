@@ -4881,14 +4881,18 @@ html[data-theme="dark"] .loan-section-num {
 .bank-chart-body {
   min-height: 280px;
 }
-.bank-chart-shell,
-.bank-trend-shell {
+.bank-chart-body .recharts-responsive-container {
+  min-height: 280px;
+}
+.bank-chart-shell {
   height: 280px;
   width: 100%;
   min-width: 0;
 }
 .bank-trend-shell {
   height: 180px;
+  width: 100%;
+  min-width: 0;
 }
 .bank-chart-foot {
   display: grid;
