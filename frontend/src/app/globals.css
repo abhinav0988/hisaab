@@ -4230,6 +4230,111 @@ html[data-theme="dark"] .loan-section-num {
   }
 }
 
+.bank-kpi-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1.25fr) repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 16px;
+}
+.bank-kpi,
+.bank-kpi-total {
+  display: grid;
+  gap: 6px;
+  padding: 16px 18px;
+  border-radius: 20px;
+}
+.bank-kpi small,
+.bank-kpi-total small {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted-foreground);
+}
+.bank-kpi strong,
+.bank-kpi-total strong {
+  font-size: 22px;
+  letter-spacing: -0.04em;
+}
+.bank-kpi span,
+.bank-kpi-meta {
+  font-size: 11px;
+  color: var(--muted-foreground);
+}
+.bank-kpi.is-expense {
+  border-color: color-mix(in srgb, var(--warning) 22%, var(--border));
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--gold-soft) 70%, var(--surface)),
+    var(--surface)
+  );
+}
+.bank-kpi-total {
+  border-color: color-mix(in srgb, var(--primary) 22%, var(--border));
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--primary) 88%, #0a1510),
+    color-mix(in srgb, var(--primary) 42%, var(--surface))
+  );
+  color: white;
+}
+.bank-kpi-total.is-overdrawn {
+  border-color: color-mix(in srgb, var(--danger) 35%, var(--border));
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--danger) 55%, #1a0a0a),
+    color-mix(in srgb, var(--danger) 18%, var(--surface))
+  );
+}
+.bank-kpi-total small,
+.bank-kpi-total .bank-kpi-meta {
+  color: color-mix(in srgb, white 72%, transparent);
+}
+.bank-kpi-total-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.bank-kpi-total strong.is-negative,
+.bank-kpi strong.is-negative,
+.bank-chart-foot strong.is-negative,
+.bank-trend-meta strong.is-negative {
+  color: var(--danger);
+}
+.bank-overdrawn {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 10px;
+  align-items: start;
+  margin-top: 4px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid color-mix(in srgb, var(--danger) 35%, transparent);
+  background: color-mix(in srgb, var(--danger) 16%, transparent);
+}
+.bank-overdrawn strong {
+  display: block;
+  font-size: 12px;
+}
+.bank-overdrawn p {
+  margin: 4px 0 0;
+  font-size: 11px;
+  line-height: 1.45;
+  color: color-mix(in srgb, white 80%, transparent);
+}
+.bank-overdrawn-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border: 0;
+  background: transparent;
+  color: white;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  text-decoration: underline;
+}
+
 .bank-hero {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
@@ -4425,14 +4530,15 @@ html[data-theme="dark"] .loan-section-num {
 .bank-chart,
 .bank-side-chart,
 .bank-recent,
-.bank-insight,
+.bank-insights,
 .bank-actions {
   padding: 16px;
 }
 .bank-accounts header,
 .bank-chart header,
 .bank-side-chart header,
-.bank-recent header {
+.bank-recent header,
+.bank-insights header {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
@@ -4443,6 +4549,7 @@ html[data-theme="dark"] .loan-section-num {
 .bank-chart h2,
 .bank-side-chart h2,
 .bank-recent h2,
+.bank-insights h2,
 .bank-actions h2 {
   margin: 0;
   font-size: 18px;
@@ -4451,7 +4558,8 @@ html[data-theme="dark"] .loan-section-num {
 .bank-accounts small,
 .bank-chart small,
 .bank-side-chart small,
-.bank-recent small {
+.bank-recent small,
+.bank-insights small {
   display: block;
   margin-top: 4px;
   font-size: 12px;
@@ -4461,15 +4569,48 @@ html[data-theme="dark"] .loan-section-num {
   display: grid;
   gap: 8px;
 }
+.bank-account-table-head {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) repeat(4, minmax(88px, 1fr)) auto;
+  gap: 12px;
+  padding: 0 12px 8px;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--muted-foreground);
+}
 .bank-account-row {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr) 88px minmax(110px, auto) auto;
+  grid-template-columns: minmax(0, 1.4fr) repeat(4, minmax(88px, 1fr)) auto;
   gap: 12px;
   align-items: center;
   padding: 12px;
   border-radius: 16px;
   border: 1px solid var(--border);
   background: linear-gradient(180deg, var(--surface), var(--surface-2));
+}
+.bank-account-ident {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 12px;
+  align-items: center;
+}
+.bank-account-stat small {
+  display: block;
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--muted-foreground);
+  text-transform: uppercase;
+}
+.bank-account-stat strong {
+  display: block;
+  margin-top: 4px;
+  font-size: 14px;
+  letter-spacing: -0.02em;
+}
+.bank-account-stat strong.is-negative {
+  color: var(--danger);
 }
 .bank-badge {
   display: grid;
@@ -4582,6 +4723,64 @@ html[data-theme="dark"] .loan-section-num {
 .bank-chart-body {
   min-height: 280px;
 }
+.bank-chart-foot {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+}
+.bank-chart-foot small {
+  display: block;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--muted-foreground);
+}
+.bank-chart-foot strong {
+  display: block;
+  margin-top: 4px;
+  font-size: 16px;
+  letter-spacing: -0.03em;
+}
+.bank-trend-meta {
+  display: grid;
+  gap: 2px;
+  text-align: right;
+}
+.bank-trend-meta span {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--muted-foreground);
+}
+.bank-trend-meta span.is-positive {
+  color: var(--primary);
+}
+.bank-trend-meta span.is-negative {
+  color: var(--danger);
+}
+.bank-range-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+.bank-range-tabs button {
+  padding: 5px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--muted);
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--muted-foreground);
+}
+.bank-range-tabs button.is-active {
+  border-color: color-mix(in srgb, var(--primary) 28%, var(--border));
+  background: color-mix(in srgb, var(--mint) 55%, var(--surface));
+  color: var(--primary);
+}
 .bank-link {
   font-size: 12px;
   font-weight: 800;
@@ -4634,45 +4833,81 @@ html[data-theme="dark"] .loan-section-num {
   color: var(--muted-foreground);
   line-height: 1.55;
 }
-.bank-insight {
+.bank-recent-foot {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 12px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--primary);
+}
+.bank-insights {
+  padding: 16px;
+}
+.bank-insight-list {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.bank-insight-item {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
-  gap: 12px;
+  gap: 10px;
   align-items: start;
-  background: linear-gradient(
-    135deg,
-    color-mix(in srgb, var(--gold-soft) 70%, var(--surface)),
-    var(--surface)
-  );
+  padding: 12px;
+  border-radius: 14px;
+  border: 1px solid var(--border);
+  background: var(--muted);
 }
-.bank-insight-art {
+.bank-insight-item.is-danger {
+  border-color: color-mix(in srgb, var(--danger) 22%, var(--border));
+  background: color-mix(in srgb, var(--danger) 8%, var(--surface));
+}
+.bank-insight-item.is-warning {
+  border-color: color-mix(in srgb, var(--warning) 22%, var(--border));
+  background: color-mix(in srgb, var(--gold-soft) 55%, var(--surface));
+}
+.bank-insight-item.is-violet {
+  border-color: color-mix(in srgb, #8b5cf6 22%, var(--border));
+  background: color-mix(in srgb, #8b5cf6 10%, var(--surface));
+}
+.bank-insight-item.is-info {
+  border-color: color-mix(in srgb, #3b82f6 22%, var(--border));
+  background: color-mix(in srgb, #3b82f6 10%, var(--surface));
+}
+.bank-insight-icon {
   display: grid;
-  width: 52px;
-  height: 52px;
+  width: 32px;
+  height: 32px;
   place-items: center;
-  border-radius: 16px;
-  background: color-mix(in srgb, var(--gold) 18%, var(--surface));
-  color: var(--gold-foreground, #6f4b08);
+  border-radius: 10px;
+  background: var(--surface);
 }
-.bank-insight small {
+.bank-insight-item.is-danger .bank-insight-icon {
+  color: var(--danger);
+}
+.bank-insight-item.is-warning .bank-insight-icon {
+  color: var(--warning);
+}
+.bank-insight-item.is-violet .bank-insight-icon {
+  color: #8b5cf6;
+}
+.bank-insight-item.is-info .bank-insight-icon {
+  color: #3b82f6;
+}
+.bank-insight-item strong {
   display: block;
-  font-size: 10px;
-  font-weight: 800;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--muted-foreground);
+  font-size: 13px;
+  letter-spacing: -0.02em;
 }
-.bank-insight strong {
-  display: block;
-  margin-top: 4px;
-  font-size: 14px;
-  line-height: 1.45;
-}
-.bank-insight p {
-  margin: 8px 0 0;
-  font-size: 12px;
+.bank-insight-item p {
+  margin: 4px 0 0;
+  font-size: 11px;
+  line-height: 1.5;
   color: var(--muted-foreground);
-  line-height: 1.55;
 }
 .bank-actions-grid {
   display: grid;
@@ -4682,15 +4917,14 @@ html[data-theme="dark"] .loan-section-num {
 }
 .bank-quick {
   display: grid;
-  gap: 8px;
-  justify-items: center;
-  padding: 12px 8px;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 10px;
+  align-items: start;
+  padding: 12px;
   border-radius: 16px;
   border: 1px solid var(--border);
   background: var(--muted);
-  font-size: 11px;
-  font-weight: 800;
-  color: var(--muted-foreground);
+  text-align: left;
 }
 .bank-quick span {
   display: grid;
@@ -4700,6 +4934,20 @@ html[data-theme="dark"] .loan-section-num {
   border-radius: 12px;
   background: var(--surface);
   color: var(--primary);
+}
+.bank-quick strong {
+  display: block;
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--foreground);
+}
+.bank-quick small {
+  display: block;
+  margin-top: 4px;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--muted-foreground);
+  line-height: 1.4;
 }
 .bank-modal-lead {
   margin: 0 0 16px;
@@ -4755,6 +5003,12 @@ html[data-theme="dark"] .loan-section-num {
   margin-top: 4px;
 }
 @media (max-width: 1180px) {
+  .bank-kpi-row {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .bank-kpi-total {
+    grid-column: 1 / -1;
+  }
   .bank-top {
     grid-template-columns: 1fr;
   }
@@ -4769,17 +5023,29 @@ html[data-theme="dark"] .loan-section-num {
   }
 }
 @media (max-width: 860px) {
-  .bank-account-row {
-    grid-template-columns: auto minmax(0, 1fr) auto;
-  }
-  .bank-account-chart {
+  .bank-account-table-head {
     display: none;
+  }
+  .bank-account-row {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+  .bank-account-stat {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+  .bank-account-menu {
+    justify-self: end;
   }
   .bank-form-split {
     grid-template-columns: 1fr;
   }
 }
 @media (max-width: 640px) {
+  .bank-kpi-row {
+    grid-template-columns: 1fr;
+  }
   .bank-summary-strip {
     grid-template-columns: 1fr;
   }
@@ -4787,7 +5053,8 @@ html[data-theme="dark"] .loan-section-num {
     grid-template-columns: 1fr;
   }
   .bank-kpis,
-  .bank-actions-grid {
+  .bank-actions-grid,
+  .bank-chart-foot {
     grid-template-columns: 1fr;
   }
   .bank-hero {

@@ -5,20 +5,21 @@ import { Button, Card, Field, Input, Select } from "@hisaab/ui";
 import { majorToMinor } from "@hisaab/validation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
+  AlertTriangle,
   ArrowDownRight,
   ArrowLeftRight,
+  ArrowRight,
   ArrowUpRight,
-  BarChart3,
+  Banknote,
   Download,
   Eye,
   EyeOff,
   FileText,
-  Landmark,
   MoreVertical,
   Plus,
   ShieldCheck,
-  Trophy,
-  Wallet,
+  Sparkles,
+  TrendingDown,
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -70,17 +71,77 @@ function monthStartIso() {
   return new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
 }
 
-function sparkline(balanceMinor: number, points = 7) {
-  const base = Math.max(balanceMinor, 1);
-  const values: number[] = [];
-  let running = base;
-  for (let index = 0; index < points; index += 1) {
-    const drift = ((index - points / 2) / points) * 0.04;
-    running = Math.round(base * (1 + drift + (Math.sin(index) * 0.02)));
-    values.push(running);
+const BALANCE_RANGES = ["1M", "3M", "6M", "1Y", "All"] as const;
+type BalanceRange = (typeof BALANCE_RANGES)[number];
+
+function accountMonthFlow(accountId: string, transactions: Transaction[]) {
+  let inflow = 0;
+  let outflow = 0;
+  for (const item of transactions) {
+    if (item.accountId !== accountId) continue;
+    if (item.type === "INCOME") inflow += item.amountMinor;
+    else outflow += item.amountMinor;
   }
-  values[points - 1] = balanceMinor;
-  return values.map((value, index) => ({ index, value }));
+  return { inflow, outflow };
+}
+
+function formatAccountUpdated(stamp: string | null | undefined) {
+  if (!stamp) return "—";
+  return new Intl.DateTimeFormat("en-GB", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  }).format(new Date(stamp));
+}
+
+function buildDailyCashFlow(transactions: Transaction[], bankIds: Set<string>) {
+  const now = new Date();
+  const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+  const byDay = Array.from({ length: daysInMonth }, (_, index) => ({
+    label: String(index + 1),
+    income: 0,
+    expense: 0,
+    savings: 0,
+  }));
+  for (const item of transactions) {
+    if (!bankIds.has(item.accountId)) continue;
+    const date = new Date(item.transactionAt);
+    if (date.getMonth() !== now.getMonth() || date.getFullYear() !== now.getFullYear()) continue;
+    const slot = byDay[date.getDate() - 1];
+    if (!slot) continue;
+    if (item.type === "INCOME") slot.income += item.amountMinor;
+    else slot.expense += item.amountMinor;
+  }
+  let cumulative = 0;
+  return byDay.map((item) => {
+    cumulative += item.income - item.expense;
+    return { ...item, savings: item.income - item.expense, cumulativeSavings: cumulative };
+  });
+}
+
+function buildMonthlyBalanceTrend(
+  totalMinor: number,
+  monthly: Array<{ month: string; income: number; expense: number }>,
+  count: number | "all",
+) {
+  const slice = count === "all" ? monthly : monthly.slice(-count);
+  if (!slice.length) return [{ label: "Now", balance: totalMinor }];
+  const points: Array<{ label: string; balance: number }> = [];
+  let running = totalMinor;
+  for (let index = slice.length - 1; index >= 0; index -= 1) {
+    const item = slice[index];
+    if (!item) continue;
+    points.unshift({ label: item.month, balance: running });
+    running -= item.income - item.expense;
+  }
+  return points;
+}
+
+function balanceTrendPct(points: Array<{ balance: number }>) {
+  if (points.length < 2) return 0;
+  const first = points[0]?.balance ?? 0;
+  const last = points[points.length - 1]?.balance ?? 0;
+  return deltaPct(last, first);
 }
 
 function buildBalanceTrend(totalMinor: number, transactions: Transaction[], bankIds: Set<string>) {
@@ -176,12 +237,89 @@ function accountLabelForTxn(txn: Transaction, accounts: Account[]) {
   return txn.accountName ?? "Bank account";
 }
 
+type BankInsight = {
+  id: string;
+  tone: "danger" | "warning" | "violet" | "info";
+  title: string;
+  body: string;
+  icon: typeof AlertTriangle;
+};
+
+function buildBankInsights(
+  data: {
+    incomeThisMonth: number;
+    spentThisMonth: number;
+    netSavings: number;
+  },
+  expenseDelta: number,
+  bankTxns: Transaction[],
+  currency: string,
+): BankInsight[] {
+  const insights: BankInsight[] = [];
+  if (expenseDelta >= 50 && data.spentThisMonth > 0) {
+    insights.push({
+      id: "spending",
+      tone: "danger",
+      title: "High spending alert",
+      body: `Expenses are ${expenseDelta}% higher than last month. Review recent outflows to stay on track.`,
+      icon: AlertTriangle,
+    });
+  }
+  if (data.incomeThisMonth === 0) {
+    insights.push({
+      id: "salary",
+      tone: "warning",
+      title: "Salary not credited",
+      body: "No salary or income was detected on linked bank accounts this month.",
+      icon: Banknote,
+    });
+  }
+  const largest = bankTxns
+    .filter((item) => item.type === "EXPENSE")
+    .sort((left, right) => right.amountMinor - left.amountMinor)[0];
+  if (largest) {
+    insights.push({
+      id: "largest",
+      tone: "violet",
+      title: "Largest expense",
+      body: `${largest.merchant || largest.categoryName || "Expense"} of ${money(largest.amountMinor, currency)} was your biggest outflow.`,
+      icon: TrendingDown,
+    });
+  }
+  insights.push({
+    id: "projected",
+    tone: "info",
+    title: "Projected balance",
+    body:
+      data.netSavings >= 0
+        ? `You are on track to save ${money(data.netSavings, currency)} this month if spending stays steady.`
+        : `You may close the month with net savings of ${money(data.netSavings, currency)} at the current pace.`,
+    icon: Sparkles,
+  });
+  return insights;
+}
+
+function balanceTrendForRange(
+  range: BalanceRange,
+  totalMinor: number,
+  monthly: Array<{ month: string; income: number; expense: number }>,
+  transactions: Transaction[],
+  bankIds: Set<string>,
+) {
+  if (range === "1M") return buildBalanceTrend(totalMinor, transactions, bankIds);
+  if (range === "3M") return buildMonthlyBalanceTrend(totalMinor, monthly, 3);
+  if (range === "6M") return buildMonthlyBalanceTrend(totalMinor, monthly, 6);
+  if (range === "1Y") return buildMonthlyBalanceTrend(totalMinor, monthly, 12);
+  return buildMonthlyBalanceTrend(totalMinor, monthly, "all");
+}
+
 export function BankView() {
   const router = useRouter();
   const client = useQueryClient();
   const [hideBalance, setHideBalance] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
   const [menuId, setMenuId] = useState<string | null>(null);
+  const [balanceRange, setBalanceRange] = useState<BalanceRange>("1M");
 
   const profile = useQuery({ queryKey: ["profile"], queryFn: () => profileService.get() });
   const banks = useQuery({ queryKey: ["bank-accounts"], queryFn: () => accountService.listBanks() });
@@ -224,13 +362,17 @@ export function BankView() {
   const txns = transactions.data ?? [];
   const bankTxns = txns.filter((item) => bankIds.has(item.accountId));
   const recent = bankTxns.slice(0, 5);
-  const cashFlow = monthly.map((item) => ({
-    month: item.month,
-    income: item.income,
-    expense: item.expense,
-    savings: item.income - item.expense,
-  }));
-  const balanceTrend = buildBalanceTrend(totalMinor, bankTxns, bankIds);
+  const dailyCashFlow = buildDailyCashFlow(bankTxns, bankIds);
+  const balanceTrend = balanceTrendForRange(
+    balanceRange,
+    totalMinor,
+    monthly,
+    bankTxns,
+    bankIds,
+  );
+  const balanceDelta = balanceTrendPct(balanceTrend);
+  const isOverdrawn = totalMinor < 0;
+  const insights = buildBankInsights(data, expenseDelta, bankTxns, currency);
   const primaryId =
     accounts.find((item) => (item as Account & { catalogId?: string | null }).catalogId)?.id ??
     accounts[0]?.id;
@@ -251,100 +393,115 @@ export function BankView() {
     <div>
       <PageHeader
         title="Bank"
-        description="Linked balances, cash flow and recent activity across your bank accounts."
+        description="Your complete view of balances, cash flow, and activity across linked bank accounts."
         actions={
-          <Button onClick={() => router.push("/transactions?action=add")}>
+          <Button variant="secondary" onClick={() => setAddOpen(true)}>
             <Plus size={14} />
-            Add transaction
+            Add Bank Account
           </Button>
         }
       />
 
-      <div className="bank-top">
-        <Card className="bank-hero">
-          <div className="bank-hero-copy">
-            <small>Total bank balance</small>
-            <div className="bank-hero-row">
-              <strong>{hideBalance ? "₹ ••••••" : money(totalMinor, currency)}</strong>
-              <button
-                type="button"
-                className="bank-hero-eye"
-                aria-label={hideBalance ? "Show balance" : "Hide balance"}
-                onClick={() => setHideBalance((value) => !value)}
-              >
-                {hideBalance ? <EyeOff size={18} /> : <Eye size={18} />}
-              </button>
+      <div className="bank-kpi-row">
+        <Card className={`bank-kpi-total${isOverdrawn ? " is-overdrawn" : ""}`}>
+          <small>Total bank balance</small>
+          <div className="bank-kpi-total-row">
+            <strong className={isOverdrawn ? "is-negative" : undefined}>
+              {hideBalance ? "₹ ••••••" : money(totalMinor, currency)}
+            </strong>
+            <button
+              type="button"
+              className="bank-hero-eye"
+              aria-label={hideBalance ? "Show balance" : "Hide balance"}
+              onClick={() => setHideBalance((value) => !value)}
+            >
+              {hideBalance ? <EyeOff size={16} /> : <Eye size={16} />}
+            </button>
+          </div>
+          {isOverdrawn ? (
+            <div className="bank-overdrawn">
+              <AlertTriangle size={14} aria-hidden="true" />
+              <div>
+                <strong>Overdrawn</strong>
+                <p>
+                  Your account balance is below zero.{" "}
+                  <button
+                    type="button"
+                    className="bank-overdrawn-link"
+                    onClick={() =>
+                      document.getElementById("bank-accounts")?.scrollIntoView({ behavior: "smooth" })
+                    }
+                  >
+                    View details
+                    <ArrowRight size={12} aria-hidden="true" />
+                  </button>
+                </p>
+              </div>
             </div>
-            <span>
-              Across {accounts.length} linked account{accounts.length === 1 ? "" : "s"} · Last
-              updated {lastUpdatedLabel(accounts)}
-            </span>
-          </div>
-          <div className="bank-hero-art" aria-hidden="true">
-            <Landmark size={72} strokeWidth={1.2} />
-          </div>
+          ) : null}
+          <span className="bank-kpi-meta">
+            Across {accounts.length} linked account{accounts.length === 1 ? "" : "s"} · Last updated{" "}
+            {lastUpdatedLabel(accounts)}
+          </span>
         </Card>
-
-        <div className="bank-top-kpis">
-          <Card className="bank-mini-kpi is-income">
-            <small>Income this month</small>
-            <strong>{money(data.incomeThisMonth, currency)}</strong>
-            <span>
-              <DeltaNote value={incomeDelta} /> vs last month
-            </span>
-          </Card>
-          <Card className="bank-mini-kpi is-expense">
-            <small>Expenses this month</small>
-            <strong>{money(data.spentThisMonth, currency)}</strong>
-            <span>
-              <DeltaNote value={expenseDelta} invert /> vs last month
-            </span>
-          </Card>
-        </div>
-      </div>
-
-      <div className="bank-summary-strip">
-        <Card className="bank-strip-kpi">
-          <Wallet size={15} />
-          <div>
-            <small>Net savings</small>
-            <strong>{money(data.netSavings, currency)}</strong>
-            <span><DeltaNote value={savingsDelta} /> vs last month</span>
-          </div>
+        <Card className="bank-kpi">
+          <small>Income this month</small>
+          <strong>{money(data.incomeThisMonth, currency)}</strong>
+          <span><DeltaNote value={incomeDelta} /> vs last month</span>
         </Card>
-        <Card className="bank-strip-kpi">
-          <BarChart3 size={15} />
-          <div>
-            <small>Avg. monthly balance</small>
-            <strong>{money(avgBalance, currency)}</strong>
-            <span><DeltaNote value={avgDelta} /> vs last month</span>
-          </div>
+        <Card className="bank-kpi is-expense">
+          <small>Expenses this month</small>
+          <strong>{money(data.spentThisMonth, currency)}</strong>
+          <span><DeltaNote value={expenseDelta} invert /> vs last month</span>
+        </Card>
+        <Card className="bank-kpi">
+          <small>Net savings</small>
+          <strong className={data.netSavings < 0 ? "is-negative" : undefined}>
+            {money(data.netSavings, currency)}
+          </strong>
+          <span><DeltaNote value={savingsDelta} /> vs last month</span>
+        </Card>
+        <Card className="bank-kpi">
+          <small>Avg. monthly balance</small>
+          <strong>{money(avgBalance, currency)}</strong>
+          <span><DeltaNote value={avgDelta} /> vs last month</span>
         </Card>
       </div>
 
       <div className="bank-board">
         <div className="bank-board-main">
-          <Card className="bank-accounts">
+          <Card className="bank-accounts" id="bank-accounts">
             <header>
               <div>
                 <h2>Your Bank Accounts</h2>
-                <small>Balances, account type and recent movement.</small>
+                <small>Balances, inflow and outflow for the current month.</small>
               </div>
             </header>
             {accounts.length ? (
-              <ul>
-                {accounts.map((account) => (
-                  <BankAccountRow
-                    key={account.id}
-                    account={account}
-                    currency={currency}
-                    primary={account.id === primaryId}
-                    menuOpen={menuId === account.id}
-                    onMenu={() => setMenuId(menuId === account.id ? null : account.id)}
-                    onEdit={() => router.push("/accounts")}
-                  />
-                ))}
-              </ul>
+              <>
+                <div className="bank-account-table-head" aria-hidden="true">
+                  <span>Account</span>
+                  <span>Current balance</span>
+                  <span>Monthly inflow</span>
+                  <span>Monthly outflow</span>
+                  <span>Last updated</span>
+                  <span />
+                </div>
+                <ul>
+                  {accounts.map((account) => (
+                    <BankAccountRow
+                      key={account.id}
+                      account={account}
+                      currency={currency}
+                      primary={account.id === primaryId}
+                      flow={accountMonthFlow(account.id, bankTxns)}
+                      menuOpen={menuId === account.id}
+                      onMenu={() => setMenuId(menuId === account.id ? null : account.id)}
+                      onEdit={() => router.push("/accounts")}
+                    />
+                  ))}
+                </ul>
+              </>
             ) : (
               <EmptyState
                 title="No bank accounts yet"
@@ -367,37 +524,88 @@ export function BankView() {
             <header>
               <div>
                 <h2>Monthly Cash Flow</h2>
-                <small>Income, expense and net savings by month.</small>
+                <small>Daily income, expense and net savings this month.</small>
               </div>
             </header>
             <div className="bank-chart-body">
               <ResponsiveContainer width="100%" height={280}>
-                <ComposedChart data={cashFlow} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+                <ComposedChart data={dailyCashFlow} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
-                  <XAxis dataKey="month" tick={{ fontSize: 11 }} axisLine={false} tickLine={false} />
+                  <XAxis dataKey="label" tick={{ fontSize: 11 }} axisLine={false} tickLine={false} />
                   <YAxis
                     tick={{ fontSize: 11 }}
                     axisLine={false}
                     tickLine={false}
-                    tickFormatter={(value) => `₹${Math.round(value / 1000)}k`}
+                    tickFormatter={(value) => `₹${Math.round(Number(value) / 1000)}k`}
                   />
                   <Tooltip
                     formatter={(value, name) => [
                       money(Number(value ?? 0), currency),
-                      name === "income" ? "Income" : name === "expense" ? "Expense" : "Net savings",
+                      name === "income"
+                        ? "Income"
+                        : name === "expense"
+                          ? "Expense"
+                          : "Net savings",
                     ]}
                   />
-                  <Bar dataKey="income" fill="var(--primary)" radius={[4, 4, 0, 0]} barSize={18} />
-                  <Bar dataKey="expense" fill="var(--danger)" radius={[4, 4, 0, 0]} barSize={18} />
+                  <Bar dataKey="income" fill="var(--primary)" radius={[4, 4, 0, 0]} barSize={10} />
+                  <Bar dataKey="expense" fill="var(--danger)" radius={[4, 4, 0, 0]} barSize={10} />
                   <Line
                     type="monotone"
-                    dataKey="savings"
+                    dataKey="cumulativeSavings"
                     stroke="#f0f4f8"
                     strokeWidth={2}
+                    strokeDasharray="4 4"
                     dot={false}
                   />
                 </ComposedChart>
               </ResponsiveContainer>
+            </div>
+            <footer className="bank-chart-foot">
+              <span>
+                <small>Total income</small>
+                <strong>{money(data.incomeThisMonth, currency)}</strong>
+              </span>
+              <span>
+                <small>Total expenses</small>
+                <strong>{money(data.spentThisMonth, currency)}</strong>
+              </span>
+              <span>
+                <small>Net savings</small>
+                <strong className={data.netSavings < 0 ? "is-negative" : undefined}>
+                  {money(data.netSavings, currency)}
+                </strong>
+              </span>
+            </footer>
+          </Card>
+
+          <Card className="bank-actions">
+            <h2>Quick Actions</h2>
+            <div className="bank-actions-grid">
+              <QuickAction
+                icon={ArrowLeftRight}
+                label="Transfer entry"
+                description="Record a bank transfer"
+                onClick={() => router.push("/transactions?action=add")}
+              />
+              <QuickAction
+                icon={Plus}
+                label="Add bank account"
+                description="Link a new bank account"
+                onClick={() => setAddOpen(true)}
+              />
+              <QuickAction
+                icon={Download}
+                label="Download statement"
+                description="Get account statement"
+                onClick={handleDownload}
+              />
+              <QuickAction
+                icon={FileText}
+                label="Account summary"
+                description="Detailed account report"
+                onClick={handleDownload}
+              />
             </div>
           </Card>
         </div>
@@ -406,27 +614,59 @@ export function BankView() {
           <Card className="bank-side-chart">
             <header>
               <div>
-                <h2>Balance Trend</h2>
-                <small>This month</small>
+                <h2>Balance trend</h2>
+                <small>{balanceRange === "1M" ? "This month" : balanceRange}</small>
               </div>
-              <strong>{hideBalance ? "••••" : money(totalMinor, currency)}</strong>
+              <div className="bank-trend-meta">
+                <strong className={totalMinor < 0 ? "is-negative" : undefined}>
+                  {hideBalance ? "••••" : money(totalMinor, currency)}
+                </strong>
+                <span className={balanceDelta < 0 ? "is-negative" : balanceDelta > 0 ? "is-positive" : undefined}>
+                  {balanceDelta < 0 ? "↓" : balanceDelta > 0 ? "↑" : "—"} {balanceDelta}%
+                </span>
+              </div>
             </header>
+            <div className="bank-range-tabs">
+              {BALANCE_RANGES.map((item) => (
+                <button
+                  key={item}
+                  type="button"
+                  className={balanceRange === item ? "is-active" : undefined}
+                  onClick={() => setBalanceRange(item)}
+                >
+                  {item}
+                </button>
+              ))}
+            </div>
             <ResponsiveContainer width="100%" height={180}>
               <AreaChart data={balanceTrend} margin={{ top: 4, right: 4, left: 0, bottom: 0 }}>
                 <defs>
                   <linearGradient id="bankBalanceFill" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="var(--primary)" stopOpacity={0.35} />
-                    <stop offset="100%" stopColor="var(--primary)" stopOpacity={0} />
+                    <stop
+                      offset="0%"
+                      stopColor={balanceDelta < 0 ? "var(--danger)" : "var(--primary)"}
+                      stopOpacity={0.35}
+                    />
+                    <stop
+                      offset="100%"
+                      stopColor={balanceDelta < 0 ? "var(--danger)" : "var(--primary)"}
+                      stopOpacity={0}
+                    />
                   </linearGradient>
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
-                <XAxis dataKey="label" tick={{ fontSize: 10 }} axisLine={false} tickLine={false} />
+                <XAxis
+                  dataKey={balanceRange === "1M" ? "label" : "label"}
+                  tick={{ fontSize: 10 }}
+                  axisLine={false}
+                  tickLine={false}
+                />
                 <YAxis hide />
                 <Tooltip formatter={(value) => money(Number(value ?? 0), currency)} />
                 <Area
                   type="monotone"
                   dataKey="balance"
-                  stroke="var(--primary)"
+                  stroke={balanceDelta < 0 ? "var(--danger)" : "var(--primary)"}
                   fill="url(#bankBalanceFill)"
                   strokeWidth={2}
                 />
@@ -437,10 +677,9 @@ export function BankView() {
           <Card className="bank-recent">
             <header>
               <div>
-                <h2>Recent Transactions</h2>
-                <small>Latest activity on bank accounts.</small>
+                <h2>Recent bank activity</h2>
+                <small>Latest transactions on linked accounts.</small>
               </div>
-              <Link href="/transactions" className="bank-link">View all</Link>
             </header>
             {recent.length ? (
               <ul>
@@ -465,34 +704,35 @@ export function BankView() {
             ) : (
               <p className="bank-empty-note">Add a transaction on a bank account to see activity here.</p>
             )}
+            <Link href="/transactions" className="bank-recent-foot">
+              View all transactions
+              <ArrowRight size={14} aria-hidden="true" />
+            </Link>
           </Card>
 
-          <Card className="bank-insight">
-            <div className="bank-insight-art" aria-hidden="true">
-              <Trophy size={28} />
-            </div>
-            <div>
-              <small>Smart Insights</small>
-              <strong>
-                You saved {money(data.netSavings, currency)} this month
-                {savingsDelta > 0 ? ` — ${savingsDelta}% higher than last month.` : "."}
-              </strong>
-              <p>Keep salary and big transfers tagged to bank accounts for clearer cash-flow charts.</p>
-            </div>
-          </Card>
-
-          <Card className="bank-actions">
-            <h2>Quick Actions</h2>
-            <div className="bank-actions-grid">
-              <QuickAction icon={Plus} label="Add Account" onClick={() => setAddOpen(true)} />
-              <QuickAction
-                icon={ArrowLeftRight}
-                label="Fund Transfer"
-                onClick={() => router.push("/transactions?action=add")}
-              />
-              <QuickAction icon={FileText} label="Account Summary" onClick={handleDownload} />
-              <QuickAction icon={Download} label="Download Report" onClick={handleDownload} />
-            </div>
+          <Card className="bank-insights">
+            <header>
+              <div>
+                <h2>Smart insights</h2>
+                <small>Alerts and highlights for your bank accounts.</small>
+              </div>
+            </header>
+            <ul className="bank-insight-list">
+              {insights.map((item) => {
+                const Icon = item.icon;
+                return (
+                  <li key={item.id} className={`bank-insight-item is-${item.tone}`}>
+                    <span className="bank-insight-icon" aria-hidden="true">
+                      <Icon size={16} />
+                    </span>
+                    <div>
+                      <strong>{item.title}</strong>
+                      <p>{item.body}</p>
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
           </Card>
         </div>
       </div>
@@ -515,6 +755,7 @@ function BankAccountRow({
   account,
   currency,
   primary,
+  flow,
   menuOpen,
   onMenu,
   onEdit,
@@ -522,44 +763,48 @@ function BankAccountRow({
   account: Account;
   currency: string;
   primary: boolean;
+  flow: { inflow: number; outflow: number };
   menuOpen: boolean;
   onMenu: () => void;
   onEdit: () => void;
 }) {
   const label = bankLabel(account);
   const tone = bankBrandTone(label);
-  const spark = sparkline(account.currentBalanceMinor);
   const last4 = bankLast4(account.name);
+  const negative = account.currentBalanceMinor < 0;
 
   return (
     <li className="bank-account-row">
-      <span className={`bank-badge is-${tone}`}>{bankAbbrev(label)}</span>
-      <div className="bank-account-copy">
-        <strong>
-          {label}
-          {primary ? <span className="bank-pill">Primary</span> : null}
+      <div className="bank-account-ident">
+        <span className={`bank-badge is-${tone}`}>{bankAbbrev(label)}</span>
+        <div className="bank-account-copy">
+          <strong>
+            {label}
+            {primary ? <span className="bank-pill">Primary</span> : null}
+          </strong>
+          <small>
+            {bankSubtype(account)}
+            {last4 ? ` · ${bankMaskDisplay(last4)}` : ""}
+          </small>
+        </div>
+      </div>
+      <div className="bank-account-stat">
+        <small>Current balance</small>
+        <strong className={negative ? "is-negative" : undefined}>
+          {money(account.currentBalanceMinor, currency)}
         </strong>
-        <small>
-          {bankSubtype(account)}
-          {last4 ? ` · ${bankMaskDisplay(last4)}` : ""}
-        </small>
       </div>
-      <div className="bank-account-chart">
-        <ResponsiveContainer width="100%" height={36}>
-          <AreaChart data={spark} margin={{ top: 4, right: 0, left: 0, bottom: 0 }}>
-            <Area
-              type="monotone"
-              dataKey="value"
-              stroke="var(--primary)"
-              fill="color-mix(in srgb, var(--primary) 12%, transparent)"
-              strokeWidth={1.5}
-              dot={false}
-            />
-          </AreaChart>
-        </ResponsiveContainer>
+      <div className="bank-account-stat">
+        <small>Monthly inflow</small>
+        <strong>{money(flow.inflow, currency)}</strong>
       </div>
-      <div className="bank-account-balance">
-        <strong>{money(account.currentBalanceMinor, currency)}</strong>
+      <div className="bank-account-stat">
+        <small>Monthly outflow</small>
+        <strong>{money(flow.outflow, currency)}</strong>
+      </div>
+      <div className="bank-account-stat">
+        <small>Last updated</small>
+        <strong>{formatAccountUpdated(account.updatedAt)}</strong>
       </div>
       <div className="bank-account-menu">
         <button type="button" aria-label="Account options" onClick={onMenu}>
@@ -579,16 +824,21 @@ function BankAccountRow({
 function QuickAction({
   icon: Icon,
   label,
+  description,
   onClick,
 }: {
   icon: typeof Plus;
   label: string;
+  description: string;
   onClick: () => void;
 }) {
   return (
     <button type="button" className="bank-quick" onClick={onClick}>
       <span><Icon size={18} /></span>
-      <small>{label}</small>
+      <div>
+        <strong>{label}</strong>
+        <small>{description}</small>
+      </div>
     </button>
   );
 }
