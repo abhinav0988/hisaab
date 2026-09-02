@@ -1,7 +1,7 @@
-import { accounts, createDatabase, transactions } from "@hisaab/database";
+import { accounts, accountBalanceMinorSql, createDatabase, transactions } from "@hisaab/database";
 import type { z } from "zod";
 import type { accountSchema, accountPatchSchema } from "@hisaab/validation";
-import { and, eq, isNull, sql } from "drizzle-orm";
+import { and, eq, isNull } from "drizzle-orm";
 import { audit } from "../../shared/audit";
 import { notFound } from "../../shared/errors";
 import { newId, now } from "../../shared/http";
@@ -17,7 +17,7 @@ export async function listAccounts(env: Env, userId: string) {
       type: accounts.type,
       institutionName: accounts.institutionName,
       openingBalanceMinor: accounts.openingBalanceMinor,
-      currentBalanceMinor: sql<number>`${accounts.openingBalanceMinor} + coalesce(sum(case when ${transactions.type} = 'INCOME' then ${transactions.amountMinor} else -${transactions.amountMinor} end), 0)`,
+      currentBalanceMinor: accountBalanceMinorSql,
       currency: accounts.currency,
       isActive: accounts.isActive,
       createdAt: accounts.createdAt,

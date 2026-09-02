@@ -55,37 +55,29 @@ export function displayCreditCards(
   liveCards: Array<{ id: string; name: string; currentBalanceMinor: number; currency?: Currency }>,
   facilities: CreditFacility[],
 ): CreditFacility[] {
-  const extras = facilities.filter((item) => item.kind === "CARD");
-  if (!liveCards.length) return extras;
-  const byAccount = new Map(
-    extras.filter((item) => item.accountId).map((item) => [item.accountId as string, item]),
-  );
-  const usedIds = new Set<string>();
-  const merged = liveCards.map((account) => {
-    const extra = byAccount.get(account.id) ?? extras.find((item) => item.name === account.name);
-    if (extra) usedIds.add(extra.id);
-    return {
-      id: extra?.id ?? account.id,
-      kind: "CARD" as const,
-      name: account.name,
-      provider: extra?.provider ?? null,
-      mask: extra?.mask ?? null,
-      accountId: extra?.accountId ?? account.id,
-      limitMinor: extra?.limitMinor ?? 0,
-      usedMinor: Math.abs(account.currentBalanceMinor),
-      todaySpendMinor: extra?.todaySpendMinor ?? 0,
-      overdueMinor: extra?.overdueMinor ?? 0,
-      holdMinor: extra?.holdMinor ?? 0,
-      minDueMinor: extra?.minDueMinor ?? 0,
-      dueOn: extra?.dueOn ?? null,
-      cycleStartOn: extra?.cycleStartOn ?? null,
-      lastPaidOn: extra?.lastPaidOn ?? null,
-      currency: extra?.currency ?? account.currency ?? ("INR" satisfies Currency),
-      createdAt: extra?.createdAt ?? "",
-      updatedAt: extra?.updatedAt ?? "",
-    };
-  });
-  return [...merged, ...extras.filter((item) => !usedIds.has(item.id))];
+  const cards = facilities.filter((item) => item.kind === "CARD");
+  if (cards.length) return cards;
+  if (!liveCards.length) return [];
+  return liveCards.map((account) => ({
+    id: account.id,
+    kind: "CARD" as const,
+    name: account.name,
+    provider: null,
+    mask: null,
+    accountId: account.id,
+    limitMinor: 0,
+    usedMinor: Math.abs(account.currentBalanceMinor),
+    todaySpendMinor: 0,
+    overdueMinor: 0,
+    holdMinor: 0,
+    minDueMinor: 0,
+    dueOn: null,
+    cycleStartOn: null,
+    lastPaidOn: null,
+    currency: account.currency ?? ("INR" satisfies Currency),
+    createdAt: "",
+    updatedAt: "",
+  }));
 }
 
 export function cardLast4(mask: string | null | undefined) {

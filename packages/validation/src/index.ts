@@ -109,6 +109,7 @@ export const goalContributionSchema = z.object({
 
 export const isoDateSchema = z.string().regex(/^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$/, "Use YYYY-MM-DD");
 export const ipoStatusSchema = z.enum(["Applied", "In progress", "Allotted", "Not Allotted", "Listed"]);
+export const ipoMarketCategorySchema = z.enum(["Mainboard", "SME"]);
 export const lendKindSchema = z.enum(["lent", "borrowed"]);
 export const lendStatusSchema = z.enum(["pending", "due", "settled"]);
 export const creditFacilityKindSchema = z.enum(["CARD", "UPI"]);
@@ -132,6 +133,11 @@ export const ipoSchema = z.object({
   amountMinor: z.number().int().positive().safe(),
   lots: z.number().int().positive().max(1000),
   status: ipoStatusSchema,
+  marketCategory: ipoMarketCategorySchema.default("Mainboard"),
+  allottedAmountMinor: z.number().int().nonnegative().safe().nullable().optional(),
+  listingPriceMinor: z.number().int().nonnegative().safe().nullable().optional(),
+  currentPriceMinor: z.number().int().nonnegative().safe().nullable().optional(),
+  paymentSource: z.string().trim().max(120).nullable().optional(),
   currency: currencySchema,
 });
 export const ipoPatchSchema = ipoSchema.partial();

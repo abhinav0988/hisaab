@@ -74,6 +74,7 @@ export async function adjustCreditSpend(
   if (!account) return null;
   const kind = facilityKind(account.type);
   if (!kind) return null;
+  if (kind === "CARD" && !input.facilityId && input.deltaMinor > 0) return null;
   if (kind === "UPI" && !input.facilityId) return null;
   const rows = await db
     .select()

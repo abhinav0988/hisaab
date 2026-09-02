@@ -131,6 +131,7 @@ export async function createTransaction(env: Env, userId: string, input: CreateT
     id: newId(),
     userId,
     ...data,
+    creditFacilityId: creditFacilityId ?? null,
     merchant: data.merchant ?? null,
     notes: data.notes ?? null,
     recurringTransactionId: null,
@@ -155,7 +156,7 @@ export async function createTransaction(env: Env, userId: string, input: CreateT
   const credit = await adjustCreditSpend(db, {
     userId,
     accountId: value.accountId,
-    facilityId: creditFacilityId,
+    facilityId: creditFacilityId ?? value.creditFacilityId,
     deltaMinor: creditSpendDelta(value.type, value.amountMinor),
   });
   await audit(db, {
@@ -189,9 +190,14 @@ export async function updateTransaction(
   const db = createDatabase(env.DB);
   const { tags: tagNames, creditFacilityId, ...data } = input;
   delete data.recurring;
+  const nextFacilityId =
+    creditFacilityId ??
+    (input.accountId === undefined || input.accountId === existing.accountId
+      ? existing.creditFacilityId
+      : null);
   await db
     .update(transactions)
-    .set({ ...data, updatedAt: now() })
+    .set({ ...data, creditFacilityId: nextFacilityId, updatedAt: now() })
     .where(and(eq(transactions.id, id), eq(transactions.userId, userId)));
   if (tagNames) {
     await db.delete(transactionTags).where(eq(transactionTags.transactionId, id));
@@ -212,13 +218,16 @@ export async function updateTransaction(
   await adjustCreditSpend(db, {
     userId,
     accountId: existing.accountId,
-    facilityId: existing.accountId === merged.accountId ? creditFacilityId : undefined,
+    facilityId:
+      existing.accountId === merged.accountId
+        ? (creditFacilityId ?? existing.creditFacilityId)
+        : existing.creditFacilityId,
     deltaMinor: -creditSpendDelta(existing.type, existing.amountMinor),
   });
   const credit = await adjustCreditSpend(db, {
     userId,
     accountId: merged.accountId,
-    facilityId: creditFacilityId,
+    facilityId: nextFacilityId,
     deltaMinor: creditSpendDelta(merged.type, input.amountMinor ?? existing.amountMinor),
   });
   await audit(db, {
@@ -242,6 +251,7 @@ export async function deleteTransaction(env: Env, userId: string, id: string) {
   await adjustCreditSpend(db, {
     userId,
     accountId: existing.accountId,
+    facilityId: existing.creditFacilityId,
     deltaMinor: -creditSpendDelta(existing.type, existing.amountMinor),
   });
   await audit(db, { userId, action: "DELETE", entityType: "TRANSACTION", entityId: id });

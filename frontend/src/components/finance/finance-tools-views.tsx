@@ -2,8 +2,6 @@
 
 import type {
   Investment,
-  IpoApplication,
-  IpoStatus,
   LendKind,
   LendRecord,
 } from "@hisaab/types";
@@ -22,7 +20,6 @@ import { ApiError } from "@/lib/api-client";
 import { money } from "@/lib/format";
 import {
   displayDate,
-  ipoStatusClass,
   isoPlusDays,
   isoToday,
   openLends,
@@ -236,160 +233,6 @@ function InvestmentForm({
           <Input type="number" min="0" step="0.01" value={sip} onChange={(event) => setSip(event.target.value)} />
         </Field>
       ) : null}
-      <div className="flex justify-end sm:col-span-2">
-        <Button type="submit" disabled={pending}>
-          {pending ? "Saving…" : "Save"}
-        </Button>
-      </div>
-    </form>
-  );
-}
-
-export function IpoView() {
-  const client = useQueryClient();
-  const profile = useQuery({ queryKey: ["profile"], queryFn: () => profileService.get() });
-  const ipos = useQuery({ queryKey: ["ipos"], queryFn: () => financeService.listIpos(), retry: false });
-  const [open, setOpen] = useState<"add" | IpoApplication | null>(null);
-  const create = useMutation({
-    mutationFn: (body: unknown) => financeService.createIpo(body),
-    onSuccess: async () => {
-      await client.invalidateQueries({ queryKey: ["ipos"] });
-      setOpen(null);
-      toast.success("IPO saved");
-    },
-    onError: (error) => toast.error(failMessage(error)),
-  });
-  if (profile.isLoading || ipos.isLoading) return <PageSkeleton />;
-  if (ipos.isError) return <ErrorState retry={() => void ipos.refetch()} />;
-  const currency = profile.data?.defaultCurrency ?? "INR";
-  const list = ipos.data ?? [];
-  const applied = sumMinor(list, (item) => item.amountMinor);
-  return (
-    <div>
-      <PageHeader
-        eyebrow="Applications"
-        title="IPO Tracker"
-        description="Follow applications from apply date through allotment and listing."
-        actions={<Button onClick={() => setOpen("add")}>Add IPO</Button>}
-      />
-      <Metrics
-        items={[
-          { label: "Applied amount", value: money(applied, currency) },
-          { label: "Active applications", value: String(list.length) },
-          { label: "Allotted", value: String(list.filter((item) => item.status === "Allotted").length) },
-          { label: "Listed", value: String(list.filter((item) => item.status === "Listed").length) },
-        ]}
-      />
-      {list.length ? (
-        <Card className="oc-card">
-          <div className="table-scroll">
-            <table className="finance-tools-table">
-              <thead>
-                <tr>
-                  <th>IPO</th>
-                  <th>Applied</th>
-                  <th>Amount</th>
-                  <th>Lots</th>
-                  <th>Allotment</th>
-                  <th>Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {list.map((item) => (
-                  <tr key={item.id}>
-                    <td>
-                      <button type="button" className="font-extrabold" onClick={() => setOpen(item)}>
-                        {item.name}
-                      </button>
-                    </td>
-                    <td>{displayDate(item.appliedOn)}</td>
-                    <td>{money(item.amountMinor, currency)}</td>
-                    <td>{item.lots}</td>
-                    <td>{displayDate(item.allotmentOn)}</td>
-                    <td>
-                      <span className={`oc-status ${ipoStatusClass(item.status)}`}>{item.status}</span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </Card>
-      ) : (
-        <EmptyState
-          title="No IPO applications"
-          description="Add an application to track allotment status and amount blocked."
-          action={<Button onClick={() => setOpen("add")}>Add IPO</Button>}
-        />
-      )}
-      <Modal open={open === "add"} onClose={() => setOpen(null)} title="Add IPO application">
-        <IpoForm currency={currency} pending={create.isPending} onSave={(body) => create.mutate(body)} />
-      </Modal>
-      <Modal
-        open={typeof open === "object" && open !== null}
-        onClose={() => setOpen(null)}
-        title={typeof open === "object" && open ? open.name : "IPO"}
-      >
-        {typeof open === "object" && open ? (
-          <div className="grid gap-3 sm:grid-cols-2">
-            <Detail label="Applied" value={displayDate(open.appliedOn)} />
-            <Detail label="Amount" value={money(open.amountMinor, currency)} />
-            <Detail label="Lots" value={String(open.lots)} />
-            <Detail label="Status" value={open.status} />
-          </div>
-        ) : null}
-      </Modal>
-    </div>
-  );
-}
-
-function IpoForm({
-  currency,
-  pending,
-  onSave,
-}: {
-  currency: string;
-  pending: boolean;
-  onSave: (body: unknown) => void;
-}) {
-  const [name, setName] = useState("");
-  const [amount, setAmount] = useState("");
-  const [lots, setLots] = useState("1");
-  const [status, setStatus] = useState<IpoStatus>("Applied");
-  return (
-    <form
-      className="grid gap-3 sm:grid-cols-2"
-      onSubmit={(event) => {
-        event.preventDefault();
-        onSave({
-          name: name || "New IPO",
-          appliedOn: isoToday(),
-          allotmentOn: isoPlusDays(10),
-          amountMinor: majorToMinor(amount || "1"),
-          lots: Number(lots) || 1,
-          status,
-          currency,
-        });
-      }}
-    >
-      <Field label="IPO name">
-        <Input value={name} onChange={(event) => setName(event.target.value)} required />
-      </Field>
-      <Field label="Lots">
-        <Input type="number" min="1" value={lots} onChange={(event) => setLots(event.target.value)} />
-      </Field>
-      <Field label="Applied amount">
-        <Input type="number" min="0.01" step="0.01" value={amount} onChange={(event) => setAmount(event.target.value)} required />
-      </Field>
-      <Field label="Status">
-        <Select value={status} onChange={(event) => setStatus(event.target.value as IpoStatus)}>
-          <option>Applied</option>
-          <option>In progress</option>
-          <option>Allotted</option>
-          <option>Not Allotted</option>
-          <option>Listed</option>
-        </Select>
-      </Field>
       <div className="flex justify-end sm:col-span-2">
         <Button type="submit" disabled={pending}>
           {pending ? "Saving…" : "Save"}

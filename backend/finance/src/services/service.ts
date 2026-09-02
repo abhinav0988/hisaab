@@ -150,6 +150,11 @@ export async function createIpo(env: Env, userId: string, input: IpoInput) {
     amountMinor: input.amountMinor,
     lots: input.lots,
     status: input.status,
+    marketCategory: input.marketCategory ?? "Mainboard",
+    allottedAmountMinor: input.allottedAmountMinor ?? null,
+    listingPriceMinor: input.listingPriceMinor ?? null,
+    currentPriceMinor: input.currentPriceMinor ?? null,
+    paymentSource: input.paymentSource ?? null,
     currency: input.currency,
     createdAt: now(),
     updatedAt: now(),
@@ -414,6 +419,10 @@ async function cardRecentAndCycle(env: Env, userId: string) {
             t.amount_minor AS amountMinor,
             t.transaction_at AS transactionAt,
             coalesce(
+              (
+                SELECT name FROM credit_facilities
+                WHERE user_id = t.user_id AND id = t.credit_facility_id
+              ),
               (
                 SELECT name FROM credit_facilities
                 WHERE user_id = t.user_id AND kind = 'CARD' AND account_id = t.account_id

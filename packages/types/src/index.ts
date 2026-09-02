@@ -128,6 +128,7 @@ export interface GoalContribution {
 }
 
 export type IpoStatus = "Applied" | "In progress" | "Allotted" | "Not Allotted" | "Listed";
+export type IpoMarketCategory = "Mainboard" | "SME";
 export type LendKind = "lent" | "borrowed";
 export type LendStatus = "pending" | "due" | "settled";
 export type CreditFacilityKind = "CARD" | "UPI";
@@ -154,6 +155,11 @@ export interface IpoApplication {
   amountMinor: number;
   lots: number;
   status: IpoStatus;
+  marketCategory: IpoMarketCategory;
+  allottedAmountMinor: number | null;
+  listingPriceMinor: number | null;
+  currentPriceMinor: number | null;
+  paymentSource: string | null;
   currency: Currency;
   createdAt: string;
   updatedAt: string;

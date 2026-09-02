@@ -4441,3 +4441,681 @@ html[data-theme="dark"] .loan-section-num {
     height: 72px;
   }
 }
+
+.ipo-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 16px;
+  align-items: center;
+  margin-bottom: 16px;
+  padding: 22px 24px;
+  border-radius: 24px;
+  border: 1px solid color-mix(in srgb, var(--primary) 22%, var(--border));
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--mint) 70%, var(--surface)),
+    var(--surface)
+  );
+}
+.ipo-hero small {
+  display: block;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted-foreground);
+}
+.ipo-hero strong {
+  display: block;
+  margin-top: 8px;
+  font-size: clamp(28px, 4vw, 38px);
+  letter-spacing: -0.05em;
+}
+.ipo-hero span {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 8px;
+  font-size: 12px;
+  color: var(--muted-foreground);
+}
+.ipo-refresh {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--primary);
+}
+.ipo-hero-art {
+  display: grid;
+  width: 108px;
+  height: 108px;
+  place-items: center;
+  border-radius: 24px;
+  background: color-mix(in srgb, var(--primary) 14%, var(--surface));
+  color: var(--primary);
+}
+.ipo-kpis {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 16px;
+}
+.ipo-board {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 320px;
+  gap: 16px;
+  align-items: start;
+}
+.ipo-list,
+.ipo-calendar {
+  padding: 16px;
+}
+.ipo-list header,
+.ipo-calendar header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+.ipo-list h2,
+.ipo-calendar h2 {
+  margin: 0;
+  font-size: 18px;
+  letter-spacing: -0.03em;
+}
+.ipo-list small,
+.ipo-calendar small {
+  display: block;
+  margin-top: 4px;
+  font-size: 12px;
+  color: var(--muted-foreground);
+}
+.ipo-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--primary);
+}
+.ipo-list ul {
+  display: grid;
+  gap: 8px;
+}
+.ipo-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) auto auto auto auto;
+  gap: 12px;
+  align-items: center;
+  padding: 12px;
+  border-radius: 16px;
+  border: 1px solid var(--border);
+  background: linear-gradient(180deg, var(--surface), var(--surface-2));
+}
+.ipo-row-main strong {
+  display: block;
+  font-size: 14px;
+}
+.ipo-row-main small {
+  display: block;
+  margin-top: 4px;
+  font-size: 11px;
+  color: var(--muted-foreground);
+}
+.ipo-pill {
+  border-radius: 999px;
+  padding: 4px 10px;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.ipo-pill.is-applied,
+.ipo-pill.is-progress {
+  background: color-mix(in srgb, #4d8ec8 16%, var(--surface));
+  color: #4d8ec8;
+}
+.ipo-pill.is-allotted {
+  background: color-mix(in srgb, var(--primary) 16%, var(--surface));
+  color: var(--primary);
+}
+.ipo-pill.is-listed {
+  background: color-mix(in srgb, #8b7cc9 16%, var(--surface));
+  color: #8b7cc9;
+}
+.ipo-pill.is-rejected {
+  background: color-mix(in srgb, var(--danger) 14%, var(--surface));
+  color: var(--danger);
+}
+.ipo-row-amount {
+  font-size: 14px;
+  letter-spacing: -0.03em;
+}
+.ipo-row-date {
+  font-size: 11px;
+  color: var(--muted-foreground);
+}
+.ipo-row-menu {
+  position: relative;
+}
+.ipo-row-menu button {
+  display: grid;
+  width: 32px;
+  height: 32px;
+  place-items: center;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--muted);
+}
+.ipo-menu-pop {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 6px);
+  z-index: 20;
+  display: grid;
+  min-width: 120px;
+  gap: 4px;
+  padding: 8px;
+  border-radius: 14px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  box-shadow: 0 16px 40px color-mix(in srgb, var(--foreground) 12%, transparent);
+}
+.ipo-menu-pop button {
+  padding: 8px 10px;
+  border-radius: 10px;
+  font-size: 12px;
+  font-weight: 700;
+  text-align: left;
+}
+.ipo-menu-pop button:hover {
+  background: var(--muted);
+}
+.ipo-secure {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 14px;
+  font-size: 11px;
+  color: var(--muted-foreground);
+}
+.ipo-calendar ul {
+  display: grid;
+  gap: 10px;
+}
+.ipo-calendar li {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 10px;
+  align-items: center;
+}
+.ipo-cal-icon {
+  display: grid;
+  width: 36px;
+  height: 36px;
+  place-items: center;
+  border-radius: 12px;
+  background: var(--muted);
+  color: var(--primary);
+}
+.ipo-calendar li strong {
+  display: block;
+  font-size: 13px;
+}
+.ipo-calendar li small {
+  display: block;
+  margin-top: 2px;
+  font-size: 11px;
+  color: var(--muted-foreground);
+}
+.ipo-empty-note {
+  font-size: 12px;
+  color: var(--muted-foreground);
+  line-height: 1.55;
+}
+.ipo-form {
+  display: grid;
+  gap: 14px;
+}
+.ipo-form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+.ipo-form-section {
+  margin: 4px 0 0;
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--muted-foreground);
+}
+.ipo-security {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 10px;
+  align-items: start;
+  padding: 12px;
+  border-radius: 16px;
+  border: 1px solid color-mix(in srgb, #4d8ec8 22%, var(--border));
+  background: color-mix(in srgb, #4d8ec8 10%, var(--surface));
+  font-size: 12px;
+  line-height: 1.55;
+  color: var(--muted-foreground);
+}
+.ipo-security svg {
+  color: #4d8ec8;
+  margin-top: 2px;
+}
+.ipo-form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+@media (max-width: 1180px) {
+  .ipo-kpis {
+    grid-template-columns: 1fr 1fr;
+  }
+  .ipo-board {
+    grid-template-columns: 1fr;
+  }
+}
+@media (max-width: 860px) {
+  .ipo-row {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+  .ipo-row-date {
+    display: none;
+  }
+  .ipo-form-grid {
+    grid-template-columns: 1fr;
+  }
+}
+@media (max-width: 640px) {
+  .ipo-kpis {
+    grid-template-columns: 1fr;
+  }
+  .ipo-hero {
+    grid-template-columns: 1fr;
+  }
+  .ipo-hero-art {
+    width: 72px;
+    height: 72px;
+  }
+}
+
+.ipo-dash {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 300px;
+  gap: 16px;
+  align-items: start;
+}
+.ipo-dash-main,
+.ipo-dash-side {
+  display: grid;
+  gap: 12px;
+}
+.ipo-summary-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 16px;
+  align-items: center;
+  padding: 18px 20px;
+}
+.ipo-summary-cards {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+.ipo-summary-card small {
+  display: block;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted-foreground);
+}
+.ipo-summary-card strong {
+  display: block;
+  margin-top: 8px;
+  font-size: clamp(18px, 2vw, 24px);
+  letter-spacing: -0.04em;
+}
+.ipo-summary-card strong.is-loss {
+  color: var(--danger);
+}
+.ipo-summary-card span {
+  display: block;
+  margin-top: 6px;
+  font-size: 11px;
+  color: var(--muted-foreground);
+}
+.ipo-summary-art {
+  display: grid;
+  width: 100px;
+  height: 100px;
+  place-items: center;
+  border-radius: 24px;
+  background: color-mix(in srgb, var(--primary) 14%, var(--surface));
+  color: var(--primary);
+}
+.ipo-gain {
+  color: var(--primary);
+  font-weight: 800;
+}
+.ipo-loss {
+  color: var(--danger);
+  font-weight: 800;
+}
+.ipo-filter-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+}
+.ipo-period-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.ipo-period-tabs button {
+  border-radius: 999px;
+  padding: 6px 12px;
+  font-size: 11px;
+  font-weight: 800;
+  color: var(--muted-foreground);
+  border: 1px solid transparent;
+}
+.ipo-period-tabs button.is-active {
+  border-color: color-mix(in srgb, var(--primary) 22%, var(--border));
+  background: color-mix(in srgb, var(--mint) 70%, var(--surface));
+  color: var(--primary);
+}
+.ipo-filter-meta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.ipo-range {
+  font-size: 11px;
+  color: var(--muted-foreground);
+}
+.ipo-filter-btn {
+  min-height: 36px;
+}
+.ipo-charts-row {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+.ipo-chart-card {
+  padding: 14px;
+}
+.ipo-chart-card header h3 {
+  margin: 0;
+  font-size: 14px;
+}
+.ipo-chart-card header small {
+  display: block;
+  margin-top: 4px;
+  font-size: 11px;
+  color: var(--muted-foreground);
+}
+.ipo-chart-kpi {
+  display: block;
+  margin: 8px 0 4px;
+  font-size: 20px;
+  letter-spacing: -0.03em;
+}
+.ipo-donut-wrap {
+  position: relative;
+  height: 140px;
+}
+.ipo-donut-center {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-content: center;
+  text-align: center;
+  pointer-events: none;
+}
+.ipo-donut-center strong {
+  font-size: 18px;
+}
+.ipo-donut-center small {
+  font-size: 10px;
+  color: var(--muted-foreground);
+}
+.ipo-donut-legend {
+  display: grid;
+  gap: 4px;
+  margin-top: 8px;
+  font-size: 11px;
+}
+.ipo-donut-legend li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.ipo-donut-legend i {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+}
+.ipo-pl-summary {
+  display: grid;
+  gap: 10px;
+  margin-top: 8px;
+}
+.ipo-pl-summary li {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 12px;
+}
+.ipo-table-card {
+  padding: 16px;
+}
+.ipo-table-card header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+.ipo-table-card h2 {
+  margin: 0;
+  font-size: 18px;
+}
+.ipo-table-tools {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.ipo-search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 180px;
+  padding: 8px 10px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: var(--muted);
+}
+.ipo-search input {
+  width: 100%;
+  border: 0;
+  background: transparent;
+  font-size: 12px;
+  outline: none;
+}
+.ipo-icon-btn {
+  display: grid;
+  width: 36px;
+  height: 36px;
+  place-items: center;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--muted);
+}
+.ipo-icon-btn.is-active {
+  border-color: color-mix(in srgb, var(--primary) 22%, var(--border));
+  color: var(--primary);
+}
+.ipo-table-scroll {
+  overflow-x: auto;
+}
+.ipo-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+.ipo-table th,
+.ipo-table td {
+  padding: 10px 8px;
+  border-bottom: 1px solid var(--border);
+  text-align: left;
+  white-space: nowrap;
+}
+.ipo-table th {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted-foreground);
+}
+.ipo-name-cell {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 700;
+}
+.ipo-logo {
+  display: grid;
+  width: 32px;
+  height: 32px;
+  place-items: center;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--primary) 16%, var(--surface));
+  color: var(--primary);
+  font-size: 10px;
+  font-weight: 900;
+}
+.ipo-logo.is-tata {
+  background: color-mix(in srgb, #4d8ec8 16%, var(--surface));
+  color: #4d8ec8;
+}
+.ipo-logo.is-lg {
+  background: color-mix(in srgb, #8b7cc9 16%, var(--surface));
+  color: #8b7cc9;
+}
+.ipo-logo.is-ola {
+  background: color-mix(in srgb, var(--warning) 16%, var(--surface));
+  color: var(--warning);
+}
+.ipo-table td:last-child {
+  position: relative;
+  width: 36px;
+}
+.ipo-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 10px;
+}
+.ipo-grid-card {
+  display: grid;
+  gap: 6px;
+  padding: 12px;
+  border-radius: 16px;
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+}
+.ipo-table-foot {
+  margin-top: 12px;
+  font-size: 11px;
+  color: var(--muted-foreground);
+}
+.ipo-side-card {
+  padding: 14px;
+}
+.ipo-side-card header {
+  margin-bottom: 10px;
+}
+.ipo-side-card h3 {
+  margin: 0;
+  font-size: 14px;
+}
+.ipo-upcoming {
+  display: grid;
+  gap: 10px;
+}
+.ipo-upcoming li {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: start;
+  padding: 10px;
+  border-radius: 14px;
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+}
+.ipo-upcoming li strong {
+  display: block;
+  font-size: 12px;
+}
+.ipo-upcoming li small {
+  display: block;
+  margin-top: 2px;
+  font-size: 10px;
+  color: var(--muted-foreground);
+}
+.ipo-upcoming-badge {
+  border-radius: 999px;
+  padding: 4px 8px;
+  font-size: 9px;
+  font-weight: 800;
+  text-transform: uppercase;
+  background: color-mix(in srgb, var(--primary) 14%, var(--surface));
+  color: var(--primary);
+}
+.ipo-quick-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-top: 10px;
+}
+.ipo-quick {
+  display: grid;
+  gap: 8px;
+  justify-items: center;
+  padding: 12px 8px;
+  border-radius: 14px;
+  border: 1px solid var(--border);
+  background: var(--muted);
+  font-size: 11px;
+  font-weight: 800;
+  color: var(--muted-foreground);
+}
+@media (max-width: 1280px) {
+  .ipo-dash {
+    grid-template-columns: 1fr;
+  }
+  .ipo-summary-cards {
+    grid-template-columns: 1fr 1fr;
+  }
+  .ipo-charts-row {
+    grid-template-columns: 1fr;
+  }
+}
+@media (max-width: 720px) {
+  .ipo-summary-cards {
+    grid-template-columns: 1fr;
+  }
+  .ipo-summary-row {
+    grid-template-columns: 1fr;
+  }
+}
