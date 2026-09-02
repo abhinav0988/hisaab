@@ -4,7 +4,6 @@ import type {
   CreditFacility,
   CreditRecentTransaction,
   CreditSpendingSlice,
-  CreditUtilisationMonth,
 } from "@hisaab/types";
 import { Badge, Button, Card, Field, Input } from "@hisaab/ui";
 import {
@@ -19,28 +18,33 @@ import {
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   AlertTriangle,
+  BarChart3,
   Calendar,
   CreditCard,
   Download,
+  FileText,
+  Gift,
   IndianRupee,
   Lightbulb,
   Lock,
   MoreVertical,
   Plus,
-  ShieldCheck,
+  Sparkles,
   TrendingUp,
   UserRound,
   Wallet,
   Zap,
   type LucideIcon,
 } from "lucide-react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { forwardRef, useEffect, useMemo, useRef, useState, type InputHTMLAttributes, type ReactNode } from "react";
+import { forwardRef, useEffect, useMemo, useRef, useState, type CSSProperties, type InputHTMLAttributes, type ReactNode } from "react";
 import {
+  Area,
   CartesianGrid,
   Cell,
+  ComposedChart,
   Line,
-  LineChart,
   Pie,
   PieChart,
   ResponsiveContainer,
@@ -127,14 +131,6 @@ function formatPct(value: number) {
   return `${value % 1 === 0 ? value.toFixed(0) : value.toFixed(1)}%`;
 }
 
-function monthLabel(month: string) {
-  const match = /^(\d{4})-(\d{2})$/.exec(month);
-  if (!match) return month;
-  return new Intl.DateTimeFormat("en-GB", { month: "short", year: "numeric" }).format(
-    new Date(Number(match[1]), Number(match[2]) - 1, 1),
-  );
-}
-
 function isCardOverdue(card: CreditFacility) {
   if (card.overdueMinor > 0) return true;
   return Boolean(card.dueOn && daysUntil(card.dueOn) < 0);
@@ -150,6 +146,63 @@ function dueCountdown(dueOn: string | null) {
   if (days < 0) return { tone: "overdue" as const, label: "Overdue" };
   if (days === 0) return { tone: "upcoming" as const, label: "Due today" };
   return { tone: "upcoming" as const, label: `${days} day${days === 1 ? "" : "s"} left` };
+}
+
+function estimateCreditScore(usedPct: number) {
+  return Math.max(300, Math.min(850, Math.round(900 - usedPct * 2.5 - (usedPct > 55 ? 25 : 0))));
+}
+
+function creditScoreLabel(score: number) {
+  if (score >= 750) return "Good";
+  if (score >= 650) return "Fair";
+  return "Needs work";
+}
+
+function buildSpendingTrend(
+  recent: CreditRecentTransaction[],
+  cycleSpendMinor: number,
+  outstandingMinor: number,
+  limitMinor: number,
+) {
+  const days = 30;
+  const now = new Date();
+  const byDay = new Map<string, number>();
+  for (const item of recent) {
+    const key = item.transactionAt.slice(0, 10);
+    byDay.set(key, (byDay.get(key) ?? 0) + item.amountMinor);
+  }
+  let cumulative = 0;
+  let peakDay = 0;
+  const points: Array<{
+    label: string;
+    spendMinor: number;
+    outstandingMinor: number;
+    limitMinor: number;
+    daySpendMinor: number;
+  }> = [];
+  for (let i = days - 1; i >= 0; i -= 1) {
+    const date = new Date(now);
+    date.setDate(date.getDate() - i);
+    const key = date.toISOString().slice(0, 10);
+    const daySpend = byDay.get(key) ?? 0;
+    cumulative += daySpend;
+    peakDay = Math.max(peakDay, daySpend);
+    points.push({
+      label: new Intl.DateTimeFormat("en-GB", { month: "short", day: "numeric" }).format(date),
+      spendMinor: cumulative,
+      outstandingMinor,
+      limitMinor,
+      daySpendMinor: daySpend,
+    });
+  }
+  const activeDays = [...byDay.values()].filter((value) => value > 0).length || 1;
+  return {
+    points,
+    peakDayMinor: peakDay,
+    avgDailyMinor: Math.round(cycleSpendMinor / activeDays),
+    totalSpendMinor: cycleSpendMinor,
+    totalOutstandingMinor: outstandingMinor,
+  };
 }
 
 function downloadCardsCsv(cards: CreditFacility[]) {
@@ -273,6 +326,15 @@ export function CardsView() {
   const cycleSpend = sumMinor(list, (card) => card.todaySpendMinor ?? 0);
   const payable = upcoming.find((card) => canPayCard(card)) ?? list.find((card) => canPayCard(card));
   const pending = create.isPending || update.isPending;
+  const nextDue = upcoming[0]?.dueOn ?? dashboard.data?.cycle.dueOn ?? null;
+  const trendPack = buildSpendingTrend(
+    dashboard.data?.recent ?? [],
+    dashboard.data?.cycle.spendMinor ?? cycleSpend,
+    overview.usedMinor,
+    overview.limitMinor,
+  );
+  const creditScore = estimateCreditScore(overview.usedPct);
+  const rewardsMinor = Math.max(0, Math.round((dashboard.data?.cycle.spendMinor ?? cycleSpend) * 0.12));
 
   function openAdd() {
     setEditing(null);
@@ -298,63 +360,77 @@ export function CardsView() {
     <div>
       <PageHeader
         title="Credit Cards"
-        description="Track limits, utilisation, due dates and overdue amounts."
+        description="Track limits, usage, bills, rewards and spending in one place."
         actions={
-          <>
-            <Button variant="secondary" onClick={openAdd}>
-              Add Card
-            </Button>
-            <Button onClick={() => router.push("/transactions?action=add")}>
-              <Plus size={14} />
-              Add transaction
-            </Button>
-          </>
+          <Button onClick={() => router.push("/transactions?action=add")}>
+            <Plus size={14} />
+            Add transaction
+          </Button>
         }
       />
       <div className="cards-hero">
         {(
           [
             {
-              label: "Total Limit",
+              label: "Total credit limit",
               value: money(overview.limitMinor, currency),
-              note: `${list.length} card${list.length === 1 ? "" : "s"}`,
+              note: `Across ${list.length} card${list.length === 1 ? "" : "s"}`,
               icon: CreditCard,
               tone: "green",
+              pct: null,
             },
             {
-              label: "Used Amount",
+              label: "Total used",
               value: money(overview.usedMinor, currency),
               note: `${formatPct(overview.usedPct)} of total limit`,
               icon: Wallet,
               tone: "blue",
+              pct: overview.usedPct,
             },
             {
-              label: "Available Limit",
+              label: "Available limit",
               value: money(overview.availableMinor, currency),
               note: `${formatPct(overview.availablePct)} remaining`,
               icon: IndianRupee,
               tone: "purple",
+              pct: overview.availablePct,
             },
             {
-              label: "Credit Hold",
-              value: money(overview.holdMinor, currency),
-              note: `${formatPct(overview.holdPct)} of total limit`,
+              label: "Total outstanding",
+              value: money(pendingBill, currency),
+              note: nextDue ? `Due on ${displayDateLong(nextDue)}` : "No due date set",
               icon: Lock,
               tone: "gold",
+              pct: overview.limitMinor
+                ? Math.round((pendingBill / overview.limitMinor) * 1000) / 10
+                : null,
             },
-          ] as Array<{ label: string; value: string; note: string; icon: LucideIcon; tone: string }>
+          ] as Array<{
+            label: string;
+            value: string;
+            note: string;
+            icon: LucideIcon;
+            tone: string;
+            pct: number | null;
+          }>
         ).map((item) => {
           const Icon = item.icon;
           return (
-            <Card key={item.label} className="loans-kpi">
-              <span className={`loans-kpi-icon is-${item.tone}`}>
-                <Icon size={16} />
-              </span>
-              <div>
+            <Card key={item.label} className="cards-kpi">
+              <div className="cards-kpi-head">
+                <span className={`cards-kpi-icon is-${item.tone}`}>
+                  <Icon size={15} />
+                </span>
                 <small>{item.label}</small>
-                <strong>{item.value}</strong>
-                <span>{item.note}</span>
               </div>
+              <strong>{item.value}</strong>
+              {item.pct != null ? (
+                <ProgressBar
+                  value={item.pct}
+                  tone={item.label === "Total used" && item.pct > 70 ? "warn" : "ok"}
+                />
+              ) : null}
+              <span>{item.note}</span>
             </Card>
           );
         })}
@@ -366,35 +442,46 @@ export function CardsView() {
             pendingMinor={pendingBill}
             spendMinor={dashboard.data?.cycle.spendMinor || cycleSpend}
             transactionCount={dashboard.data?.cycle.transactionCount ?? 0}
-            dueOn={upcoming[0]?.dueOn ?? dashboard.data?.cycle.dueOn ?? null}
+            dueOn={nextDue}
             canPay={Boolean(payable)}
             onPay={() => payable && setPaying(payable)}
           />
-          <div className="cards-charts">
-            <UtilisationTrend currency={currency} trend={dashboard.data?.trend ?? []} />
-            <SpendingByCategory currency={currency} spending={dashboard.data?.spending ?? []} />
+          <div className="cards-dashboard">
+            <div className="cards-dashboard-main">
+              <YourCardsSection
+                cards={list}
+                currency={currency}
+                onManage={openAdd}
+                onEdit={openEdit}
+                onPay={setPaying}
+                onDelete={setDeleting}
+              />
+              <div className="cards-lower">
+                <RecentCardTransactions
+                  currency={currency}
+                  items={dashboard.data?.recent ?? []}
+                />
+                <UpcomingPayments cards={upcoming} currency={currency} onPay={setPaying} />
+              </div>
+              <SpendingTrendChart currency={currency} pack={trendPack} />
+            </div>
+            <aside className="cards-dashboard-side">
+              <SpendingByCategory currency={currency} spending={dashboard.data?.spending ?? []} compact />
+              <RewardsWidget currency={currency} rewardsMinor={rewardsMinor} />
+              <CreditScoreWidget score={creditScore} usedPct={overview.usedPct} />
+              <QuickActions
+                onAddCard={openAdd}
+                onReport={() =>
+                  document.getElementById("cards-spending-trend")?.scrollIntoView({ behavior: "smooth" })
+                }
+                onStatement={() => toast.info("Statement download opens from your bank app or email.")}
+                onDownload={() => {
+                  downloadCardsCsv(list);
+                  toast.success("Card summary downloaded");
+                }}
+              />
+            </aside>
           </div>
-          <CardsTable
-            cards={list}
-            currency={currency}
-            pendingBill={pendingBill}
-            onEdit={openEdit}
-            onPay={setPaying}
-            onDelete={setDeleting}
-            onDownload={() => {
-              downloadCardsCsv(list);
-              toast.success("Card summary downloaded");
-            }}
-          />
-          <div className="cards-lower">
-            <RecentCardTransactions
-              currency={currency}
-              items={dashboard.data?.recent ?? []}
-              onAdd={() => router.push("/transactions?action=add")}
-            />
-            <UpcomingPayments cards={upcoming} currency={currency} onPay={setPaying} />
-          </div>
-          <CardInsights cards={list} overview={overview} currency={currency} />
         </>
       ) : (
         <EmptyState
@@ -470,153 +557,266 @@ export function CardsView() {
   );
 }
 
-function UtilisationTrend({
+function SpendingTrendChart({
   currency,
-  trend,
+  pack,
 }: {
   currency: string;
-  trend: CreditUtilisationMonth[];
+  pack: ReturnType<typeof buildSpendingTrend>;
 }) {
-  const data = trend.map((item) => ({ ...item, label: monthLabel(item.month) }));
   return (
-    <Card className="cards-chart">
+    <Card className="cards-trend" id="cards-spending-trend">
       <header>
         <div>
-          <h2>Credit utilisation</h2>
-          <small>Ideal utilisation is below 30%.</small>
+          <h2>Spending &amp; outstanding trend</h2>
+          <small>Last 30 days — spending vs outstanding balance.</small>
         </div>
       </header>
-      {data.length ? (
-        <div className="cards-chart-body">
-          <ResponsiveContainer width="100%" height={220}>
-            <LineChart data={data} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+      <div className="cards-trend-body">
+        <div className="cards-trend-chart">
+          <ResponsiveContainer width="100%" height={240}>
+            <ComposedChart data={pack.points} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+              <defs>
+                <linearGradient id="cardsSpendFill" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="var(--primary)" stopOpacity={0.35} />
+                  <stop offset="100%" stopColor="var(--primary)" stopOpacity={0.02} />
+                </linearGradient>
+              </defs>
               <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
-              <XAxis dataKey="label" tick={{ fontSize: 11 }} />
-              <YAxis tick={{ fontSize: 11 }} unit="%" width={42} />
-              <Tooltip
-                formatter={(value, _name, item) => {
-                  const point = item?.payload as CreditUtilisationMonth | undefined;
-                  if (!point) return [`${value}%`, "Used"];
-                  return [`${formatPct(point.usedPct)} · ${money(point.usedMinor, currency)}`, "Used"];
-                }}
+              <XAxis dataKey="label" tick={{ fontSize: 10 }} interval="preserveStartEnd" />
+              <YAxis
+                tick={{ fontSize: 10 }}
+                width={52}
+                tickFormatter={(value) => money(Number(value), currency)}
               />
-              <Line type="monotone" dataKey="usedPct" stroke="var(--primary)" strokeWidth={2.5} dot={{ r: 4 }} />
-            </LineChart>
+              <Tooltip
+                formatter={(value, name) => [
+                  money(Number(value) || 0, currency),
+                  name === "spendMinor"
+                    ? "Spending"
+                    : name === "outstandingMinor"
+                      ? "Outstanding"
+                      : "Credit limit",
+                ]}
+              />
+              <Area
+                type="monotone"
+                dataKey="spendMinor"
+                stroke="var(--primary)"
+                fill="url(#cardsSpendFill)"
+                strokeWidth={2}
+                name="spendMinor"
+              />
+              <Line
+                type="monotone"
+                dataKey="outstandingMinor"
+                stroke="#f0b429"
+                strokeWidth={2}
+                dot={false}
+                name="outstandingMinor"
+              />
+              <Line
+                type="monotone"
+                dataKey="limitMinor"
+                stroke="color-mix(in srgb, var(--foreground) 35%, transparent)"
+                strokeDasharray="4 4"
+                dot={false}
+                name="limitMinor"
+              />
+            </ComposedChart>
           </ResponsiveContainer>
         </div>
-      ) : (
-        <p>Usage history starts after you save a card.</p>
-      )}
+        <ul className="cards-trend-metrics">
+          <li>
+            <small>Average daily spend</small>
+            <strong>{money(pack.avgDailyMinor, currency)}</strong>
+          </li>
+          <li>
+            <small>Total spend</small>
+            <strong>{money(pack.totalSpendMinor, currency)}</strong>
+          </li>
+          <li>
+            <small>Total outstanding</small>
+            <strong>{money(pack.totalOutstandingMinor, currency)}</strong>
+          </li>
+          <li>
+            <small>Highest spend day</small>
+            <strong>{money(pack.peakDayMinor, currency)}</strong>
+          </li>
+        </ul>
+      </div>
     </Card>
   );
 }
 
-function CardsTable({
+function YourCardsSection({
   cards,
   currency,
-  pendingBill,
+  onManage,
   onEdit,
   onPay,
   onDelete,
-  onDownload,
 }: {
   cards: CreditFacility[];
   currency: string;
-  pendingBill: number;
+  onManage: () => void;
   onEdit: (card: CreditFacility) => void;
   onPay: (card: CreditFacility) => void;
   onDelete: (card: CreditFacility) => void;
-  onDownload: () => void;
 }) {
   return (
-    <Card className="cards-table-wrap">
+    <Card className="cards-your" id="cards-your-list">
       <header className="cards-table-head">
         <div>
           <h2>Your credit cards</h2>
-          <small>Limit, used, available, this-cycle spend, pending and due date.</small>
+          <small>Limits, usage and due dates for each saved card.</small>
         </div>
-        <Button type="button" variant="ghost" onClick={onDownload}>
-          <Download size={14} />
-          Download
+        <Button type="button" variant="secondary" onClick={onManage}>
+          Manage cards
         </Button>
       </header>
-      <div className="cards-table-scroll">
-        <table className="cards-table">
-          <thead>
-            <tr>
-              <th>Card</th>
-              <th>Limit</th>
-              <th>Used</th>
-              <th>Available</th>
-              <th>Hold</th>
-              <th>This cycle</th>
-              <th>Pending</th>
-              <th>Due date</th>
-              <th>Status</th>
-              <th />
-            </tr>
-          </thead>
-          <tbody>
-            {cards.map((card) => {
-              const summary = creditSummary(card);
-              const due = dueCountdown(card.dueOn);
-              const overdue = isCardOverdue(card);
-              const pending = cardPendingMinor(card);
-              return (
-                <tr key={card.id}>
-                  <td>
-                    <div className="cards-table-name">
-                      <span className="cards-table-icon">
-                        <CreditCard size={15} />
-                      </span>
-                      <div>
-                        <strong>{card.name}</strong>
-                        <small>{card.mask || "Card"}</small>
-                      </div>
-                    </div>
-                  </td>
-                  <td>{money(card.limitMinor, currency)}</td>
-                  <td>
-                    <div className="cards-table-bar">
-                      <b>
-                        {money(card.usedMinor, currency)}
-                        <small>{formatPct(summary.usedPct)}</small>
-                      </b>
-                      <ProgressBar value={summary.usedPct} tone={summary.usedPct > 70 ? "warn" : "ok"} />
-                    </div>
-                  </td>
-                  <td>{money(summary.availableMinor, currency)}</td>
-                  <td>{money(card.holdMinor ?? 0, currency)}</td>
-                  <td>{money(card.todaySpendMinor ?? 0, currency)}</td>
-                  <td>{money(pending, currency)}</td>
-                  <td>
-                    <div className="cards-table-due">
-                      <b>{displayDateLong(card.dueOn)}</b>
-                      {due ? <span className={`cards-pill is-${due.tone}`}>{due.label}</span> : null}
-                    </div>
-                  </td>
-                  <td>
-                    <Badge tone={overdue ? "danger" : "success"}>{overdue ? "Overdue" : "Active"}</Badge>
-                  </td>
-                  <td>
-                    <CardMenu
-                      card={card}
-                      onEdit={() => onEdit(card)}
-                      onPay={() => onPay(card)}
-                      onDelete={() => onDelete(card)}
-                    />
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
+      <div className="cards-your-list">
+        {cards.map((card) => {
+          const summary = creditSummary(card);
+          const due = dueCountdown(card.dueOn);
+          const overdue = isCardOverdue(card);
+          const pending = cardPendingMinor(card);
+          const last4 = last4FromMask(card.mask);
+          return (
+            <article key={card.id} className="cards-card-row">
+              <div className="cards-plastic">
+                <small>Credit card</small>
+                <strong>{card.name}</strong>
+                <em>{last4 ? `•••• ${last4}` : "•••• ••••"}</em>
+                <Badge tone={overdue ? "danger" : "success"}>
+                  {overdue ? "Overdue" : "Active"}
+                </Badge>
+              </div>
+              <div className="cards-stat-grid">
+                <div>
+                  <small>Limit</small>
+                  <strong>{money(card.limitMinor, currency)}</strong>
+                </div>
+                <div>
+                  <small>Used</small>
+                  <strong>
+                    {money(card.usedMinor, currency)}
+                    <span>{formatPct(summary.usedPct)}</span>
+                  </strong>
+                  <ProgressBar value={summary.usedPct} tone={summary.usedPct > 70 ? "warn" : "ok"} />
+                </div>
+                <div>
+                  <small>Available</small>
+                  <strong>
+                    {money(summary.availableMinor, currency)}
+                    <span>
+                      {formatPct(
+                        card.limitMinor ? (summary.availableMinor / card.limitMinor) * 100 : 0,
+                      )}
+                    </span>
+                  </strong>
+                </div>
+                <div>
+                  <small>Outstanding</small>
+                  <strong className="is-warn">{money(pending, currency)}</strong>
+                </div>
+                <div>
+                  <small>Due date</small>
+                  <strong>{card.dueOn ? displayDateLong(card.dueOn) : "—"}</strong>
+                  {due ? <span className={`cards-pill is-${due.tone}`}>{due.label}</span> : null}
+                </div>
+              </div>
+              <CardMenu card={card} onEdit={() => onEdit(card)} onPay={() => onPay(card)} onDelete={() => onDelete(card)} />
+            </article>
+          );
+        })}
       </div>
       <p className="cards-table-note">
-        Total pending bill is {money(pendingBill, currency)} across {cards.length} card
-        {cards.length === 1 ? "" : "s"}. Card spend from Transactions reduces available limit
-        automatically.
+        Card spend from Transactions reduces available limit automatically.
       </p>
+    </Card>
+  );
+}
+
+function RewardsWidget({ currency, rewardsMinor }: { currency: string; rewardsMinor: number }) {
+  return (
+    <Card className="cards-rewards">
+      <header>
+        <Gift size={16} />
+        <div>
+          <h2>Rewards earned</h2>
+          <small>This month from card spend.</small>
+        </div>
+      </header>
+      <strong>{money(rewardsMinor, currency)}</strong>
+      <button type="button" className="cards-link-btn" onClick={() => toast.info("Rewards sync from your card issuer.")}>
+        View details
+      </button>
+    </Card>
+  );
+}
+
+function CreditScoreWidget({ score, usedPct }: { score: number; usedPct: number }) {
+  const label = creditScoreLabel(score);
+  const gaugePct = Math.round((score / 850) * 100);
+  return (
+    <Card className="cards-score">
+      <header>
+        <Sparkles size={16} />
+        <div>
+          <h2>Credit score booster</h2>
+          <small>Estimated from your utilisation.</small>
+        </div>
+      </header>
+      <div className="cards-score-gauge">
+        <div className="cards-score-ring" style={{ "--score-pct": `${gaugePct}%` } as CSSProperties}>
+          <strong>{score}</strong>
+          <small>{label}</small>
+        </div>
+      </div>
+      <p>
+        {usedPct < 30
+          ? "Great job — utilisation is below 30%."
+          : "Keep utilisation below 30% to maintain a good score."}
+      </p>
+    </Card>
+  );
+}
+
+function QuickActions({
+  onAddCard,
+  onReport,
+  onStatement,
+  onDownload,
+}: {
+  onAddCard: () => void;
+  onReport: () => void;
+  onStatement: () => void;
+  onDownload: () => void;
+}) {
+  return (
+    <Card className="cards-actions">
+      <header>
+        <h2>Quick actions</h2>
+      </header>
+      <div className="cards-actions-grid">
+        <button type="button" onClick={onAddCard}>
+          <CreditCard size={18} />
+          Add card
+        </button>
+        <button type="button" onClick={onReport}>
+          <BarChart3 size={18} />
+          Card report
+        </button>
+        <button type="button" onClick={onStatement}>
+          <FileText size={18} />
+          Statement
+        </button>
+        <button type="button" onClick={onDownload}>
+          <Download size={18} />
+          Download
+        </button>
+      </div>
     </Card>
   );
 }
@@ -709,8 +909,15 @@ function UpcomingPayments({
       <header>
         <div>
           <h2>Upcoming payments</h2>
-          <small>Card bills with due dates.</small>
+          <small>Next card bills and due dates.</small>
         </div>
+        <button
+          type="button"
+          className="cards-link-btn"
+          onClick={() => toast.info("Auto-pay reminders use each card's due date.")}
+        >
+          Set auto-pay
+        </button>
       </header>
       {cards.length ? (
         <ul>
@@ -795,22 +1002,20 @@ function CycleBanner({
 function RecentCardTransactions({
   currency,
   items,
-  onAdd,
 }: {
   currency: string;
   items: CreditRecentTransaction[];
-  onAdd: () => void;
 }) {
   return (
     <Card className="cards-recent">
       <header>
         <div>
           <h2>Recent credit transactions</h2>
-          <small>Card spend from Transactions, with pending due.</small>
+          <small>Latest card spends from Transactions.</small>
         </div>
-        <Button type="button" variant="ghost" onClick={onAdd}>
-          Add transaction
-        </Button>
+        <Link className="cards-link-btn" href="/transactions">
+          View all
+        </Link>
       </header>
       {items.length ? (
         <div className="cards-table-scroll">
@@ -851,67 +1056,14 @@ function RecentCardTransactions({
   );
 }
 
-function CardInsights({
-  cards,
-  overview,
-  currency,
-}: {
-  cards: CreditFacility[];
-  overview: ReturnType<typeof creditOverview>;
-  currency: string;
-}) {
-  const soon = cards.filter((card) => {
-    if (!card.dueOn) return false;
-    const days = daysUntil(card.dueOn);
-    return days >= 0 && days <= 7;
-  });
-  const soonMinor = sumMinor(soon, (card) => cardPendingMinor(card));
-  const utilLabel =
-    overview.usedPct < 30 ? "Low utilisation" : overview.usedPct <= 50 ? "Healthy utilisation" : "High utilisation";
-  return (
-    <div className="cards-insights">
-      <article>
-        <TrendingUp size={16} />
-        <div>
-          <b>{utilLabel}</b>
-          <small>Overall is {formatPct(overview.usedPct)} of your limit.</small>
-        </div>
-      </article>
-      <article>
-        <Calendar size={16} />
-        <div>
-          <b>Upcoming due</b>
-          <small>
-            {soon.length
-              ? `${soon.length} bill${soon.length === 1 ? "" : "s"} due in 7 days totalling ${money(soonMinor, currency)}.`
-              : "No card bills due in the next 7 days."}
-          </small>
-        </div>
-      </article>
-      <article>
-        <Zap size={16} />
-        <div>
-          <b>Save on interest</b>
-          <small>Pay pending bills before the due date to avoid late fees.</small>
-        </div>
-      </article>
-      <article>
-        <ShieldCheck size={16} />
-        <div>
-          <b>Credit score booster</b>
-          <small>Keep utilisation below 30% where you can.</small>
-        </div>
-      </article>
-    </div>
-  );
-}
-
 function SpendingByCategory({
   currency,
   spending,
+  compact = false,
 }: {
   currency: string;
   spending: CreditSpendingSlice[];
+  compact?: boolean;
 }) {
   const total = sumMinor(spending, (item) => item.amountMinor);
   return (
@@ -919,16 +1071,12 @@ function SpendingByCategory({
       <header>
         <div>
           <h2>Spending overview</h2>
-          <small>
-            {total
-              ? `${money(total, currency)} this month from card-linked transactions.`
-              : "This month, from card-linked transactions."}
-          </small>
+          <small>{compact ? "This month" : total ? `${money(total, currency)} this month` : "This month"}</small>
         </div>
       </header>
       {spending.length ? (
         <>
-          <div className="cards-donut">
+          <div className={`cards-donut${compact ? " is-compact" : ""}`}>
             <ResponsiveContainer width="100%" height={180}>
               <PieChart>
                 <Pie data={spending} dataKey="amountMinor" innerRadius={52} outerRadius={74} paddingAngle={2} stroke="none">
