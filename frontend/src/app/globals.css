@@ -4723,6 +4723,15 @@ html[data-theme="dark"] .loan-section-num {
 .bank-chart-body {
   min-height: 280px;
 }
+.bank-chart-shell,
+.bank-trend-shell {
+  height: 280px;
+  width: 100%;
+  min-width: 0;
+}
+.bank-trend-shell {
+  height: 180px;
+}
 .bank-chart-foot {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));

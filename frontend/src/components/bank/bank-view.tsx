@@ -94,7 +94,7 @@ function formatAccountUpdated(stamp: string | null | undefined) {
   }).format(new Date(stamp));
 }
 
-function buildDailyCashFlow(transactions: Transaction[], bankIds: Set<string>) {
+function buildDailyCashFlow(transactions: Transaction[]) {
   const now = new Date();
   const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
   const byDay = Array.from({ length: daysInMonth }, (_, index) => ({
@@ -104,7 +104,6 @@ function buildDailyCashFlow(transactions: Transaction[], bankIds: Set<string>) {
     savings: 0,
   }));
   for (const item of transactions) {
-    if (!bankIds.has(item.accountId)) continue;
     const date = new Date(item.transactionAt);
     if (date.getMonth() !== now.getMonth() || date.getFullYear() !== now.getFullYear()) continue;
     const slot = byDay[date.getDate() - 1];
@@ -362,7 +361,7 @@ export function BankView() {
   const txns = transactions.data ?? [];
   const bankTxns = txns.filter((item) => bankIds.has(item.accountId));
   const recent = bankTxns.slice(0, 5);
-  const dailyCashFlow = buildDailyCashFlow(bankTxns, bankIds);
+  const dailyCashFlow = buildDailyCashFlow(txns);
   const balanceTrend = balanceTrendForRange(
     balanceRange,
     totalMinor,
@@ -528,38 +527,68 @@ export function BankView() {
               </div>
             </header>
             <div className="bank-chart-body">
-              <ResponsiveContainer width="100%" height={280}>
-                <ComposedChart data={dailyCashFlow} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
-                  <XAxis dataKey="label" tick={{ fontSize: 11 }} axisLine={false} tickLine={false} />
-                  <YAxis
-                    tick={{ fontSize: 11 }}
-                    axisLine={false}
-                    tickLine={false}
-                    tickFormatter={(value) => `₹${Math.round(Number(value) / 1000)}k`}
-                  />
-                  <Tooltip
-                    formatter={(value, name) => [
-                      money(Number(value ?? 0), currency),
-                      name === "income"
-                        ? "Income"
-                        : name === "expense"
-                          ? "Expense"
-                          : "Net savings",
-                    ]}
-                  />
-                  <Bar dataKey="income" fill="var(--primary)" radius={[4, 4, 0, 0]} barSize={10} />
-                  <Bar dataKey="expense" fill="var(--danger)" radius={[4, 4, 0, 0]} barSize={10} />
-                  <Line
-                    type="monotone"
-                    dataKey="cumulativeSavings"
-                    stroke="#f0f4f8"
-                    strokeWidth={2}
-                    strokeDasharray="4 4"
-                    dot={false}
-                  />
-                </ComposedChart>
-              </ResponsiveContainer>
+              <div className="bank-chart-shell">
+                <ResponsiveContainer width="100%" height="100%">
+                  <ComposedChart
+                    data={dailyCashFlow}
+                    margin={{ top: 8, right: 12, left: 4, bottom: 0 }}
+                  >
+                    <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
+                    <XAxis
+                      dataKey="label"
+                      tick={{ fontSize: 11, fill: "var(--muted-foreground)" }}
+                      axisLine={false}
+                      tickLine={false}
+                      interval="preserveStartEnd"
+                      minTickGap={12}
+                    />
+                    <YAxis
+                      width={56}
+                      tick={{ fontSize: 10, fill: "var(--muted-foreground)" }}
+                      axisLine={false}
+                      tickLine={false}
+                      tickFormatter={(value) =>
+                        new Intl.NumberFormat("en", {
+                          notation: "compact",
+                          maximumFractionDigits: 1,
+                        }).format(Number(value) / 100)
+                      }
+                    />
+                    <Tooltip
+                      formatter={(value, name) => [
+                        money(Number(value ?? 0), currency),
+                        name === "income"
+                          ? "Income"
+                          : name === "expense"
+                            ? "Expense"
+                            : "Net savings",
+                      ]}
+                    />
+                    <Bar
+                      dataKey="income"
+                      fill="var(--primary)"
+                      radius={[4, 4, 0, 0]}
+                      barSize={8}
+                      minPointSize={2}
+                    />
+                    <Bar
+                      dataKey="expense"
+                      fill="var(--danger)"
+                      radius={[4, 4, 0, 0]}
+                      barSize={8}
+                      minPointSize={2}
+                    />
+                    <Line
+                      type="monotone"
+                      dataKey="cumulativeSavings"
+                      stroke="#f0f4f8"
+                      strokeWidth={2}
+                      strokeDasharray="4 4"
+                      dot={false}
+                    />
+                  </ComposedChart>
+                </ResponsiveContainer>
+              </div>
             </div>
             <footer className="bank-chart-foot">
               <span>
@@ -638,8 +667,9 @@ export function BankView() {
                 </button>
               ))}
             </div>
-            <ResponsiveContainer width="100%" height={180}>
-              <AreaChart data={balanceTrend} margin={{ top: 4, right: 4, left: 0, bottom: 0 }}>
+            <div className="bank-trend-shell">
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={balanceTrend} margin={{ top: 4, right: 8, left: 4, bottom: 0 }}>
                 <defs>
                   <linearGradient id="bankBalanceFill" x1="0" y1="0" x2="0" y2="1">
                     <stop
@@ -670,8 +700,9 @@ export function BankView() {
                   fill="url(#bankBalanceFill)"
                   strokeWidth={2}
                 />
-              </AreaChart>
-            </ResponsiveContainer>
+                </AreaChart>
+              </ResponsiveContainer>
+            </div>
           </Card>
 
           <Card className="bank-recent">
