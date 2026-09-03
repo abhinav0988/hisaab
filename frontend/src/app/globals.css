@@ -4833,7 +4833,7 @@ html[data-theme="dark"] .loan-section-num {
 .bank-account-menu {
   position: relative;
 }
-.bank-account-menu button {
+.bank-account-menu > button {
   display: grid;
   width: 32px;
   height: 32px;
@@ -4848,7 +4848,8 @@ html[data-theme="dark"] .loan-section-num {
   top: calc(100% + 6px);
   z-index: 20;
   display: grid;
-  min-width: 160px;
+  min-width: 180px;
+  width: max-content;
   gap: 4px;
   padding: 8px;
   border-radius: 14px;
@@ -4859,11 +4860,18 @@ html[data-theme="dark"] .loan-section-num {
 .bank-menu-pop button,
 .bank-menu-pop a {
   display: block;
-  padding: 8px 10px;
+  width: 100%;
+  padding: 8px 12px;
+  border: 0;
   border-radius: 10px;
+  background: transparent;
+  color: inherit;
   font-size: 12px;
   font-weight: 700;
   text-align: left;
+  white-space: nowrap;
+  text-decoration: none;
+  cursor: pointer;
 }
 .bank-menu-pop button:hover,
 .bank-menu-pop a:hover {

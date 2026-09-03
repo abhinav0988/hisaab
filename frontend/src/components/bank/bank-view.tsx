@@ -49,6 +49,7 @@ import {
   bankLabel,
   bankLast4,
   bankMaskDisplay,
+  bankNickname,
   bankSubtype,
   bankTransactionHref,
   deltaPct,
@@ -294,6 +295,7 @@ export function BankView() {
   const client = useQueryClient();
   const [hideBalance, setHideBalance] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
+  const [editing, setEditing] = useState<Account | null>(null);
   const [menuId, setMenuId] = useState<string | null>(null);
   const [balanceRange, setBalanceRange] = useState<BalanceRange>("1M");
   const [chartsReady, setChartsReady] = useState(false);
@@ -483,9 +485,18 @@ export function BankView() {
                       flow={accountMonthFlow(account.id, bankTxns)}
                       menuOpen={menuId === account.id}
                       onMenu={() => setMenuId(menuId === account.id ? null : account.id)}
-                      onEdit={() => router.push("/accounts")}
-                      onAddMoney={() => router.push(bankTransactionHref(account.id, "INCOME"))}
-                      onRecordExpense={() => router.push(bankTransactionHref(account.id, "EXPENSE"))}
+                      onEdit={() => {
+                        setMenuId(null);
+                        setEditing(account);
+                      }}
+                      onAddMoney={() => {
+                        setMenuId(null);
+                        router.push(bankTransactionHref(account.id, "INCOME"));
+                      }}
+                      onRecordExpense={() => {
+                        setMenuId(null);
+                        router.push(bankTransactionHref(account.id, "EXPENSE"));
+                      }}
                     />
                   ))}
                 </ul>
@@ -768,6 +779,18 @@ export function BankView() {
           toast.success("Bank account added");
         }}
       />
+      <EditBankAccountModal
+        key={editing?.id ?? "edit-closed"}
+        open={Boolean(editing)}
+        account={editing}
+        currency={currency}
+        onClose={() => setEditing(null)}
+        onSaved={() => {
+          setEditing(null);
+          refresh();
+          toast.success("Bank account updated");
+        }}
+      />
     </div>
   );
 }
@@ -840,7 +863,6 @@ function BankAccountRow({
             <button type="button" onClick={onAddMoney}>Add money</button>
             <button type="button" onClick={onRecordExpense}>Record expense</button>
             <button type="button" onClick={onEdit}>Edit account</button>
-            <Link href={bankTransactionHref(account.id, "EXPENSE")}>Add transaction</Link>
           </div>
         ) : null}
       </div>
@@ -1020,6 +1042,145 @@ function AddBankAccountModal({
           <Button type="button" variant="ghost" onClick={onClose}>Cancel</Button>
           <Button type="submit" disabled={mutation.isPending}>
             {mutation.isPending ? "Adding…" : "Add Account"}
+          </Button>
+        </div>
+      </form>
+    </Modal>
+  );
+}
+
+function EditBankAccountModal({
+  open,
+  account,
+  currency,
+  onClose,
+  onSaved,
+}: {
+  open: boolean;
+  account: Account | null;
+  currency: string;
+  onClose: () => void;
+  onSaved: () => void;
+}) {
+  const [bank, setBank] = useState("");
+  const [accountType, setAccountType] = useState<string>(BANK_ACCOUNT_TYPES[0]);
+  const [nickname, setNickname] = useState("");
+  const [branch, setBranch] = useState("");
+  const [opening, setOpening] = useState("");
+  const [active, setActive] = useState(true);
+  const [errors, setErrors] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    if (!account) return;
+    const institution = account.institutionName?.trim() ?? "";
+    const [bankPart, ...branchParts] = institution.split(" · ");
+    const matchedBank =
+      INDIAN_BANKS.find((item) => item.toLowerCase() === (bankPart ?? "").toLowerCase()) ??
+      bankPart?.trim() ??
+      "HDFC Bank";
+    setBank(matchedBank);
+    setBranch(branchParts.join(" · ").trim());
+    setAccountType(bankSubtype(account));
+    setNickname(bankNickname(account));
+    setOpening(String((account.openingBalanceMinor ?? 0) / 100));
+    setActive(account.isActive === true || Number(account.isActive) === 1);
+    setErrors({});
+  }, [account]);
+
+  const mutation = useMutation({
+    mutationFn: () => {
+      if (!account) throw new Error("Account missing.");
+      const last4 = bankLast4(account.name) ?? "0000";
+      const openingMinor = opening.trim()
+        ? majorToMinor(opening.replace(/,/g, ""))
+        : account.openingBalanceMinor;
+      return accountService.update(account.id, {
+        name: formatBankAccountName(accountType, last4, nickname || accountType),
+        institutionName: branch.trim() ? `${bank} · ${branch.trim()}` : bank,
+        openingBalanceMinor: openingMinor,
+        currency: account.currency || currency,
+        isActive: active,
+      });
+    },
+    onSuccess: onSaved,
+    onError: (error) => toast.error(failMessage(error)),
+  });
+
+  function submit(event: React.FormEvent) {
+    event.preventDefault();
+    const next: Record<string, string> = {};
+    if (!bank.trim()) next.bank = "Select a bank.";
+    if (!opening.trim() || Number.isNaN(Number(opening.replace(/,/g, "")))) {
+      next.opening = "Enter a valid opening balance.";
+    }
+    setErrors(next);
+    if (Object.keys(next).length) return;
+    mutation.mutate();
+  }
+
+  if (!account) return null;
+  const last4 = bankLast4(account.name);
+
+  return (
+    <Modal open={open} onClose={onClose} title="Edit bank account">
+      <form className="bank-form" onSubmit={submit}>
+        <Field label="Bank" error={errors.bank}>
+          <Select value={bank} onChange={(event) => setBank(event.target.value)}>
+            {!INDIAN_BANKS.includes(bank as (typeof INDIAN_BANKS)[number]) ? (
+              <option value={bank}>{bank}</option>
+            ) : null}
+            {INDIAN_BANKS.map((item) => (
+              <option key={item} value={item}>{item}</option>
+            ))}
+          </Select>
+        </Field>
+        <div className="bank-form-split">
+          <Field label="Account type">
+            <Select value={accountType} onChange={(event) => setAccountType(event.target.value)}>
+              {BANK_ACCOUNT_TYPES.map((item) => (
+                <option key={item} value={item}>{item}</option>
+              ))}
+            </Select>
+          </Field>
+          <Field label="Account ending">
+            <Input value={last4 ? `•••• ${last4}` : "•••• ••••"} disabled />
+          </Field>
+        </div>
+        <Field label="Nickname">
+          <Input
+            value={nickname}
+            onChange={(event) => setNickname(event.target.value)}
+            placeholder="e.g. Salary account"
+          />
+        </Field>
+        <Field label="Branch (optional)">
+          <Input
+            value={branch}
+            onChange={(event) => setBranch(event.target.value)}
+            placeholder="e.g. Koramangala"
+          />
+        </Field>
+        <Field label={`Opening balance (${currency})`} error={errors.opening}>
+          <Input
+            inputMode="decimal"
+            value={opening}
+            onChange={(event) => setOpening(event.target.value)}
+            placeholder="0.00"
+          />
+        </Field>
+        <label className="flex items-center gap-2 text-sm">
+          <input
+            type="checkbox"
+            checked={active}
+            onChange={(event) => setActive(event.target.checked)}
+            className="accent-[var(--primary)]"
+          />
+          Account is active
+        </label>
+        <div className="bank-form-actions">
+          <Button type="button" variant="ghost" onClick={onClose}>Cancel</Button>
+          <Button type="submit" disabled={mutation.isPending}>
+            {mutation.isPending ? "Saving…" : "Save changes"}
           </Button>
         </div>
       </form>

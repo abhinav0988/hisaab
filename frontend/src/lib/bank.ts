@@ -41,7 +41,7 @@ export function bankLabel(account: Pick<Account, "name" | "institutionName">) {
 export function bankSubtype(account: Pick<Account, "name">) {
   const base = account.name.replace(LAST4_RE, "").trim();
   const match = /^(Savings|Current|Salary)/i.exec(base);
-  return match ? match[1] : "Savings";
+  return match?.[1] ?? "Savings";
 }
 
 export function bankNickname(account: Pick<Account, "name">) {
