@@ -21,9 +21,9 @@ test.describe("finance modules", () => {
     await expect(page.getByRole("dialog")).toHaveCount(0);
     await expect(page.getByText("Nifty 50 Index")).toBeVisible();
     await page.goto("/dashboard");
-    await expect(page.locator(".oc-feature").filter({ hasText: "Investments" })).toContainText(
-      "Nifty 50 Index",
-    );
+    const investments = page.locator(".pd-module").filter({ hasText: "Investments" });
+    await expect(investments).toBeVisible();
+    await expect(investments).toContainText(/11,?000/);
   });
 
   test("loans save from the add screen and appear on Overview", async ({ page }) => {
@@ -45,7 +45,9 @@ test.describe("finance modules", () => {
     await page.getByRole("button", { name: "Save Loan" }).click();
     await expect(page.getByText("HDFC Bank").first()).toBeVisible();
     await page.goto("/dashboard");
-    await expect(page.locator(".oc-feature").filter({ hasText: "EMI & Loans" })).toContainText("Home Loan");
+    const loans = page.locator(".pd-module").filter({ hasText: "EMI & Loans" });
+    await expect(loans).toBeVisible();
+    await expect(loans).toContainText("Home Loan");
   });
 
   test("credit cards save from the add dialog and appear on the dashboard", async ({ page }) => {
@@ -66,7 +68,7 @@ test.describe("finance modules", () => {
     await page.getByRole("button", { name: "Save Card" }).click();
     await expect(page.getByRole("dialog")).toHaveCount(0);
     await expect(page.getByText("HDFC Regalia").first()).toBeVisible();
-    await expect(page.getByText("Your credit cards")).toBeVisible();
-    await expect(page.getByText("Upcoming payments")).toBeVisible();
+    await expect(page.getByRole("heading", { name: /Your credit card/ })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Upcoming payments" })).toBeVisible();
   });
 });

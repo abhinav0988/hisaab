@@ -1,3 +1,4 @@
 APP_ORIGIN=http://localhost:3000
 BETTER_AUTH_URL=http://localhost:8787
 RATE_LIMIT_SECRET=replace-with-at-least-32-random-characters
+E2E_DISABLE_RATE_LIMIT=1

@@ -73,9 +73,13 @@ export async function sendSignupOtp(env: Env, ctx: WaitUntilContext, email: stri
   await deleteVerification(env, verifiedKey(normalized));
   await deleteVerification(env, failKey(normalized));
   await sendAuthEmail(env, ctx, "otp", normalized, code);
+  const exposeOtp =
+    env.ENVIRONMENT !== "production" ||
+    env.AUTH_DEV_EXPOSE_OTP === "true" ||
+    env.E2E_DISABLE_RATE_LIMIT === "1";
   return {
     sent: true as const,
-    otp: env.ENVIRONMENT !== "production" ? code : undefined,
+    otp: exposeOtp ? code : undefined,
   };
 }
 

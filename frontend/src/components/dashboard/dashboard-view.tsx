@@ -1091,8 +1091,8 @@ function PdFlowChart({
   return (
     <div className="pd-cashflow">
       <div className="pd-yaxis">
-        {ticks.map((tick) => (
-          <span key={tick}>{compactAxis(tick, currency)}</span>
+        {ticks.map((tick, index) => (
+          <span key={`${tick}-${index}`}>{compactAxis(tick, currency)}</span>
         ))}
       </div>
       <div className="pd-cashflow-grid">

@@ -392,7 +392,9 @@ export function IpoView() {
             <Card className="ipo-chart-card">
               <header>
                 <h3>Current P/L by allotment date</h3>
-                <small>{metrics.returnPct}% overall · not a historical price series</small>
+                <small>
+                  Cumulative current P/L for allotted/listed IPOs · not a historical price series
+                </small>
               </header>
               <strong className="ipo-chart-kpi">{money(metrics.totalPlMinor, currency)}</strong>
               <ResponsiveContainer width="100%" height={120}>
@@ -659,6 +661,10 @@ export function IpoView() {
               <h3>Current P/L by allotment/application date</h3>
               <strong className="ipo-gain">{money(metrics.totalPlMinor, currency)}</strong>
             </header>
+            <small style={{ display: "block", marginBottom: 8, color: "var(--muted-foreground)" }}>
+              Running total of today&apos;s P/L, ordered by allotment/application date — not daily
+              market marks.
+            </small>
             <ResponsiveContainer width="100%" height={100}>
               <LineChart data={returnsTrend}>
                 <defs>

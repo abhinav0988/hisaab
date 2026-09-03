@@ -9,4 +9,5 @@ interface Env {
   RESEND_API_KEY?: string;
   EMAIL_FROM?: string;
   AUTH_DEV_EXPOSE_OTP?: string;
+  E2E_DISABLE_RATE_LIMIT?: string;
 }

@@ -591,8 +591,11 @@ function SpendingTrendChart({
     <Card className="cards-trend" id="cards-spending-trend">
       <header>
         <div>
-          <h2>Spending &amp; outstanding trend</h2>
-          <small>Last 30 days — spending vs estimated outstanding.</small>
+          <h2>Spending &amp; estimated outstanding</h2>
+          <small>
+            Last 30 days — cumulative spend vs estimated outstanding (derived from current balance +
+            recent card spend; payments/interest not reconstructed).
+          </small>
         </div>
       </header>
       <div className="cards-trend-body">
@@ -618,7 +621,7 @@ function SpendingTrendChart({
                   name === "spendMinor"
                     ? "Spending"
                     : name === "outstandingMinor"
-                      ? "Outstanding"
+                      ? "Estimated outstanding"
                       : "Credit limit",
                 ]}
               />

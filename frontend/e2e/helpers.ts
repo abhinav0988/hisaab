@@ -55,9 +55,14 @@ export async function register(page: Page, prefix: string) {
       response.url().includes("/api/auth/send-verification-code") && response.request().method() === "POST",
   );
   await page.getByRole("button", { name: /Send code/ }).click();
-  const payload = (await (await sent).json()) as { data?: { otp?: string }; otp?: string };
-  const otp = payload.data?.otp ?? payload.otp ?? "";
-  expect(otp).toMatch(/^\d{6}$/);
+  const response = await sent;
+  expect(response.ok(), `send-verification-code failed: ${response.status()}`).toBe(true);
+  const payload = (await response.json()) as {
+    data?: { otp?: string; sent?: boolean };
+    otp?: string;
+  };
+  const otp = String(payload.data?.otp ?? payload.otp ?? "").trim();
+  expect(otp, `Expected local OTP in response; got ${JSON.stringify(payload)}`).toMatch(/^\d{6}$/);
   await page.getByLabel("Digit 1").click();
   await page.keyboard.type(otp);
   await page.getByRole("button", { name: "Verify email", exact: true }).click();

@@ -46,16 +46,16 @@ test.describe("overview command center", () => {
       await expectAppShell(page);
       await expect(page.getByRole("heading", { name: "Financial Health Score" })).toHaveCount(1);
       await assertNoHorizontalOverflow(page);
-      expect(await cardsOverlap(page, ".overview-command .oc-card, .oc-kpis > *")).toBe(false);
+      expect(await cardsOverlap(page, ".premium-dash .pd-kpi, .premium-dash .pd-module, .premium-dash .pd-card")).toBe(false);
     }
 
     await page.setViewportSize({ width: 1440, height: 900 });
-    await page.locator(".oc-feature").filter({ hasText: "Accounts Overview" }).getByRole("link", { name: /View all/ }).click();
+    await page.locator(".pd-module").filter({ hasText: "Accounts Overview" }).getByRole("link", { name: /View/ }).click();
     await expect(page).toHaveURL(/\/accounts$/);
     await page.getByRole("navigation", { name: "Main" }).getByRole("link", { name: "Overview" }).click();
     await expect(page).toHaveURL(/\/dashboard$/);
 
-    await page.locator(".oc-feature").filter({ hasText: "Investments" }).getByRole("link", { name: /View all/ }).click();
+    await page.locator(".pd-module").filter({ hasText: "Investments" }).getByRole("link", { name: /View/ }).click();
     await expect(page).toHaveURL(/\/investments$/);
     await page.getByRole("navigation", { name: "More finance tools" }).getByRole("link", { name: "IPO Tracker" }).click();
     await expect(page).toHaveURL(/\/ipo$/);

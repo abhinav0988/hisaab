@@ -16,15 +16,15 @@ export default defineConfig({
   webServer: [
     {
       command:
-        "XDG_CONFIG_HOME=/tmp/hisaab-e2e-wrangler BETTER_AUTH_SECRET=e2e-secret-with-at-least-thirty-two-characters RATE_LIMIT_SECRET=e2e-rate-limit-secret-with-at-least-thirty-two-chars pnpm --filter @hisaab/auth db:migrate:local && XDG_CONFIG_HOME=/tmp/hisaab-e2e-wrangler pnpm --filter @hisaab/auth db:seed:local && XDG_CONFIG_HOME=/tmp/hisaab-e2e-wrangler BETTER_AUTH_SECRET=e2e-secret-with-at-least-thirty-two-characters RATE_LIMIT_SECRET=e2e-rate-limit-secret-with-at-least-thirty-two-chars pnpm --filter @hisaab/gateway dev -- --var E2E_DISABLE_RATE_LIMIT:1",
+        "XDG_CONFIG_HOME=/tmp/hisaab-e2e-wrangler BETTER_AUTH_SECRET=e2e-secret-with-at-least-thirty-two-characters RATE_LIMIT_SECRET=e2e-rate-limit-secret-with-at-least-thirty-two-chars pnpm --filter @hisaab/auth db:migrate:local && XDG_CONFIG_HOME=/tmp/hisaab-e2e-wrangler pnpm --filter @hisaab/auth db:seed:local && XDG_CONFIG_HOME=/tmp/hisaab-e2e-wrangler pnpm --filter @hisaab/auth exec wrangler d1 execute hisaab --local --persist-to ../../.wrangler/state --command \"DELETE FROM api_rate_limits;\" && XDG_CONFIG_HOME=/tmp/hisaab-e2e-wrangler BETTER_AUTH_SECRET=e2e-secret-with-at-least-thirty-two-characters RATE_LIMIT_SECRET=e2e-rate-limit-secret-with-at-least-thirty-two-chars AUTH_DEV_EXPOSE_OTP=true E2E_DISABLE_RATE_LIMIT=1 pnpm --filter @hisaab/gateway dev -- --var E2E_DISABLE_RATE_LIMIT:1 --var APP_ORIGIN:http://localhost:3000 --var BETTER_AUTH_URL:http://localhost:8787 --var ENVIRONMENT:development",
       url: "http://localhost:8787/health",
-      reuseExistingServer: !process.env.CI,
+      reuseExistingServer: false,
       timeout: 120_000,
     },
     {
       command: "PLAYWRIGHT=1 NEXT_PUBLIC_API_URL=http://localhost:8787 pnpm --filter @hisaab/web dev",
       url: "http://localhost:3000/login",
-      reuseExistingServer: !process.env.CI,
+      reuseExistingServer: false,
       timeout: 120_000,
     },
   ],
