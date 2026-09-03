@@ -41,6 +41,7 @@ export function TransactionForm({
   currency,
   initial,
   defaultType = "EXPENSE",
+  defaultBankAccountId,
   onSaved,
 }: {
   accounts: Account[];
@@ -49,6 +50,7 @@ export function TransactionForm({
   currency: string;
   initial?: Transaction;
   defaultType?: "INCOME" | "EXPENSE";
+  defaultBankAccountId?: string;
   onSaved: (credit?: CreditSpendImpact | null, bankMessage?: string) => void;
 }) {
   const options = useMemo(
@@ -73,8 +75,8 @@ export function TransactionForm({
   const [creditFacilityId, setCreditFacilityId] = useState("");
 
   useEffect(() => {
-    if (channelAccountId) return;
     if (initial) {
+      if (channelAccountId) return;
       const hit =
         accounts.find((item) => item.id === initial.accountId) ??
         bankAccounts.find((item) => item.id === initial.accountId);
@@ -86,8 +88,17 @@ export function TransactionForm({
       setChannelAccountId(initial.accountId);
       return;
     }
+    if (defaultBankAccountId && bankAccounts.some((item) => item.id === defaultBankAccountId)) {
+      const catalogBank = options.find((item) => item.type === "BANK");
+      if (catalogBank) {
+        setChannelAccountId(catalogBank.id);
+        setBankAccountId(defaultBankAccountId);
+      }
+      return;
+    }
+    if (channelAccountId) return;
     setChannelAccountId(options[0]?.id ?? "");
-  }, [channelAccountId, initial, accounts, bankAccounts, options]);
+  }, [channelAccountId, initial, accounts, bankAccounts, options, defaultBankAccountId]);
 
   const methodOptions = paymentMethodAccounts(options);
   const selectedChannel = options.find((item) => item.id === channelAccountId);
@@ -96,6 +107,8 @@ export function TransactionForm({
     ? bankAccountId || bankAccounts[0]?.id || ""
     : "";
   const accountId = isBankChannel ? activeBankId : channelAccountId;
+  const bankAccountValid =
+    !isBankChannel || bankAccounts.some((item) => item.id === accountId);
   const paymentMethod =
     selectedChannel && isPaymentMethodType(selectedChannel.type) ? selectedChannel.type : "";
   const facilities = useQuery({
@@ -195,6 +208,10 @@ export function TransactionForm({
     setError("");
     setSaving(true);
     try {
+      if (isBankChannel && !bankAccountValid) {
+        setError("Select a saved bank account. Expenses deduct and income credits that account.");
+        return;
+      }
       const body = {
         type,
         amountMinor: majorToMinor(amount),
@@ -676,7 +693,7 @@ export function TransactionForm({
             !accountId ||
             !categoryId ||
             !options.length ||
-            (isBankChannel && !bankAccounts.length)
+            (isBankChannel && (!bankAccounts.length || !bankAccountValid))
           }
         >
           {saving ? "Saving…" : initial ? "Save changes" : `Add ${type.toLowerCase()}`}

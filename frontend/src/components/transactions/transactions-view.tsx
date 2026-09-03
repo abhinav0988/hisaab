@@ -79,6 +79,7 @@ export function TransactionsView() {
   const [showMoreCategories, setShowMoreCategories] = useState(false);
   const add = manualAdd || searchParams.has("action");
   const defaultType = searchParams.get("action") === "income" ? "INCOME" : "EXPENSE";
+  const defaultBankAccountId = searchParams.get("bank_account") ?? searchParams.get("bank") ?? "";
   const closeAdd = () => {
     setManualAdd(false);
     if (searchParams.has("action")) {
@@ -495,6 +496,7 @@ export function TransactionsView() {
           categories={categories.data}
           currency={profile.data.defaultCurrency}
           defaultType={defaultType}
+          defaultBankAccountId={defaultBankAccountId || undefined}
           onSaved={saved}
         />
       </Modal>

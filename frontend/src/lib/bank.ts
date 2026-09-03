@@ -110,6 +110,14 @@ export function bankAccountLabel(
   return `${label}${digits} · ${money(account.currentBalanceMinor, account.currency ?? currency)} available`;
 }
 
+export function bankTransactionHref(
+  accountId: string,
+  type: "INCOME" | "EXPENSE" = "EXPENSE",
+) {
+  const action = type === "INCOME" ? "income" : "add";
+  return `/transactions?action=${action}&bank_account=${encodeURIComponent(accountId)}`;
+}
+
 export function bankSpendCopy(
   account: Pick<Account, "name" | "institutionName">,
   deltaMinor: number,

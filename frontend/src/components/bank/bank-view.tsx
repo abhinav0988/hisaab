@@ -50,6 +50,7 @@ import {
   bankLast4,
   bankMaskDisplay,
   bankSubtype,
+  bankTransactionHref,
   deltaPct,
   downloadBankCsv,
   formatBankAccountName,
@@ -483,6 +484,8 @@ export function BankView() {
                       menuOpen={menuId === account.id}
                       onMenu={() => setMenuId(menuId === account.id ? null : account.id)}
                       onEdit={() => router.push("/accounts")}
+                      onAddMoney={() => router.push(bankTransactionHref(account.id, "INCOME"))}
+                      onRecordExpense={() => router.push(bankTransactionHref(account.id, "EXPENSE"))}
                     />
                   ))}
                 </ul>
@@ -586,6 +589,16 @@ export function BankView() {
           <Card className="bank-actions">
             <h2>Quick Actions</h2>
             <div className="bank-actions-grid">
+              <QuickAction
+                icon={Banknote}
+                label="Add money"
+                description="Credit income to a bank account"
+                onClick={() =>
+                  accounts[0]
+                    ? router.push(bankTransactionHref(accounts[0].id, "INCOME"))
+                    : setAddOpen(true)
+                }
+              />
               <QuickAction
                 icon={ArrowLeftRight}
                 label="Transfer entry"
@@ -767,6 +780,8 @@ function BankAccountRow({
   menuOpen,
   onMenu,
   onEdit,
+  onAddMoney,
+  onRecordExpense,
 }: {
   account: Account;
   currency: string;
@@ -775,6 +790,8 @@ function BankAccountRow({
   menuOpen: boolean;
   onMenu: () => void;
   onEdit: () => void;
+  onAddMoney: () => void;
+  onRecordExpense: () => void;
 }) {
   const label = bankLabel(account);
   const tone = bankBrandTone(label);
@@ -820,8 +837,10 @@ function BankAccountRow({
         </button>
         {menuOpen ? (
           <div className="bank-menu-pop">
+            <button type="button" onClick={onAddMoney}>Add money</button>
+            <button type="button" onClick={onRecordExpense}>Record expense</button>
             <button type="button" onClick={onEdit}>Edit account</button>
-            <Link href="/transactions?action=add">Add transaction</Link>
+            <Link href={bankTransactionHref(account.id, "EXPENSE")}>Add transaction</Link>
           </div>
         ) : null}
       </div>

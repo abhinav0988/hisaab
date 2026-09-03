@@ -89,19 +89,64 @@ function shouldReleaseBankHold(status: IpoStatus) {
   return status === "Not Allotted";
 }
 
-function incomeCategoryId(categories: { id: string; name: string; type: string }[]) {
-  return (
-    categories.find((item) => item.name === "Salary" && item.type === "INCOME") ??
-    categories.find((item) => item.name === "Other" && item.type === "INCOME") ??
-    categories.find((item) => item.type === "INCOME")
-  )?.id;
+function expenseCategoryId(categories: { id: string; name: string; type: string }[]) {
+  const match =
+    categories.find((item) => item.name === "Other" && item.type === "EXPENSE") ??
+    categories.find((item) => item.type === "EXPENSE");
+  if (!match) throw new Error("No expense category found. Add a category first.");
+  return match.id;
 }
 
-function expenseCategoryId(categories: { id: string; name: string; type: string }[]) {
-  return (
-    categories.find((item) => item.name === "Other" && item.type === "EXPENSE") ??
-    categories.find((item) => item.type === "EXPENSE")
-  )?.id;
+function incomeCategoryId(categories: { id: string; name: string; type: string }[]) {
+  const match =
+    categories.find((item) => item.name === "Salary" && item.type === "INCOME") ??
+    categories.find((item) => item.name === "Other" && item.type === "INCOME") ??
+    categories.find((item) => item.type === "INCOME");
+  if (!match) throw new Error("No income category found. Add a category first.");
+  return match.id;
+}
+
+async function blockBankForIpo(
+  bankAccountId: string,
+  categories: { id: string; name: string; type: string }[],
+  payload: {
+    amountMinor: number;
+    name: string;
+    appliedOn: string;
+    currency: string;
+  },
+) {
+  await transactionService.create({
+    type: "EXPENSE",
+    accountId: bankAccountId,
+    categoryId: expenseCategoryId(categories),
+    amountMinor: payload.amountMinor,
+    currency: payload.currency,
+    merchant: `IPO: ${payload.name}`,
+    notes: "IPO application amount blocked in bank",
+    transactionAt: new Date(`${payload.appliedOn}T12:00:00`).toISOString(),
+  });
+}
+
+async function releaseBankForIpo(
+  bankAccountId: string,
+  categories: { id: string; name: string; type: string }[],
+  payload: {
+    amountMinor: number;
+    name: string;
+    currency: string;
+  },
+) {
+  await transactionService.create({
+    type: "INCOME",
+    accountId: bankAccountId,
+    categoryId: incomeCategoryId(categories),
+    amountMinor: payload.amountMinor,
+    currency: payload.currency,
+    merchant: `IPO refund: ${payload.name}`,
+    notes: "IPO not allotted — application amount credited back to bank",
+    transactionAt: new Date().toISOString(),
+  });
 }
 
 export function IpoView() {
@@ -129,24 +174,18 @@ export function IpoView() {
         currency: string;
         status: IpoStatus;
       };
-      const ipo = await financeService.createIpo(payload.body);
-      if (
+      const needsHold =
         payload.bankAccountId &&
         categories.data &&
-        shouldBlockBankHold(body.status)
-      ) {
-        const categoryId = expenseCategoryId(categories.data);
-        if (categoryId) {
-          await transactionService.create({
-            type: "EXPENSE",
-            accountId: payload.bankAccountId,
-            categoryId,
-            amountMinor: body.amountMinor,
-            currency: body.currency,
-            merchant: `IPO: ${body.name}`,
-            notes: "IPO application amount blocked in bank",
-            transactionAt: new Date(`${body.appliedOn}T12:00:00`).toISOString(),
-          });
+        shouldBlockBankHold(body.status);
+
+      const ipo = await financeService.createIpo(payload.body);
+      if (needsHold) {
+        try {
+          await blockBankForIpo(payload.bankAccountId!, categories.data!, body);
+        } catch (error) {
+          await financeService.deleteIpo(ipo.id);
+          throw error;
         }
       }
       return ipo;
@@ -169,36 +208,42 @@ export function IpoView() {
       body: unknown;
       previous: IpoApplication;
     }) => {
-      const patch = body as { status?: IpoStatus };
+      const patch = body as { status?: IpoStatus; amountMinor?: number };
       const nextStatus = patch.status ?? previous.status;
+      const nextAmount = patch.amountMinor ?? previous.amountMinor;
       const result = await financeService.updateIpo(id, body);
 
       const bankId = previous.paymentSource;
-      const bankHeld =
-        bankId &&
-        (banks.data ?? []).some((item) => item.id === bankId) &&
-        shouldBlockBankHold(previous.status) &&
-        !Boolean(previous.holdReleased);
+      const bankList = banks.data ?? [];
+      const isValidBank = bankId && bankList.some((item) => item.id === bankId);
+      if (!isValidBank || !categories.data) return result;
 
-      if (
-        bankHeld &&
-        shouldReleaseBankHold(nextStatus) &&
-        categories.data
-      ) {
-        const categoryId = incomeCategoryId(categories.data);
-        if (categoryId) {
-          await transactionService.create({
-            type: "INCOME",
-            accountId: bankId,
-            categoryId,
-            amountMinor: previous.amountMinor,
-            currency: previous.currency,
-            merchant: `IPO refund: ${previous.name}`,
-            notes: "IPO not allotted — application amount credited back to bank",
-            transactionAt: new Date().toISOString(),
-          });
-          await financeService.updateIpo(id, { holdReleased: true });
-        }
+      const wasBlocking = shouldBlockBankHold(previous.status);
+      const nowBlocking = shouldBlockBankHold(nextStatus);
+      const holdActive = wasBlocking && !Boolean(previous.holdReleased);
+
+      if (holdActive && shouldReleaseBankHold(nextStatus)) {
+        await releaseBankForIpo(bankId, categories.data, {
+          amountMinor: previous.amountMinor,
+          name: previous.name,
+          currency: previous.currency,
+        });
+        await financeService.updateIpo(id, { holdReleased: true });
+      } else if (previous.holdReleased && nowBlocking) {
+        await blockBankForIpo(bankId, categories.data, {
+          amountMinor: nextAmount,
+          name: previous.name,
+          appliedOn: previous.appliedOn,
+          currency: previous.currency,
+        });
+        await financeService.updateIpo(id, { holdReleased: false });
+      } else if (!previous.holdReleased && !wasBlocking && nowBlocking) {
+        await blockBankForIpo(bankId, categories.data, {
+          amountMinor: nextAmount,
+          name: previous.name,
+          appliedOn: previous.appliedOn,
+          currency: previous.currency,
+        });
       }
       return result;
     },
@@ -787,7 +832,9 @@ function IpoFormModal({
     const next: Record<string, string> = {};
     if (!name.trim()) next.name = "Enter IPO name.";
     if (!amount.trim()) next.amount = "Enter applied amount.";
-    if (!initial && !bankAccountId) next.bank = "Select a bank account.";
+    if (!initial && shouldBlockBankHold(status) && !bankAccountId) {
+      next.bank = "Select a bank account to block the applied amount.";
+    }
     if (allottedView && allotted.trim() && Number.isNaN(parseOptionalMinor(allotted))) {
       next.allotted = "Enter a valid allotted amount.";
     }
@@ -808,7 +855,10 @@ function IpoFormModal({
       paymentSource: bankAccountId || initial?.paymentSource || null,
       currency,
     };
-    onSave(body, initial ? undefined : bankAccountId || undefined);
+    onSave(
+      body,
+      !initial && bankAccountId && shouldBlockBankHold(status) ? bankAccountId : undefined,
+    );
   }
 
   return (
