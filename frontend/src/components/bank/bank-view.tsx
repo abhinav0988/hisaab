@@ -58,7 +58,7 @@ import {
   INDIAN_BANKS,
 } from "@/lib/bank";
 import { displayDateLong } from "@/lib/finance-modules";
-import { money, signedMoney } from "@/lib/format";
+import { localDateKey, money, signedMoney } from "@/lib/format";
 import { accountService } from "@/services/account.service";
 import { dashboardService } from "@/services/dashboard.service";
 import { profileService } from "@/services/profile.service";
@@ -176,7 +176,7 @@ function DeltaNote({ value, invert }: { value: number; invert?: boolean }) {
 }
 
 function isoToday() {
-  return new Date().toISOString().slice(0, 10);
+  return localDateKey(new Date());
 }
 
 function lastUpdatedLabel(accounts: Account[]) {
@@ -730,7 +730,7 @@ export function BankView() {
                       <strong>{item.merchant || item.categoryName || "Transaction"}</strong>
                       <small>
                         {accountLabelForTxn(item, accounts)} ·{" "}
-                        {displayDateLong(item.transactionAt.slice(0, 10))}
+                        {displayDateLong(localDateKey(item.transactionAt))}
                       </small>
                     </div>
                     <b className={item.type === "INCOME" ? "is-in" : "is-out"}>

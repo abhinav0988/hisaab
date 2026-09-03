@@ -59,7 +59,7 @@ import { PageHeader } from "@/components/layout/page-header";
 import { EmptyState, ErrorState, PageSkeleton } from "@/components/layout/states";
 import { ApiError } from "@/lib/api-client";
 import { displayDateLong, isoPlusDays, isoToday, sumMinor } from "@/lib/finance-modules";
-import { money } from "@/lib/format";
+import { localDateKey, money } from "@/lib/format";
 import { financeService } from "@/services/finance.service";
 import { profileService } from "@/services/profile.service";
 
@@ -167,7 +167,7 @@ function buildSpendingTrend(
   const now = new Date();
   const byDay = new Map<string, number>();
   for (const item of recent) {
-    const key = item.transactionAt.slice(0, 10);
+    const key = localDateKey(item.transactionAt);
     byDay.set(key, (byDay.get(key) ?? 0) + item.amountMinor);
   }
   let cumulative = 0;
@@ -182,7 +182,7 @@ function buildSpendingTrend(
   for (let i = days - 1; i >= 0; i -= 1) {
     const date = new Date(now);
     date.setDate(date.getDate() - i);
-    const key = date.toISOString().slice(0, 10);
+    const key = localDateKey(date);
     const daySpend = byDay.get(key) ?? 0;
     cumulative += daySpend;
     peakDay = Math.max(peakDay, daySpend);
@@ -1182,7 +1182,7 @@ function RecentCardTransactions({
                     <strong>{item.merchant || "Card spend"}</strong>
                   </td>
                   <td>{item.cardName}</td>
-                  <td>{displayDateLong(item.transactionAt.slice(0, 10))}</td>
+                  <td>{displayDateLong(localDateKey(item.transactionAt))}</td>
                   <td>{money(item.amountMinor, currency)}</td>
                   <td>
                     <span className="cards-pill is-pending">Pending</span>

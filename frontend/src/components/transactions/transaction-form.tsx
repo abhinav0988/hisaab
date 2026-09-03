@@ -29,9 +29,12 @@ function localParts(iso: string) {
 }
 
 function shiftDate(value: string, days: number) {
-  const next = new Date(`${value}T00:00:00`);
+  const next = new Date(`${value}T12:00:00`);
   next.setDate(next.getDate() + days);
-  return next.toISOString().slice(0, 10);
+  const year = next.getFullYear();
+  const month = String(next.getMonth() + 1).padStart(2, "0");
+  const day = String(next.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
 }
 
 export function TransactionForm({

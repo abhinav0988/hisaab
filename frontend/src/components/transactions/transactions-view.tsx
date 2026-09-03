@@ -27,7 +27,7 @@ import { CardHead, Eyebrow } from "@/components/layout/chrome";
 import { ConfirmDialog, Modal } from "@/components/layout/modal";
 import { EmptyState, ErrorState, NoResults, PageSkeleton } from "@/components/layout/states";
 import { CategoryGlyph } from "@/components/finance/category-glyph";
-import { dayGroupLabel, money, signedMoney, transactionStamp } from "@/lib/format";
+import { dayGroupLabel, localDateKey, money, signedMoney, transactionStamp } from "@/lib/format";
 import { accountDisplayName, resolveAccountLabel, tidyAccountLabel, accountsForTransactions } from "@/lib/accounts";
 import { creditSpendCopy } from "@/lib/finance-modules";
 import { accountService } from "@/services/account.service";
@@ -48,15 +48,18 @@ const FEATURED_CATEGORY_NAMES = [
 function periodBounds(period: string) {
   const now = new Date();
   const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  if (period === "today") return { from: startOfDay.toISOString().slice(0, 10), to: startOfDay.toISOString().slice(0, 10) };
+  if (period === "today") {
+    const day = localDateKey(startOfDay);
+    return { from: day, to: day };
+  }
   if (period === "week") {
     const from = new Date(startOfDay);
     from.setDate(from.getDate() - 6);
-    return { from: from.toISOString().slice(0, 10), to: startOfDay.toISOString().slice(0, 10) };
+    return { from: localDateKey(from), to: localDateKey(startOfDay) };
   }
   if (period === "month") {
     const from = new Date(now.getFullYear(), now.getMonth(), 1);
-    return { from: from.toISOString().slice(0, 10), to: startOfDay.toISOString().slice(0, 10) };
+    return { from: localDateKey(from), to: localDateKey(startOfDay) };
   }
   return { from: "", to: "" };
 }
@@ -570,8 +573,7 @@ function CategoryFilterChip({
 function groupByDate(items: Transaction[]) {
   const groups: Array<{ key: string; label: string; total: number; items: Transaction[] }> = [];
   for (const item of items) {
-    const date = new Date(item.transactionAt);
-    const key = date.toISOString().slice(0, 10);
+    const key = localDateKey(item.transactionAt);
     const signed = item.type === "INCOME" ? item.amountMinor : -item.amountMinor;
     const existing = groups.find((group) => group.key === key);
     if (existing) {
