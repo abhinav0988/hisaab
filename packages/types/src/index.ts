@@ -304,7 +304,7 @@ export interface DashboardSummary {
   budgetPercentage: number;
   daysRemaining: number;
   currency?: string;
-  sevenDaySpending: Array<{ date: string; amount: number }>;
+  sevenDaySpending: Array<{ date: string; amount: number; income: number }>;
   categorySpending: Array<{ name: string; value: number; colour: string }>;
   monthlyComparison: Array<{ month: string; income: number; expense: number }>;
   recentTransactions: Transaction[];

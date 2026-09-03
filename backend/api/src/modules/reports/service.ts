@@ -83,7 +83,7 @@ export async function dashboard(env: Env, userId: string) {
       byCategory(env, userId, context.from, context.to),
       monthly(env, userId),
       env.DB.prepare(
-        "SELECT t.id,t.account_id AS accountId,t.category_id AS categoryId,t.type,t.amount_minor AS amountMinor,t.currency,t.merchant,t.notes,t.transaction_at AS transactionAt,a.name AS accountName,c.name AS categoryName,c.icon AS categoryIcon,c.colour AS categoryColour FROM transactions t JOIN accounts a ON a.id=t.account_id JOIN categories c ON c.id=t.category_id WHERE t.user_id=? AND t.deleted_at IS NULL ORDER BY t.transaction_at DESC LIMIT 6",
+        "SELECT t.id,t.account_id AS accountId,t.category_id AS categoryId,t.type,t.amount_minor AS amountMinor,t.currency,t.merchant,t.notes,t.transaction_at AS transactionAt,a.name AS accountName,c.name AS categoryName,c.icon AS categoryIcon,c.colour AS categoryColour FROM transactions t JOIN accounts a ON a.id=t.account_id JOIN categories c ON c.id=t.category_id WHERE t.user_id=? AND t.deleted_at IS NULL ORDER BY t.transaction_at DESC LIMIT 12",
       )
         .bind(userId)
         .all(),
@@ -122,6 +122,7 @@ export async function dashboard(env: Env, userId: string) {
     sevenDaySpending: sevenDay.map((row) => ({
       date: String(row.date),
       amount: Number(row.expense),
+      income: Number(row.income),
     })),
     categorySpending,
     monthlyComparison,
