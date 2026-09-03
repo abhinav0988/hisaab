@@ -1,40 +1,60 @@
 "use client";
 import type { Category, CreditSpendImpact, Transaction } from "@hisaab/types";
-import { Button, Card, Input, Select } from "@hisaab/ui";
+import { Button, Select } from "@hisaab/ui";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
+  Activity,
+  ArrowDownToLine,
+  ArrowUpFromLine,
   BarChart3,
   CalendarDays,
+  ChevronDown,
   ChevronLeft,
   ChevronRight,
+  ChevronUp,
+  CircleHelp,
   Download,
-  Headset,
   Layers,
-  MoreVertical,
-  Pencil,
   Plus,
-  RefreshCw,
+  Receipt,
   Search,
-  Shield,
   Sparkles,
   Trash2,
+  Wallet,
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useMemo, useState, type ReactNode } from "react";
 import { toast } from "sonner";
-import { CardHead, Eyebrow } from "@/components/layout/chrome";
 import { ConfirmDialog, Modal } from "@/components/layout/modal";
 import { EmptyState, ErrorState, NoResults, PageSkeleton } from "@/components/layout/states";
 import { CategoryGlyph } from "@/components/finance/category-glyph";
-import { dayGroupLabel, localDateKey, money, signedMoney, transactionStamp } from "@/lib/format";
-import { accountDisplayName, resolveAccountLabel, tidyAccountLabel, accountsForTransactions } from "@/lib/accounts";
+import { compactTime, dayGroupLabel, localDateKey, money, signedMoney } from "@/lib/format";
+import {
+  accountDisplayName,
+  accountTypeLabel,
+  resolveAccountLabel,
+  tidyAccountLabel,
+  accountsForTransactions,
+} from "@/lib/accounts";
 import { creditSpendCopy } from "@/lib/finance-modules";
+import {
+  axisLabel,
+  lastTenDaySpend,
+  merchantTone,
+  niceAxis,
+  paymentMode,
+  percentChange,
+  previousTenDaySpend,
+  topExpenseCategory,
+  visiblePageNumbers,
+} from "@/lib/tx-insights";
 import { accountService } from "@/services/account.service";
 import { categoryService } from "@/services/category.service";
 import { profileService } from "@/services/profile.service";
 import { transactionService } from "@/services/transaction.service";
 import { TransactionForm } from "./transaction-form";
+import "../../app/tx16.css";
 
 const FEATURED_CATEGORY_NAMES = [
   "Education",
@@ -64,6 +84,24 @@ function periodBounds(period: string) {
   return { from: "", to: "" };
 }
 
+function isoDayStart(day: string) {
+  return new Date(`${day}T00:00:00`).toISOString();
+}
+function isoDayEnd(day: string) {
+  return new Date(`${day}T23:59:59`).toISOString();
+}
+
+function rangeQuery(from: string, to: string, extra = "") {
+  const value = new URLSearchParams({ page: "1", limit: "500", sort: "newest" });
+  if (from) value.set("from", isoDayStart(from));
+  if (to) value.set("to", isoDayEnd(to));
+  if (extra) {
+    const more = new URLSearchParams(extra);
+    more.forEach((item, key) => value.set(key, item));
+  }
+  return value.toString();
+}
+
 export function TransactionsView() {
   const queryClient = useQueryClient();
   const router = useRouter();
@@ -75,7 +113,7 @@ export function TransactionsView() {
   const [period, setPeriod] = useState("all");
   const [sort, setSort] = useState("newest");
   const [page, setPage] = useState(1);
-  const [menu, setMenu] = useState<string | null>(null);
+  const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
   const [editing, setEditing] = useState<Transaction | null>(null);
   const [deleting, setDeleting] = useState<Transaction | null>(null);
   const [manualAdd, setManualAdd] = useState(false);
@@ -93,19 +131,30 @@ export function TransactionsView() {
     }
   };
   const { from, to } = periodBounds(period);
+  const today = localDateKey(new Date());
+  const lookbackStart = localDateKey(new Date(new Date().getFullYear(), new Date().getMonth(), new Date().getDate() - 19));
+  const monthStart = localDateKey(new Date(new Date().getFullYear(), new Date().getMonth(), 1));
   const filters = useMemo(() => {
     const value = new URLSearchParams({ page: String(page), limit: "20", sort });
     if (search) value.set("search", search);
     if (type) value.set("type", type);
     if (category) value.set("category_id", category);
     if (account) value.set("account_id", account);
-    if (from) value.set("from", new Date(`${from}T00:00:00`).toISOString());
-    if (to) value.set("to", new Date(`${to}T23:59:59`).toISOString());
+    if (from) value.set("from", isoDayStart(from));
+    if (to) value.set("to", isoDayEnd(to));
     return value.toString();
   }, [page, sort, search, type, category, account, from, to]);
   const transactions = useQuery({
     queryKey: ["transactions", filters],
     queryFn: () => transactionService.list(filters),
+  });
+  const monthRows = useQuery({
+    queryKey: ["transactions-month", monthStart, today],
+    queryFn: () => transactionService.list(rangeQuery(monthStart, today)),
+  });
+  const lookbackRows = useQuery({
+    queryKey: ["transactions-lookback", lookbackStart, today],
+    queryFn: () => transactionService.list(rangeQuery(lookbackStart, today)),
   });
   const accounts = useQuery({ queryKey: ["accounts"], queryFn: () => accountService.list() });
   const bankAccounts = useQuery({
@@ -120,6 +169,8 @@ export function TransactionsView() {
       toast.success("Transaction deleted");
       setDeleting(null);
       void queryClient.invalidateQueries({ queryKey: ["transactions"] });
+      void queryClient.invalidateQueries({ queryKey: ["transactions-month"] });
+      void queryClient.invalidateQueries({ queryKey: ["transactions-lookback"] });
       void queryClient.invalidateQueries({ queryKey: ["dashboard"] });
       void queryClient.invalidateQueries({ queryKey: ["credit-facilities"] });
       void queryClient.invalidateQueries({ queryKey: ["credit-dashboard"] });
@@ -148,6 +199,8 @@ export function TransactionsView() {
       credit ? creditSpendCopy(credit, currency) : bankMessage ?? "Transaction saved",
     );
     void queryClient.invalidateQueries({ queryKey: ["transactions"] });
+    void queryClient.invalidateQueries({ queryKey: ["transactions-month"] });
+    void queryClient.invalidateQueries({ queryKey: ["transactions-lookback"] });
     void queryClient.invalidateQueries({ queryKey: ["dashboard"] });
     void queryClient.invalidateQueries({ queryKey: ["accounts"] });
     void queryClient.invalidateQueries({ queryKey: ["bank-accounts"] });
@@ -166,107 +219,159 @@ export function TransactionsView() {
   const groups = groupByDate(rows);
   const { featured, extra } = splitCategoryChips(categories.data);
   const visibleCategories = showMoreCategories ? [...featured, ...extra] : featured;
-  const periodLabel =
-    period === "all" ? "All dates" : period === "month" ? "This month" : period === "week" ? "This week" : "Today";
-  const typeLabel = type === "INCOME" ? "Income" : type === "EXPENSE" ? "Expense" : "All types";
+  const monthItems = monthRows.data?.data ?? [];
+  const lookbackItems = lookbackRows.data?.data ?? [];
+  const moneyIn = monthItems.filter((item) => item.type === "INCOME").reduce((sum, item) => sum + item.amountMinor, 0);
+  const moneyOut = monthItems.filter((item) => item.type === "EXPENSE").reduce((sum, item) => sum + item.amountMinor, 0);
+  const net = moneyIn - moneyOut;
+  const totalBalance = allAccounts.reduce((sum, item) => sum + Number(item.currentBalanceMinor ?? 0), 0);
+  const daily = lastTenDaySpend(lookbackItems);
+  const spend10 = daily.reduce((sum, item) => sum + item.minor, 0);
+  const previous10 = previousTenDaySpend(lookbackItems);
+  const spendChange = percentChange(spend10, previous10);
+  const maxSpend = Math.max(...daily.map((item) => item.minor), 1);
+  const axisMax = niceAxis(maxSpend);
+  const topCategory = topExpenseCategory(lookbackItems);
+  const highDay = daily.reduce((best, item) => (item.minor > best.minor ? item : best), daily[0]!);
+  const avg10 = Math.round(spend10 / 10);
+  const total = Number(transactions.data.meta?.total ?? rows.length);
+  const totalPages = Number(transactions.data.meta?.totalPages ?? 1);
+  const showingFrom = total ? (page - 1) * 20 + 1 : 0;
+  const showingTo = Math.min(page * 20, total);
+  const filtered = Boolean(search || type || category || account || period !== "all");
   return (
-    <div>
-      <header className="tx-hero">
+    <div className="tx16">
+      <header className="tx16-head">
         <div>
-          <Eyebrow>Money movement</Eyebrow>
-          <h1 className="m-0 text-[clamp(26px,7vw,38px)] font-semibold leading-[1.08] tracking-[-0.055em]">
-            Transactions
-          </h1>
-          <p className="mt-[9px] max-w-[620px] text-[14px] leading-[1.65] text-[var(--muted-foreground)]">
-            Search, filter, review, and maintain every expense and income with a cleaner premium layout.
-          </p>
+          <h2>Transactions</h2>
+          <p>Search, filter, review and manage your transactions</p>
         </div>
-        <div className="tx-hero-side">
-          <div className="tx-hero-art" aria-hidden>
-            <picture>
-              <source srcSet="/images/transactions-hero-wallet.webp" type="image/webp" />
-              <img
-                src="/images/transactions-hero-wallet.png"
-                alt=""
-                width={720}
-                height={480}
-              />
-            </picture>
-          </div>
-          <div className="tx-hero-actions">
-            <Button variant="secondary" onClick={() => exportCsv(rows)}>
-              <Download size={16} />
-              Export CSV
-            </Button>
-            <Button onClick={() => setManualAdd(true)}>
-              <Plus size={17} />
-              Add transaction
-            </Button>
-          </div>
+        <div className="tx16-head-actions">
+          <button type="button" className="tx16-add" onClick={() => setManualAdd(true)}>
+            <Plus size={16} />
+            Add transaction
+          </button>
         </div>
       </header>
-      <Card className="transaction-filters-card p-[22px]">
-        <CardHead
-          title={
-            <span className="inline-flex items-center gap-2">
-              Smart filters
-              <Sparkles size={16} className="text-[var(--primary)]" aria-hidden />
+
+      <section className="tx16-kpis">
+        <article className="tx16-kpi in">
+          <div>
+            <span>Money In</span>
+            <b>{money(moneyIn, currency)}</b>
+            <small>This calendar month</small>
+          </div>
+          <i>
+            <ArrowDownToLine size={19} />
+          </i>
+        </article>
+        <article className="tx16-kpi out">
+          <div>
+            <span>Money Out</span>
+            <b>{money(moneyOut, currency)}</b>
+            <small>This calendar month</small>
+          </div>
+          <i>
+            <ArrowUpFromLine size={19} />
+          </i>
+        </article>
+        <article className="tx16-kpi net">
+          <div>
+            <span>Net Flow</span>
+            <b>
+              {net < 0 ? "−" : "+"}
+              {money(Math.abs(net), currency)}
+            </b>
+            <small>Income minus expenses</small>
+          </div>
+          <i>
+            <Activity size={19} />
+          </i>
+        </article>
+        <article className="tx16-kpi bal">
+          <div>
+            <span>Total Balance</span>
+            <b>{money(totalBalance, currency)}</b>
+            <small>Across your accounts</small>
+          </div>
+          <i>
+            <Wallet size={19} />
+          </i>
+        </article>
+      </section>
+
+      <section className="tx16-mid">
+        <article className="tx16-panel tx16-spend">
+          <div className="tx16-panel-head">
+            <div>
+              <h3>
+                Daily Spending Overview <small>(Last 10 Days)</small>
+              </h3>
+            </div>
+            <span className="tx21-inline-icon" aria-hidden>
+              <CircleHelp size={13} />
             </span>
-          }
-          description="Use search, period, type, account, and category filters to find entries clearly."
-          action={
-            <button
-              type="button"
-              className="min-h-11 text-[11px] font-bold text-[var(--muted-foreground)]"
-              onClick={resetFilters}
-            >
-              Reset all
+          </div>
+          <div className="tx16-spend-total">
+            <b>{money(spend10, currency)}</b>
+            <span>Total spent in last 10 days</span>
+            <em className={spendChange.down ? "is-down" : undefined}>{spendChange.label}</em>
+          </div>
+          <div className="tx16-chart">
+            <div className="tx16-y">
+              <span>{axisLabel(axisMax, currency)}</span>
+              <span>{axisLabel(Math.round(axisMax * 0.66), currency)}</span>
+              <span>{axisLabel(Math.round(axisMax * 0.33), currency)}</span>
+              <span>₹0</span>
+            </div>
+            <div className="tx16-plot">
+              {daily.map((item) => (
+                <div key={item.key} className="tx16-bar-col" title={money(item.minor, currency)}>
+                  <b>{item.minor ? money(item.minor, currency).replace(".00", "") : ""}</b>
+                  <i style={{ height: `${Math.max(4, Math.round((item.minor / axisMax) * 78))}%` }} />
+                  <span>{item.label}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </article>
+        <article className="tx16-panel tx16-filters">
+          <div className="tx16-panel-head">
+            <h3>
+              Smart Filters{" "}
+              <span className="tx16-spark" aria-hidden>
+                <Sparkles size={13} />
+              </span>
+            </h3>
+            <button type="button" className="tx16-clear" onClick={resetFilters}>
+              Clear all
             </button>
-          }
-        />
-        <div className="filters-grid">
-          <label className="filter-field">
-            <span>Search</span>
-            <div className="date-shell">
-              <span className="calendar-icon" aria-hidden>
-                <Search size={13} />
-              </span>
-              <Input
-                placeholder="Search merchant, category, note or account..."
-                aria-label="Search merchant or notes"
-                value={search}
-                onChange={(event) => {
-                  setSearch(event.target.value);
-                  setPage(1);
-                }}
-              />
-            </div>
+          </div>
+          <label className="tx16-search">
+            <Search size={16} aria-hidden />
+            <input
+              placeholder="Search merchant, category, account..."
+              aria-label="Search merchant or notes"
+              value={search}
+              onChange={(event) => {
+                setSearch(event.target.value);
+                setPage(1);
+              }}
+            />
           </label>
-          <label className="filter-field">
-            <span>Period</span>
-            <div className="date-shell">
-              <span className="calendar-icon" aria-hidden>
-                <CalendarDays size={13} />
-              </span>
-              <Select value={period} onChange={(event) => setPeriod(event.target.value)}>
-                <option value="all">All dates</option>
-                <option value="month">This month</option>
-                <option value="week">This week</option>
-                <option value="today">Today</option>
-              </Select>
-            </div>
-          </label>
-          <label className="filter-field">
-            <span>Type</span>
-            <Select aria-label="Transaction type" value={type} onChange={(event) => setType(event.target.value)}>
+          <div className="tx16-selects">
+            <Select aria-label="Period" value={period} onChange={(event) => { setPeriod(event.target.value); setPage(1); }}>
+              <option value="all">All dates</option>
+              <option value="month">This month</option>
+              <option value="week">This week</option>
+              <option value="today">Today</option>
+            </Select>
+            <Select aria-label="Transaction type" value={type} onChange={(event) => { setType(event.target.value); setPage(1); }}>
               <option value="">All types</option>
               <option value="EXPENSE">Expense</option>
               <option value="INCOME">Income</option>
             </Select>
-          </label>
-          <label className="filter-field">
-            <span>Account</span>
-            <Select aria-label="Account" value={account} onChange={(event) => setAccount(event.target.value)}>
+            <Select aria-label="Account" value={account} onChange={(event) => { setAccount(event.target.value); setPage(1); }}>
               <option value="">All accounts</option>
               {allAccounts.map((item) => (
                 <option key={item.id} value={item.id}>
@@ -274,224 +379,258 @@ export function TransactionsView() {
                 </option>
               ))}
             </Select>
-          </label>
-        </div>
-        <div className="chip-row tx-category-row">
-          <CategoryFilterChip
-            active={!category}
-            onClick={() => {
-              setCategory("");
-              setPage(1);
-            }}
-            icon={<Layers size={14} />}
-          >
-            All categories
-          </CategoryFilterChip>
-          {visibleCategories.map((item) => (
+          </div>
+          <div className="tx16-cats">
             <CategoryFilterChip
-              key={item.id}
-              active={category === item.id}
-              colour={item.colour}
+              active={!category}
               onClick={() => {
-                setCategory(item.id);
+                setCategory("");
                 setPage(1);
               }}
-              icon={<CategoryGlyph name={item.icon} size={14} />}
+              icon={<Layers size={13} />}
             >
-              {item.name}
+              All
             </CategoryFilterChip>
-          ))}
-          {extra.length ? (
-            <CategoryFilterChip
-              active={showMoreCategories}
-              onClick={() => setShowMoreCategories((value) => !value)}
-            >
-              {showMoreCategories ? "Show less" : `+ More`}
-            </CategoryFilterChip>
-          ) : null}
-        </div>
-        <div className="tx-summary">
-          <div>
-            <b>
-              Showing {Number(transactions.data.meta?.total ?? rows.length)} transaction
-              {Number(transactions.data.meta?.total ?? rows.length) === 1 ? "" : "s"}
-            </b>
-            <small>
-              Category: {categories.data.find((item) => item.id === category)?.name ?? "All"} · Period:{" "}
-              {periodLabel} · Type: {typeLabel}
-            </small>
+            {visibleCategories.map((item) => (
+              <CategoryFilterChip
+                key={item.id}
+                active={category === item.id}
+                onClick={() => {
+                  setCategory(item.id);
+                  setPage(1);
+                }}
+                icon={<CategoryGlyph name={item.icon} size={13} />}
+              >
+                {item.name}
+              </CategoryFilterChip>
+            ))}
+            {extra.length ? (
+              <CategoryFilterChip active={showMoreCategories} onClick={() => setShowMoreCategories((value) => !value)}>
+                {showMoreCategories ? "Show less" : "More"}
+                <Plus size={13} />
+              </CategoryFilterChip>
+            ) : null}
           </div>
-          <Button
-            variant="secondary"
-            className="bg-[var(--mint)] hover:bg-[color-mix(in_srgb,var(--mint)_80%,var(--surface))]"
-            onClick={() => setManualAdd(true)}
-          >
-            <Plus size={16} aria-hidden="true" /> New transaction
-          </Button>
-        </div>
-      </Card>
+        </article>
+      </section>
+
       {rows.length ? (
-        <Card className="table-card">
-          {groups.map((group) => (
-            <div key={group.key} className="tx-date-group">
-              <div className="tx-date-bar">
-                <span className="tx-date-bar-label">
-                  <CalendarDays size={14} aria-hidden />
-                  <span className="truncate">{group.label}</span>
-                </span>
-                <span className="tx-date-bar-total">
-                  {group.total >= 0 ? "+ " : "− "}
-                  {money(Math.abs(group.total), profile.data.defaultCurrency)}
-                </span>
-              </div>
-              {group.items.map((item) => (
-                <div key={item.id} className="transaction-row">
-                  <span className={`tx-icon${item.type === "INCOME" ? " income" : ""}`}>
-                    <CategoryGlyph
-                      name={item.categoryIcon ?? (item.type === "INCOME" ? "₹" : "↘")}
-                    />
-                  </span>
-                  <div className="min-w-0">
-                    <b className="block truncate text-[13px]">
-                      {item.merchant || item.notes || "Untitled transaction"}
-                    </b>
-                    <small className="mt-1 block truncate text-[11px] text-[var(--muted-foreground)]">
-                      {item.categoryName} • {resolveAccountLabel(allAccounts, item.accountId, item.accountName)} •{" "}
-                      {transactionStamp(item.transactionAt)}
+        <section className="tx16-bottom">
+          <div className="tx16-ledger">
+            <div className="tx16-table-head">
+              <span>DATE</span>
+              <span>MERCHANT / CATEGORY</span>
+              <span>ACCOUNT</span>
+              <span>PAYMENT MODE</span>
+              <span>AMOUNT</span>
+            </div>
+            {groups.map((group) => {
+              const daySpend = group.items
+                .filter((item) => item.type === "EXPENSE")
+                .reduce((sum, item) => sum + item.amountMinor, 0);
+              const isCollapsed = collapsed[group.key];
+              return (
+                <div key={group.key} className="tx16-daygroup">
+                  <div className="tx16-daybar">
+                    <div>
+                      <span className="cal" aria-hidden>
+                        <CalendarDays size={13} />
+                      </span>
+                      <b>{group.label}</b>
+                      <em>Daily spending: {money(daySpend, currency)}</em>
+                    </div>
+                    <small>
+                      {group.items.length} transaction{group.items.length === 1 ? "" : "s"}
+                      <button
+                        type="button"
+                        className="tx19-collapse"
+                        aria-label={isCollapsed ? "Expand day" : "Collapse day"}
+                        onClick={() =>
+                          setCollapsed((current) => ({ ...current, [group.key]: !current[group.key] }))
+                        }
+                      >
+                        {isCollapsed ? <ChevronDown size={13} /> : <ChevronUp size={13} />}
+                      </button>
                     </small>
                   </div>
-                  <div className="hide-mobile shrink-0">
-                    <span className="category-tag">{item.categoryName}</span>
-                  </div>
-                  <span
-                    className={`shrink-0 whitespace-nowrap text-right text-[13px] font-extrabold tabular-nums ${item.type === "INCOME" ? "text-[var(--primary)]" : ""}`}
-                  >
-                    {signedMoney(item.amountMinor, item.currency, item.type)}
-                  </span>
-                  <div className="relative row-menu">
-                    <button
-                      className="grid size-11 place-items-center rounded-[10px] text-[var(--muted-foreground)] hover:bg-[var(--muted)]"
-                      aria-label="Transaction actions"
-                      aria-haspopup="menu"
-                      aria-expanded={menu === item.id}
-                      onClick={() => setMenu(menu === item.id ? null : item.id)}
-                    >
-                      <MoreVertical size={16} />
-                    </button>
-                    {menu === item.id ? (
-                      <div
-                        className="absolute end-0 top-full z-40 mt-1 w-40 max-w-[calc(100vw-2rem)] rounded-2xl border bg-[var(--surface)] p-1.5 shadow-[var(--shadow-lg)]"
-                        role="menu"
-                        aria-label="Transaction actions"
-                      >
-                        <button
-                          className="flex min-h-11 w-full items-center gap-2 rounded-xl px-3 py-2 text-start text-xs hover:bg-[var(--muted)]"
-                          role="menuitem"
-                          onClick={() => {
-                            setEditing(item);
-                            setMenu(null);
-                          }}
-                        >
-                          <Pencil size={14} /> Edit
-                        </button>
-                        <button
-                          className="flex min-h-11 w-full items-center gap-2 rounded-xl px-3 py-2 text-start text-xs text-[var(--danger)] hover:bg-[var(--danger-soft)]"
-                          aria-label="Delete"
-                          role="menuitem"
-                          onClick={() => {
-                            setMenu(null);
-                            setDeleting(item);
-                          }}
-                        >
-                          <Trash2 size={14} /> Delete
-                        </button>
-                      </div>
-                    ) : null}
-                  </div>
+                  {isCollapsed
+                    ? null
+                    : group.items.map((item) => {
+                        const accountRow = allAccounts.find((row) => row.id === item.accountId);
+                        const pay = paymentMode(accountRow);
+                        return (
+                          <div key={item.id} className="tx16-row">
+                            <span className="tx16-time">{compactTime(item.transactionAt)}</span>
+                            <div className="tx16-merchant">
+                              <i className={merchantTone(item)}>
+                                <CategoryGlyph
+                                  name={item.categoryIcon ?? (item.type === "INCOME" ? "₹" : undefined)}
+                                  size={17}
+                                />
+                              </i>
+                              <div>
+                                <b>{item.merchant || item.notes || "Untitled transaction"}</b>
+                                <small>
+                                  <u />
+                                  {item.categoryName}
+                                </small>
+                              </div>
+                            </div>
+                            <div className="tx16-account">
+                              <b>{resolveAccountLabel(allAccounts, item.accountId, item.accountName)}</b>
+                              <small>{accountRow ? accountTypeLabel(accountRow.type) : "Account"}</small>
+                            </div>
+                            <div className="tx16-pay">
+                              <b>{pay.method}</b>
+                              <small>{pay.provider}</small>
+                            </div>
+                            <div className={`tx16-amt ${item.type === "INCOME" ? "in" : "out"}`}>
+                              {signedMoney(item.amountMinor, item.currency, item.type)}
+                              <button
+                                type="button"
+                                className="tx19-row-arrow"
+                                aria-label="Edit transaction"
+                                onClick={() => setEditing(item)}
+                              >
+                                <ChevronRight size={13} />
+                              </button>
+                              <button
+                                type="button"
+                                className="tx19-row-arrow"
+                                aria-label="Delete"
+                                onClick={() => setDeleting(item)}
+                              >
+                                <Trash2 size={13} />
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      })}
                 </div>
-              ))}
-            </div>
-          ))}
-          <div className="flex flex-col gap-3 border-t px-4 py-3 text-sm sm:flex-row sm:items-center sm:justify-between">
-            <span className="text-[var(--muted-foreground)]">
-              Page {page} of {Number(transactions.data.meta?.totalPages ?? 1)}
-            </span>
-            <div className="flex gap-2">
-              <Button variant="secondary" className="px-3" disabled={page === 1} onClick={() => setPage((value) => value - 1)}>
-                <ChevronLeft size={17} />
-              </Button>
-              <Button
-                variant="secondary"
-                className="px-3"
-                disabled={page >= Number(transactions.data.meta?.totalPages ?? 1)}
-                onClick={() => setPage((value) => value + 1)}
-              >
-                <ChevronRight size={17} />
-              </Button>
-              <Select className="w-full sm:w-40" aria-label="Sort" value={sort} onChange={(event) => setSort(event.target.value)}>
-                <option value="newest">Newest first</option>
-                <option value="oldest">Oldest first</option>
-                <option value="amount_desc">Highest amount</option>
-                <option value="amount_asc">Lowest amount</option>
-              </Select>
+              );
+            })}
+            <div className="tx16-pagination">
+              <div className="tx16-page-info">
+                <b>
+                  Showing {showingFrom}–{showingTo} of {total} transactions
+                </b>
+                <small>
+                  Page {page} of {totalPages}
+                </small>
+              </div>
+              <div className="tx16-page-actions">
+                <button
+                  type="button"
+                  className="tx16-page-btn nav"
+                  disabled={page === 1}
+                  aria-label="Previous page"
+                  onClick={() => setPage((value) => value - 1)}
+                >
+                  <ChevronLeft size={14} />
+                </button>
+                {visiblePageNumbers(page, totalPages).map((item) => (
+                  <button
+                    key={item}
+                    type="button"
+                    className={`tx16-page-btn${page === item ? " active" : ""}`}
+                    onClick={() => setPage(item)}
+                  >
+                    {item}
+                  </button>
+                ))}
+                <button
+                  type="button"
+                  className="tx16-page-btn nav"
+                  disabled={page >= totalPages}
+                  aria-label="Next page"
+                  onClick={() => setPage((value) => value + 1)}
+                >
+                  <ChevronRight size={14} />
+                </button>
+                <Select className="w-[132px]" aria-label="Sort" value={sort} onChange={(event) => setSort(event.target.value)}>
+                  <option value="newest">Newest first</option>
+                  <option value="oldest">Oldest first</option>
+                  <option value="amount_desc">Highest amount</option>
+                  <option value="amount_asc">Lowest amount</option>
+                </Select>
+              </div>
             </div>
           </div>
-        </Card>
-      ) : search || type || category || account ? (
-        <NoResults
-          query={search || "these filters"}
-          onClear={resetFilters}
-        />
+          <aside className="tx16-side">
+            <article className="tx16-panel tx16-export">
+              <div>
+                <h3>Export & Reports</h3>
+                <p>Download your transaction data</p>
+                <button type="button" onClick={() => exportCsv(rows)}>
+                  Export CSV
+                  <Download size={14} />
+                </button>
+              </div>
+              <div className="tx16-wallet" aria-hidden>
+                <Wallet size={29} />
+              </div>
+            </article>
+            <article className="tx16-panel tx16-insights">
+              <div className="tx16-panel-head">
+                <h3>Insights</h3>
+                <span className="tx21-select-btn">Last 10 days</span>
+              </div>
+              <div className="tx16-insight">
+                <i>
+                  <Receipt size={17} />
+                </i>
+                <div>
+                  <small>Top Category</small>
+                  <b>{topCategory.name}</b>
+                </div>
+                <strong>{money(topCategory.minor, currency)}</strong>
+              </div>
+              <div className="tx16-insight">
+                <i>
+                  <CalendarDays size={17} />
+                </i>
+                <div>
+                  <small>Highest Spending Day</small>
+                  <b>{highDay.longLabel}</b>
+                </div>
+                <strong>{money(highDay.minor, currency)}</strong>
+              </div>
+              <div className="tx16-insight">
+                <i>
+                  <BarChart3 size={17} />
+                </i>
+                <div>
+                  <small>Avg. Daily Spending</small>
+                  <b>{money(avg10, currency)}</b>
+                </div>
+                <strong />
+              </div>
+              <Link href="/reports">
+                View all insights
+                <span className="tx21-link-arrow" aria-hidden>
+                  <ChevronRight size={13} />
+                </span>
+              </Link>
+            </article>
+          </aside>
+        </section>
+      ) : filtered ? (
+        <NoResults query={search || "these filters"} onClear={resetFilters} />
       ) : (
-        <EmptyState
-          title="No transactions yet"
-          description="Add your first transaction to start tracking money movement."
-          action={
-            <Button onClick={() => setManualAdd(true)}>
-              <Plus size={17} />
-              Add transaction
-            </Button>
-          }
-        />
+        <div className="tx16-ledger tx16-empty">
+          <EmptyState
+            title="No transactions yet"
+            description="Add your first transaction to start tracking money movement."
+            action={
+              <Button onClick={() => setManualAdd(true)}>
+                <Plus size={17} />
+                Add transaction
+              </Button>
+            }
+          />
+        </div>
       )}
-      <div className="tx-proofs">
-        <Link href="/privacy" className="tx-proof">
-          <span className="tx-proof-icon">
-            <Shield size={16} />
-          </span>
-          <span>
-            <b>Secure & Private</b>
-            <small>Your ledger stays on your Hisaab account.</small>
-          </span>
-        </Link>
-        <Link href="/settings" className="tx-proof">
-          <span className="tx-proof-icon" style={{ background: "color-mix(in srgb, #2563EB 14%, var(--surface))", color: "#2563EB" }}>
-            <RefreshCw size={16} />
-          </span>
-          <span>
-            <b>Real-time Sync</b>
-            <small>Balances update as soon as you save.</small>
-          </span>
-        </Link>
-        <Link href="/reports" className="tx-proof">
-          <span className="tx-proof-icon" style={{ background: "color-mix(in srgb, #7C3AED 14%, var(--surface))", color: "#7C3AED" }}>
-            <BarChart3 size={16} />
-          </span>
-          <span>
-            <b>Smart Reports</b>
-            <small>See spending trends and monthly health.</small>
-          </span>
-        </Link>
-        <Link href="/premium" className="tx-proof">
-          <span className="tx-proof-icon" style={{ background: "color-mix(in srgb, #EA580C 14%, var(--surface))", color: "#EA580C" }}>
-            <Headset size={16} />
-          </span>
-          <span>
-            <b>Premium Support</b>
-            <small>Priority help when you need it.</small>
-          </span>
-        </Link>
-      </div>
+
       <Modal open={add} onClose={closeAdd} title="Add transaction" size="lg">
         <TransactionForm
           accounts={channelOptions}
@@ -539,33 +678,19 @@ function splitCategoryChips(items: Category[]) {
 
 function CategoryFilterChip({
   active,
-  colour,
   icon,
   children,
   onClick,
 }: {
   active?: boolean;
-  colour?: string;
   icon?: ReactNode;
   children: ReactNode;
   onClick: () => void;
 }) {
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={`tx-category-chip${active ? " active" : ""}`}
-      style={!active && colour ? { borderColor: colour } : undefined}
-    >
-      {icon ? (
-        <span
-          className="tx-category-chip-icon"
-          style={!active && colour ? { color: colour } : undefined}
-        >
-          {icon}
-        </span>
-      ) : null}
-      {children}
+    <button type="button" onClick={onClick} className={active ? "active" : undefined}>
+      {icon}
+      <span>{children}</span>
     </button>
   );
 }
