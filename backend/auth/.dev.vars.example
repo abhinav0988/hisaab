@@ -4,3 +4,5 @@ EMAIL_FROM=Hisaab <onboarding@resend.dev>
 AUTH_DEV_EXPOSE_OTP=true
 EMAIL_WEBHOOK_URL=
 EMAIL_WEBHOOK_TOKEN=
+APP_ORIGIN=http://localhost:3000
+BETTER_AUTH_URL=http://localhost:8787

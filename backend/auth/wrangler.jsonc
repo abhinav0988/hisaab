@@ -8,8 +8,8 @@
   "workers_dev": false,
   "vars": {
     "ENVIRONMENT": "development",
-    "APP_ORIGIN": "http://localhost:3000",
-    "BETTER_AUTH_URL": "http://localhost:8787",
+    "APP_ORIGIN": "https://hisaab.blobforges.workers.dev",
+    "BETTER_AUTH_URL": "https://hisaab-gateway.blobforges.workers.dev",
     "EMAIL_FROM": "Hisaab <onboarding@resend.dev>",
   },
   "d1_databases": [
