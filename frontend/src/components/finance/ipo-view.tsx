@@ -18,7 +18,6 @@ import {
   ShieldCheck,
   TrendingUp,
 } from "lucide-react";
-import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import {
   Cell,
@@ -150,7 +149,6 @@ async function releaseBankForIpo(
 }
 
 export function IpoView() {
-  const router = useRouter();
   const client = useQueryClient();
   const [period, setPeriod] = useState<IpoPeriod>("month");
   const [search, setSearch] = useState("");
@@ -329,16 +327,10 @@ export function IpoView() {
         title="IPO Tracker"
         description="Track IPO applications, allotment status, listing performance and returns."
         actions={
-          <>
-            <Button variant="secondary" onClick={() => setAddOpen(true)}>
-              <Plus size={14} />
-              Add IPO
-            </Button>
-            <Button onClick={() => router.push("/transactions?action=add")}>
-              <Plus size={14} />
-              Add transaction
-            </Button>
-          </>
+          <Button onClick={() => setAddOpen(true)}>
+            <Plus size={14} />
+            Add IPO
+          </Button>
         }
       />
 
