@@ -466,6 +466,43 @@ async function cardRecentAndCycle(env: Env, userId: string) {
   };
 }
 
+async function cardLedger(env: Env, userId: string) {
+  const from = new Date();
+  from.setUTCDate(from.getUTCDate() - 30);
+  const rows = await env.DB.prepare(
+    `SELECT t.id AS id,
+            t.type AS type,
+            t.amount_minor AS amountMinor,
+            t.transaction_at AS transactionAt
+     FROM transactions t
+     WHERE t.user_id = ?
+       AND t.deleted_at IS NULL
+       AND t.type IN ('INCOME', 'EXPENSE')
+       AND t.transaction_at >= ?
+       AND t.account_id IN (
+         SELECT id FROM accounts WHERE user_id = ? AND type = 'CREDIT_CARD'
+         UNION
+         SELECT account_id FROM credit_facilities
+         WHERE user_id = ? AND kind = 'CARD' AND account_id IS NOT NULL
+       )
+     ORDER BY t.transaction_at ASC
+     LIMIT 500`,
+  )
+    .bind(userId, from.toISOString(), userId, userId)
+    .all<{
+      id: string;
+      type: "INCOME" | "EXPENSE" | "TRANSFER";
+      amountMinor: number;
+      transactionAt: string;
+    }>();
+  return (rows.results ?? []).map((row) => ({
+    id: row.id,
+    type: row.type,
+    amountMinor: Number(row.amountMinor ?? 0),
+    transactionAt: row.transactionAt,
+  }));
+}
+
 export async function getCreditDashboard(env: Env, userId: string) {
   const cards = await listCreditFacilities(env, userId, "CARD");
   const overview = creditOverview({
@@ -502,6 +539,7 @@ export async function getCreditDashboard(env: Env, userId: string) {
     trend,
     spending: await cardSpending(env, userId),
     recent: activity.recent,
+    ledger: await cardLedger(env, userId),
     cycle: {
       pendingMinor: cards.reduce((sum, card) => sum + cardPendingMinor(card), 0),
       spendMinor: activity.spendMinor,

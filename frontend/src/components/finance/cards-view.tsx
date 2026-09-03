@@ -59,6 +59,7 @@ import { PageHeader } from "@/components/layout/page-header";
 import { EmptyState, ErrorState, PageSkeleton } from "@/components/layout/states";
 import { ApiError } from "@/lib/api-client";
 import { displayDateLong, isoPlusDays, isoToday, sumMinor } from "@/lib/finance-modules";
+import { buildSpendingTrend } from "@/lib/credit-trend";
 import { localDateKey, money } from "@/lib/format";
 import { financeService } from "@/services/finance.service";
 import { profileService } from "@/services/profile.service";
@@ -155,61 +156,6 @@ function dueCountdown(dueOn: string | null) {
 
 function estimateCreditScore(usedPct: number) {
   return Math.max(300, Math.min(850, Math.round(900 - usedPct * 2.5 - (usedPct > 55 ? 25 : 0))));
-}
-
-function buildSpendingTrend(
-  recent: CreditRecentTransaction[],
-  cycleSpendMinor: number,
-  outstandingMinor: number,
-  limitMinor: number,
-) {
-  const days = 30;
-  const now = new Date();
-  const byDay = new Map<string, number>();
-  for (const item of recent) {
-    const key = localDateKey(item.transactionAt);
-    byDay.set(key, (byDay.get(key) ?? 0) + item.amountMinor);
-  }
-  const windowKeys: string[] = [];
-  for (let i = days - 1; i >= 0; i -= 1) {
-    const date = new Date(now);
-    date.setDate(date.getDate() - i);
-    windowKeys.push(localDateKey(date));
-  }
-  const windowSpend = windowKeys.reduce((sum, key) => sum + (byDay.get(key) ?? 0), 0);
-  let cumulative = 0;
-  let peakDay = 0;
-  const points: Array<{
-    label: string;
-    spendMinor: number;
-    outstandingMinor: number;
-    limitMinor: number;
-    daySpendMinor: number;
-  }> = [];
-  for (let i = days - 1; i >= 0; i -= 1) {
-    const date = new Date(now);
-    date.setDate(date.getDate() - i);
-    const key = localDateKey(date);
-    const daySpend = byDay.get(key) ?? 0;
-    cumulative += daySpend;
-    peakDay = Math.max(peakDay, daySpend);
-    const estimatedOutstanding = Math.max(0, outstandingMinor - (windowSpend - cumulative));
-    points.push({
-      label: new Intl.DateTimeFormat("en-GB", { month: "short", day: "numeric" }).format(date),
-      spendMinor: cumulative,
-      outstandingMinor: estimatedOutstanding,
-      limitMinor,
-      daySpendMinor: daySpend,
-    });
-  }
-  const activeDays = [...byDay.values()].filter((value) => value > 0).length || 1;
-  return {
-    points,
-    peakDayMinor: peakDay,
-    avgDailyMinor: Math.round(cycleSpendMinor / activeDays),
-    totalSpendMinor: cycleSpendMinor,
-    totalOutstandingMinor: outstandingMinor,
-  };
 }
 
 function downloadCardsCsv(cards: CreditFacility[]) {
@@ -334,7 +280,7 @@ export function CardsView() {
   const pending = create.isPending || update.isPending;
   const nextDue = upcoming[0]?.dueOn ?? dashboard.data?.cycle.dueOn ?? null;
   const trendPack = buildSpendingTrend(
-    dashboard.data?.recent ?? [],
+    dashboard.data?.ledger?.length ? dashboard.data.ledger : (dashboard.data?.recent ?? []),
     dashboard.data?.cycle.spendMinor ?? cycleSpend,
     overview.usedMinor,
     overview.limitMinor,
@@ -591,10 +537,10 @@ function SpendingTrendChart({
     <Card className="cards-trend" id="cards-spending-trend">
       <header>
         <div>
-          <h2>Spending &amp; estimated outstanding</h2>
+          <h2>Spending &amp; outstanding</h2>
           <small>
-            Last 30 days — cumulative spend vs estimated outstanding (derived from current balance +
-            recent card spend; payments/interest not reconstructed).
+            Last 30 days — card expenses vs reconstructed outstanding from dated spends and
+            payments. Interest or fees appear only if they were recorded as transactions.
           </small>
         </div>
       </header>
@@ -621,7 +567,7 @@ function SpendingTrendChart({
                   name === "spendMinor"
                     ? "Spending"
                     : name === "outstandingMinor"
-                      ? "Estimated outstanding"
+                      ? "Outstanding (from card transactions)"
                       : "Credit limit",
                 ]}
               />

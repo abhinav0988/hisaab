@@ -266,3 +266,30 @@ describe("registration validation", () => {
     ).toBe(true);
   });
 });
+
+describe("transfer validation", () => {
+  it("requires a different destination account", async () => {
+    const { transactionSchema } = await import("./index");
+    const base = {
+      accountId: "11111111-1111-4111-8111-111111111111",
+      categoryId: "22222222-2222-4222-8222-222222222222",
+      type: "TRANSFER" as const,
+      amountMinor: 50000,
+      currency: "INR" as const,
+      transactionAt: "2026-09-03T10:00:00.000Z",
+    };
+    expect(transactionSchema.safeParse(base).success).toBe(false);
+    expect(
+      transactionSchema.safeParse({
+        ...base,
+        destinationAccountId: "11111111-1111-4111-8111-111111111111",
+      }).success,
+    ).toBe(false);
+    expect(
+      transactionSchema.safeParse({
+        ...base,
+        destinationAccountId: "33333333-3333-4333-8333-333333333333",
+      }).success,
+    ).toBe(true);
+  });
+});

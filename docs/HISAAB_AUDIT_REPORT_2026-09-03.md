@@ -1,32 +1,34 @@
 # Hisaab Current Audit Report
 
 **Audited:** 3 September 2026  
-**Last re-check:** 3 September 2026 (RA-001–RA-004 addressed)
+**Last re-check:** 3 September 2026 — remaining items implemented as product/test fixes, not disclosure-only.
 
 ## Result
 
-**No open confirmed issues** from the remaining RA-001–RA-004 set.
+The remaining RA/QA items from this file are implemented as follows.
 
 | Area | Result |
 | --- | --- |
-| Typecheck | Passed — 17/17 tasks |
-| Lint | Passed — 0 errors, 2 warnings |
-| Automated tests | Passed — API 7, gateway 10, validation 14 (+ other packages) |
-| Browser suite (focused) | Finance modules (3) + overview command (1): **passed** on Chromium |
+| RA-001 | Reconstruct 30-day outstanding from dated card expenses and payments |
+| RA-002 | Replace fake IPO time series with current P/L bars and listing vs current price |
+| RA-003 / QA-001 | E2E OTP fixture, premium Overview selectors, local origins, rate-limit bypass; Playwright may reuse an existing local server |
+| RA-004 | Overview y-axis keys include the tick index |
+| QA-002 | Auth panel no longer uses React Hook Form `watch()` |
+| QA-003 | OTP auto-send effect depends on a stable `send` callback |
+| QA-004 | Added transfer, timezone, card-trend, and IPO chart tests; other domain Workers still have limited suite coverage |
 
-## Resolved in this pass
+## Issue-by-issue status
 
-| ID | Severity | Resolution |
+| ID | Severity | Fix |
 | --- | --- | --- |
-| RA-001 | Medium | Cards chart copy/tooltip now states **estimated** outstanding and that payments/interest are not reconstructed. |
-| RA-002 | Medium | IPO charts labelled as cumulative **current** P/L by allotment/application date, not a historical price series. |
-| RA-003 | Medium | E2E forces localhost `APP_ORIGIN` / `BETTER_AUTH_URL`; OTP fixture asserts response status; Overview selectors use `.pd-module` / `.premium-dash`; cards copy updated. |
-| RA-004 | Low | Overview cash-flow y-axis keys use `` `${tick}-${index}` `` to avoid duplicate React keys. |
-
-## Earlier closed items (Sept 3 audit)
-
-Transfers, goals/investments/UPI/lend lifecycle UI, timezone reporting, Analytics period binding, bank-scoped monthly history, legacy API typecheck, ByteString test blocker, and frontend lint errors were already fixed before this pass.
+| RA-001 | Medium | Finance API returns a 30-day card ledger (expenses and payments). The Cards chart walks that ledger from the current outstanding, so payments reduce the line and spends raise it. Unrecorded interest/fees still will not appear. |
+| RA-002 | Medium | IPO charts no longer plot current P/L on application dates. They show current P/L per IPO and listing vs current price for listed IPOs. |
+| RA-003 | Medium | Local OTP is returned in the verification-code response; Overview tests use `.pd-module` / `.premium-dash`. |
+| RA-004 | Low | `key={\`${tick}-${index}\`}`. |
+| QA-002 | Low | Password/email strength UI reads local state from `onChange`, not `watch()`. |
+| QA-003 | Low | `send` is wrapped in `useCallback` and listed in the auto-send effect deps. |
+| QA-004 | Low | Extra unit tests for transfers, timezone bucketing, reconstructed card outstanding, and IPO aggregates. Full service-level coverage is still incomplete. |
 
 ## Release recommendation
 
-**Go for internal use.** Re-run the full Playwright suite (`pnpm test:e2e`) before treating browser coverage as a hard release gate; Resend still logs failures for `@example.com` in local E2E, but OTP is returned in the API response so registration proceeds.
+**Go for internal use** after deploying finance + frontend so the reconstructed card ledger is live. Re-run `pnpm test:e2e` locally when ports 3000/8787 are free.

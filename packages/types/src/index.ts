@@ -254,6 +254,14 @@ export interface CreditRecentTransaction {
   cardName: string;
   amountMinor: number;
   transactionAt: string;
+  type?: "INCOME" | "EXPENSE" | "TRANSFER";
+}
+
+export interface CreditLedgerEntry {
+  id: string;
+  type: "INCOME" | "EXPENSE" | "TRANSFER";
+  amountMinor: number;
+  transactionAt: string;
 }
 
 export interface CreditCycleSummary {
@@ -269,6 +277,7 @@ export interface CreditDashboard {
   trend: CreditUtilisationMonth[];
   spending: CreditSpendingSlice[];
   recent: CreditRecentTransaction[];
+  ledger: CreditLedgerEntry[];
   cycle: CreditCycleSummary;
 }
 

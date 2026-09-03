@@ -240,40 +240,41 @@ export function ipoPlSummary(list: IpoApplication[]) {
   };
 }
 
-function ipoValuationDate(item: IpoApplication) {
-  return item.allotmentOn ?? item.appliedOn;
-}
-
 function valuedIpos(list: IpoApplication[]) {
   return list.filter((item) => item.status === "Allotted" || item.status === "Listed");
 }
 
-/** Cumulative current P/L ordered by allotment/application date (not a historical price series). */
-export function ipoPerformanceTrend(list: IpoApplication[]) {
-  const sorted = [...valuedIpos(list)].sort((left, right) =>
-    ipoValuationDate(left).localeCompare(ipoValuationDate(right)),
-  );
-  let running = 0;
-  return sorted.map((item) => {
-    running += ipoStats(item).plMinor;
-    return { label: displayDate(ipoValuationDate(item)), value: running };
-  });
+/** Current P/L per allotted/listed IPO — not a historical time series. */
+export function ipoCurrentPlBars(list: IpoApplication[]) {
+  return [...valuedIpos(list)]
+    .map((item) => ({ label: item.name, value: ipoStats(item).plMinor }))
+    .sort((left, right) => left.label.localeCompare(right.label));
 }
 
-/** Cumulative current P/L by valuation date (allotment, else application). */
+/** Listing vs current price for listed IPOs only. */
+export function ipoListingVsCurrent(list: IpoApplication[]) {
+  return list
+    .filter(
+      (item) =>
+        item.status === "Listed" &&
+        (item.listingPriceMinor ?? 0) > 0 &&
+        (item.currentPriceMinor ?? 0) > 0,
+    )
+    .map((item) => ({
+      label: item.name,
+      listing: item.listingPriceMinor ?? 0,
+      current: item.currentPriceMinor ?? 0,
+    }));
+}
+
+/** @deprecated Use ipoCurrentPlBars — kept so older call sites compile. */
+export function ipoPerformanceTrend(list: IpoApplication[]) {
+  return ipoCurrentPlBars(list);
+}
+
+/** @deprecated Use ipoListingVsCurrent. */
 export function ipoReturnsTrend(list: IpoApplication[]) {
-  const byDay = new Map<string, number>();
-  for (const item of valuedIpos(list)) {
-    const key = ipoValuationDate(item);
-    const pl = ipoStats(item).plMinor;
-    byDay.set(key, (byDay.get(key) ?? 0) + pl);
-  }
-  const keys = [...byDay.keys()].sort();
-  let running = 0;
-  return keys.map((key) => {
-    running += byDay.get(key) ?? 0;
-    return { label: displayDate(key), value: running };
-  });
+  return ipoListingVsCurrent(list);
 }
 
 export function downloadIpoCsv(list: IpoApplication[], currency: string) {

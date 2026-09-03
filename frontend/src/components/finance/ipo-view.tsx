@@ -20,9 +20,9 @@ import {
 } from "lucide-react";
 import { useMemo, useState } from "react";
 import {
+  Bar,
+  BarChart,
   Cell,
-  Line,
-  LineChart,
   Pie,
   PieChart,
   ResponsiveContainer,
@@ -44,10 +44,10 @@ import {
   IPO_MARKET_CATEGORIES,
   IPO_STATUSES,
   ipoAbbrev,
+  ipoCurrentPlBars,
   ipoDashboardMetrics,
-  ipoPerformanceTrend,
+  ipoListingVsCurrent,
   ipoPlSummary,
-  ipoReturnsTrend,
   ipoStats,
   ipoStatusBreakdown,
   ipoStatusTone,
@@ -297,8 +297,8 @@ export function IpoView() {
   const metrics = ipoDashboardMetrics(filtered);
   const plSummary = ipoPlSummary(filtered);
   const statusBreakdown = ipoStatusBreakdown(filtered);
-  const performanceTrend = ipoPerformanceTrend(filtered);
-  const returnsTrend = ipoReturnsTrend(filtered);
+  const performanceTrend = ipoCurrentPlBars(filtered);
+  const listingVsCurrent = ipoListingVsCurrent(filtered);
 
   return (
     <div>
@@ -391,22 +391,17 @@ export function IpoView() {
           <div className="ipo-charts-row">
             <Card className="ipo-chart-card">
               <header>
-                <h3>Current P/L by allotment date</h3>
-                <small>
-                  Cumulative current P/L for allotted/listed IPOs · not a historical price series
-                </small>
+                <h3>Current P/L by IPO</h3>
+                <small>Today&apos;s P/L for allotted and listed applications — not a time series</small>
               </header>
               <strong className="ipo-chart-kpi">{money(metrics.totalPlMinor, currency)}</strong>
               <ResponsiveContainer width="100%" height={120}>
-                <LineChart data={performanceTrend}>
-                  <Line
-                    type="monotone"
-                    dataKey="value"
-                    stroke="var(--primary)"
-                    strokeWidth={2}
-                    dot={false}
-                  />
-                </LineChart>
+                <BarChart data={performanceTrend}>
+                  <XAxis dataKey="label" hide />
+                  <YAxis hide />
+                  <Tooltip formatter={(value) => money(Number(value ?? 0), currency)} />
+                  <Bar dataKey="value" fill="var(--primary)" radius={[4, 4, 0, 0]} />
+                </BarChart>
               </ResponsiveContainer>
             </Card>
             <Card className="ipo-chart-card">
@@ -658,33 +653,25 @@ export function IpoView() {
 
           <Card className="ipo-side-card">
             <header>
-              <h3>Current P/L by allotment/application date</h3>
+              <h3>Listing vs current price</h3>
               <strong className="ipo-gain">{money(metrics.totalPlMinor, currency)}</strong>
             </header>
             <small style={{ display: "block", marginBottom: 8, color: "var(--muted-foreground)" }}>
-              Running total of today&apos;s P/L, ordered by allotment/application date — not daily
-              market marks.
+              Listed IPOs only — recorded listing price against the current price you entered.
             </small>
+            {listingVsCurrent.length ? (
             <ResponsiveContainer width="100%" height={100}>
-              <LineChart data={returnsTrend}>
-                <defs>
-                  <linearGradient id="ipoReturnFill" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="var(--primary)" stopOpacity={0.35} />
-                    <stop offset="100%" stopColor="var(--primary)" stopOpacity={0} />
-                  </linearGradient>
-                </defs>
+              <BarChart data={listingVsCurrent}>
                 <XAxis dataKey="label" hide />
                 <YAxis hide />
                 <Tooltip formatter={(value) => money(Number(value ?? 0), currency)} />
-                <Line
-                  type="monotone"
-                  dataKey="value"
-                  stroke="var(--primary)"
-                  strokeWidth={2}
-                  dot={false}
-                />
-              </LineChart>
+                <Bar dataKey="listing" fill="color-mix(in srgb, var(--foreground) 35%, transparent)" name="Listing" />
+                <Bar dataKey="current" fill="var(--primary)" name="Current" />
+              </BarChart>
             </ResponsiveContainer>
+            ) : (
+              <p className="ipo-filter-meta">Add listing and current prices on a listed IPO to compare them here.</p>
+            )}
           </Card>
 
           <Card className="ipo-side-card">

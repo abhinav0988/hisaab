@@ -1,7 +1,7 @@
 "use client";
 
 import { Button } from "@hisaab/ui";
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { toast } from "sonner";
 import { Mail, MailPlus } from "lucide-react";
 import { OtpInputs } from "@/components/auth/otp-inputs";
@@ -50,7 +50,7 @@ export function EmailOtpPanel({
     return () => window.clearTimeout(timer);
   }, [seconds]);
 
-  const send = async () => {
+  const send = useCallback(async () => {
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       toast.error("Enter a valid email address first");
       return;
@@ -69,7 +69,7 @@ export function EmailOtpPanel({
     } finally {
       setSending(false);
     }
-  };
+  }, [email]);
 
   useEffect(() => {
     if (!autoSend || verified || autoSent.current || sending) return;
@@ -79,7 +79,7 @@ export function EmailOtpPanel({
       void send();
     }, 0);
     return () => window.clearTimeout(timer);
-  }, [autoSend, email, verified, sending]);
+  }, [autoSend, email, verified, sending, send]);
 
   const verify = async (nextCode = code) => {
     if (nextCode.length !== 6) {

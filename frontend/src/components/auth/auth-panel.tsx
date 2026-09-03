@@ -49,12 +49,10 @@ export function AuthPanel({ initialMode = "signin" }: { initialMode?: "signin" |
     clearErrors,
     getValues,
     reset,
-    watch,
   } = form;
-
-  const password = watch("password") ?? "";
-  const confirmPassword = watch("confirmPassword") ?? "";
-  const emailValue = watch("email") ?? "";
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [emailValue, setEmailValue] = useState("");
   const emailVerified = verifiedEmail !== "" && verifiedEmail === emailValue.trim().toLowerCase();
   const hasLength = password.length >= 8;
   const hasNumber = /\d/.test(password);
@@ -73,6 +71,8 @@ export function AuthPanel({ initialMode = "signin" }: { initialMode?: "signin" |
     setConfirmVisible(false);
     setTermsAccepted(true);
     setVerifiedEmail("");
+    setPassword("");
+    setConfirmPassword("");
     clearErrors();
     reset({
       name: "",
@@ -207,7 +207,9 @@ export function AuthPanel({ initialMode = "signin" }: { initialMode?: "signin" |
                 placeholder="name@example.com"
                 readOnly={emailVerified}
                 className={authControlClass}
-                {...register("email")}
+                {...register("email", {
+                  onChange: (event) => setEmailValue(event.target.value),
+                })}
                 id="auth-email"
               />
             </EmailOtpPanel>
@@ -224,7 +226,9 @@ export function AuthPanel({ initialMode = "signin" }: { initialMode?: "signin" |
               autoComplete="email"
               placeholder="name@example.com"
               className={authControlClass}
-              {...register("email")}
+              {...register("email", {
+                onChange: (event) => setEmailValue(event.target.value),
+              })}
             />
           </Field>
         )}
@@ -248,7 +252,9 @@ export function AuthPanel({ initialMode = "signin" }: { initialMode?: "signin" |
               autoComplete={registerMode ? "new-password" : "current-password"}
               placeholder="Enter your password"
               className={authControlClass}
-              {...register("password")}
+              {...register("password", {
+                onChange: (event) => setPassword(event.target.value),
+              })}
             />
           </Field>
           {registerMode ? (
@@ -271,7 +277,9 @@ export function AuthPanel({ initialMode = "signin" }: { initialMode?: "signin" |
                 autoComplete="new-password"
                 placeholder="Re-enter your password"
                 className={authControlClass}
-                {...register("confirmPassword")}
+                {...register("confirmPassword", {
+                  onChange: (event) => setConfirmPassword(event.target.value),
+                })}
               />
             </Field>
           ) : null}
