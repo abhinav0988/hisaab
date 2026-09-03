@@ -3,6 +3,7 @@ import type { goalContributionSchema, goalSchema } from "@hisaab/validation";
 import { audit, newId, notFound, now } from "@hisaab/worker-lib";
 import { and, desc, eq } from "drizzle-orm";
 import type { z } from "zod";
+import { nextGoalSaved } from "../goals-logic";
 
 type CreateGoal = z.infer<typeof goalSchema>;
 type CreateContribution = z.infer<typeof goalContributionSchema>;
@@ -89,7 +90,7 @@ export async function addContribution(
     createdAt: now(),
   };
   await db.insert(goalContributions).values(value);
-  const nextSaved = goal.savedAmountMinor + input.amountMinor;
+  const nextSaved = nextGoalSaved(goal.savedAmountMinor, input.amountMinor);
   await db
     .update(savingsGoals)
     .set({ savedAmountMinor: nextSaved, updatedAt: now() })

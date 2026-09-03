@@ -2,7 +2,8 @@ import { accounts, categories, createDatabase, recurringTransactions } from "@hi
 import type { recurringPatchSchema, recurringSchema } from "@hisaab/validation";
 import type { z } from "zod";
 import { and, eq, isNull, or } from "drizzle-orm";
-import { AppError, addFrequency, newId, notFound, now } from "@hisaab/worker-lib";
+import { AppError, newId, notFound, now } from "@hisaab/worker-lib";
+import { nextRecurringRun } from "../schedule";
 
 type CreateRecurring = z.infer<typeof recurringSchema>;
 type PatchRecurring = z.infer<typeof recurringPatchSchema>;
@@ -114,7 +115,7 @@ export async function processRecurring(env: Env, scheduledAt = new Date()) {
     )
       .bind(recurringId, scheduledFor)
       .first();
-    const nextRun = addFrequency(
+    const nextRun = nextRecurringRun(
       scheduledFor,
       String(row.frequency) as "DAILY" | "WEEKLY" | "MONTHLY" | "YEARLY",
     );

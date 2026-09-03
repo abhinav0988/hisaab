@@ -17,6 +17,7 @@ import type {
 import type { z } from "zod";
 import { and, eq, isNull, or } from "drizzle-orm";
 import { AppError, audit, newId, notFound, now } from "@hisaab/worker-lib";
+import { transferDestinationError } from "../transfer";
 
 type CreateTransaction = z.infer<typeof transactionSchema>;
 type PatchTransaction = z.infer<typeof transactionPatchSchema>;
@@ -78,11 +79,13 @@ async function validateReferences(
   if (input.currency !== currency || account.currency !== currency)
     throw new AppError(400, "CURRENCY_MISMATCH", `Transactions must use ${currency}.`);
   if (input.type === "TRANSFER") {
-    if (!input.destinationAccountId) {
-      throw new AppError(400, "INVALID_ACCOUNT", "Choose the destination account for this transfer.");
-    }
-    if (input.destinationAccountId === input.accountId) {
-      throw new AppError(400, "INVALID_ACCOUNT", "Source and destination accounts must be different.");
+    const transferError = transferDestinationError(input);
+    if (transferError || !input.destinationAccountId) {
+      throw new AppError(
+        400,
+        "INVALID_ACCOUNT",
+        transferError ?? "Choose the destination account for this transfer.",
+      );
     }
     const destination = await db.query.accounts.findFirst({
       where: and(eq(accounts.id, input.destinationAccountId), eq(accounts.userId, userId)),

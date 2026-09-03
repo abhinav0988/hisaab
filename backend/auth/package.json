@@ -8,7 +8,7 @@
     "build": "wrangler deploy --dry-run --env=\"\" --outdir dist",
     "lint": "eslint .",
     "typecheck": "tsc -p tsconfig.json",
-    "test": "vitest run --passWithNoTests",
+    "test": "vitest run",
     "cf-typegen": "wrangler types worker-configuration.d.ts",
     "db:migrate:local": "wrangler d1 migrations apply hisaab --local --persist-to ../../.wrangler/state",
     "db:seed:local": "wrangler d1 execute hisaab --local --persist-to ../../.wrangler/state --file ../../packages/database/seed.sql",

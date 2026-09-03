@@ -12,13 +12,10 @@ import type { z } from "zod";
 import type { accountPatchSchema, accountSchema } from "@hisaab/validation";
 import { and, asc, eq, isNull, or, sql } from "drizzle-orm";
 import { AppError, audit, notFound, now } from "@hisaab/worker-lib";
+import { flagOn } from "../flags";
 
 type PatchAccount = z.infer<typeof accountPatchSchema>;
 type CreateAccount = z.infer<typeof accountSchema>;
-
-function flagOn(value: unknown) {
-  return value === true || Number(value) === 1;
-}
 
 export async function listAccountCatalog(env: Env) {
   const db = createDatabase(env.DB);

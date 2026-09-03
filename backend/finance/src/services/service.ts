@@ -33,6 +33,7 @@ import {
 } from "@hisaab/validation";
 import { AppError, currentMonth, monthBounds, newId, notFound, now } from "@hisaab/worker-lib";
 import { and, desc, eq } from "drizzle-orm";
+import { mapCardLedgerRow } from "../card-ledger";
 import type { z } from "zod";
 
 type InvestmentInput = z.infer<typeof investmentSchema>;
@@ -495,12 +496,7 @@ async function cardLedger(env: Env, userId: string) {
       amountMinor: number;
       transactionAt: string;
     }>();
-  return (rows.results ?? []).map((row) => ({
-    id: row.id,
-    type: row.type,
-    amountMinor: Number(row.amountMinor ?? 0),
-    transactionAt: row.transactionAt,
-  }));
+  return (rows.results ?? []).map((row) => mapCardLedgerRow(row));
 }
 
 export async function getCreditDashboard(env: Env, userId: string) {

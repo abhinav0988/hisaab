@@ -1,6 +1,7 @@
 import { createDatabase, userPreferences } from "@hisaab/database";
 import { addLocalDays, currentMonth, monthBounds, zonedDateKey, zonedMonthKey, zonedParts } from "../../shared/dates";
 import { eq } from "drizzle-orm";
+import { incomeExpenseFor } from "./ledger";
 
 export async function reportingContext(env: Env, userId: string, from?: string, to?: string) {
   const db = createDatabase(env.DB);
@@ -37,25 +38,6 @@ async function ledgerRows(
       .bind(...values)
       .all<LedgerRow & { accountId: string; destinationAccountId: string | null }>()
   ).results;
-}
-
-function incomeExpenseFor(
-  row: LedgerRow & { accountId?: string; destinationAccountId?: string | null },
-  accountIds?: string[],
-) {
-  if (row.type === "TRANSFER") {
-    if (!accountIds?.length) return { income: 0, expense: 0 };
-    const inSet = accountIds.includes(row.destinationAccountId ?? "");
-    const outSet = accountIds.includes(row.accountId ?? "");
-    return {
-      income: inSet ? Number(row.amountMinor) : 0,
-      expense: outSet ? Number(row.amountMinor) : 0,
-    };
-  }
-  return {
-    income: row.type === "INCOME" ? Number(row.amountMinor) : 0,
-    expense: row.type === "EXPENSE" ? Number(row.amountMinor) : 0,
-  };
 }
 
 export async function totals(env: Env, userId: string, from: string, to: string) {

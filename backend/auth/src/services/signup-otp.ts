@@ -1,5 +1,6 @@
 import { newId, now } from "../lib/http";
 import { sendAuthEmail } from "./send-auth-email";
+import { shouldExposeSignupOtp } from "./otp-policy";
 
 const OTP_TTL_MS = 10 * 60 * 1000;
 const VERIFIED_TTL_MS = 30 * 60 * 1000;
@@ -73,10 +74,7 @@ export async function sendSignupOtp(env: Env, ctx: WaitUntilContext, email: stri
   await deleteVerification(env, verifiedKey(normalized));
   await deleteVerification(env, failKey(normalized));
   await sendAuthEmail(env, ctx, "otp", normalized, code);
-  const exposeOtp =
-    env.ENVIRONMENT !== "production" ||
-    env.AUTH_DEV_EXPOSE_OTP === "true" ||
-    env.E2E_DISABLE_RATE_LIMIT === "1";
+  const exposeOtp = shouldExposeSignupOtp(env);
   return {
     sent: true as const,
     otp: exposeOtp ? code : undefined,

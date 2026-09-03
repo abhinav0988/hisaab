@@ -1,7 +1,6 @@
 import {
   createDatabase,
   defaultUserPreferences,
-  regionFromCountry,
   userPreferences,
   users,
 } from "@hisaab/database";
@@ -9,6 +8,7 @@ import type { profilePatchSchema } from "@hisaab/validation";
 import { notFound, now } from "@hisaab/worker-lib";
 import { eq } from "drizzle-orm";
 import type { z } from "zod";
+import { profileRegionDefaults } from "../patch";
 
 type Patch = z.infer<typeof profilePatchSchema>;
 
@@ -50,11 +50,9 @@ export async function updateProfile(env: Env, userId: string, input: Patch) {
   const { name, ...preferences } = input;
   if (name) await db.update(users).set({ name, updatedAt: now() }).where(eq(users.id, userId));
   if (Object.keys(preferences).length) {
-    const region = preferences.countryCode ? regionFromCountry(preferences.countryCode) : null;
     const next = {
       ...preferences,
-      ...(region && !preferences.defaultCurrency ? { defaultCurrency: region.currency } : {}),
-      ...(region && !preferences.timezone ? { timezone: region.timezone } : {}),
+      ...profileRegionDefaults(preferences.countryCode, preferences),
     };
     const existing = await db.query.userPreferences.findFirst({
       where: eq(userPreferences.userId, userId),

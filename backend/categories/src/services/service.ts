@@ -3,6 +3,7 @@ import type { z } from "zod";
 import type { categoryPatchSchema, categorySchema } from "@hisaab/validation";
 import { and, eq, isNull, or } from "drizzle-orm";
 import { audit, forbidden, newId, notFound, now } from "@hisaab/worker-lib";
+import { canMutateCategory } from "../ownership";
 
 type CreateCategory = z.infer<typeof categorySchema>;
 type PatchCategory = z.infer<typeof categoryPatchSchema>;
@@ -37,8 +38,10 @@ export async function createCategory(env: Env, userId: string, input: CreateCate
 async function ownCategory(env: Env, userId: string, id: string) {
   const db = createDatabase(env.DB);
   const row = await db.query.categories.findFirst({ where: eq(categories.id, id) });
-  if (!row) throw notFound("Category");
-  if (row.userId !== userId || row.isSystem) throw forbidden();
+  if (!row || !canMutateCategory(row, userId)) {
+    if (!row) throw notFound("Category");
+    throw forbidden();
+  }
   return row;
 }
 export async function updateCategory(env: Env, userId: string, id: string, input: PatchCategory) {

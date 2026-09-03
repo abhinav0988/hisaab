@@ -15,7 +15,7 @@ The remaining RA/QA items from this file are implemented as follows.
 | RA-004 | Overview y-axis keys include the tick index |
 | QA-002 | Auth panel no longer uses React Hook Form `watch()` |
 | QA-003 | OTP auto-send effect depends on a stable `send` callback |
-| QA-004 | Added transfer, timezone, card-trend, and IPO chart tests; other domain Workers still have limited suite coverage |
+| QA-004 | Dedicated unit tests for each domain Worker: accounts, auth, budgets, categories, finance, profile, recurring, reports, transactions (plus API reports ledger) |
 
 ## Issue-by-issue status
 
@@ -27,8 +27,8 @@ The remaining RA/QA items from this file are implemented as follows.
 | RA-004 | Low | `key={\`${tick}-${index}\`}`. |
 | QA-002 | Low | Password/email strength UI reads local state from `onChange`, not `watch()`. |
 | QA-003 | Low | `send` is wrapped in `useCallback` and listed in the auto-send effect deps. |
-| QA-004 | Low | Extra unit tests for transfers, timezone bucketing, reconstructed card outstanding, and IPO aggregates. Full service-level coverage is still incomplete. |
+| QA-004 | Low | Each domain Worker now has a dedicated Vitest file covering extracted service rules (transfers, ledger, flags, goals, categories, profile region defaults, recurring schedule, card ledger mapping, OTP exposure). |
 
 ## Release recommendation
 
-**Go for internal use** after deploying finance + frontend so the reconstructed card ledger is live. Re-run `pnpm test:e2e` locally when ports 3000/8787 are free.
+**Go for internal use** after deploying the domain Workers that consume the extracted helpers. Re-run `pnpm test:e2e` locally when ports 3000/8787 are free.
