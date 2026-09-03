@@ -910,7 +910,7 @@ function AddBankAccountModal({
   onClose: () => void;
   onSaved: () => void;
 }) {
-  const [bank, setBank] = useState<string>(INDIAN_BANKS[0] ?? "HDFC Bank");
+  const [bank, setBank] = useState("");
   const [holder, setHolder] = useState("");
   const [accountNumber, setAccountNumber] = useState("");
   const [showNumber, setShowNumber] = useState(false);
@@ -963,23 +963,16 @@ function AddBankAccountModal({
       </p>
       <form className="bank-form" onSubmit={submit}>
         <Field label="Select bank" error={errors.bank}>
-          <div className="bank-picker">
-            {INDIAN_BANKS.map((item) => {
-              const tone = bankBrandTone(item);
-              const selected = bank === item;
-              return (
-                <button
-                  key={item}
-                  type="button"
-                  className={`bank-picker-item${selected ? " is-selected" : ""}`}
-                  onClick={() => setBank(item)}
-                >
-                  <span className={`bank-badge is-${tone}`}>{bankAbbrev(item)}</span>
-                  <span>{item}</span>
-                </button>
-              );
-            })}
-          </div>
+          <Select value={bank} onChange={(event) => setBank(event.target.value)}>
+            <option value="" disabled>
+              Choose a bank
+            </option>
+            {INDIAN_BANKS.map((item) => (
+              <option key={item} value={item}>
+                {item}
+              </option>
+            ))}
+          </Select>
         </Field>
         <Field label="Account holder name" error={errors.holder}>
           <Input value={holder} onChange={(event) => setHolder(event.target.value)} placeholder="Full name" />
