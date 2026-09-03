@@ -170,6 +170,13 @@ function buildSpendingTrend(
     const key = localDateKey(item.transactionAt);
     byDay.set(key, (byDay.get(key) ?? 0) + item.amountMinor);
   }
+  const windowKeys: string[] = [];
+  for (let i = days - 1; i >= 0; i -= 1) {
+    const date = new Date(now);
+    date.setDate(date.getDate() - i);
+    windowKeys.push(localDateKey(date));
+  }
+  const windowSpend = windowKeys.reduce((sum, key) => sum + (byDay.get(key) ?? 0), 0);
   let cumulative = 0;
   let peakDay = 0;
   const points: Array<{
@@ -186,10 +193,11 @@ function buildSpendingTrend(
     const daySpend = byDay.get(key) ?? 0;
     cumulative += daySpend;
     peakDay = Math.max(peakDay, daySpend);
+    const estimatedOutstanding = Math.max(0, outstandingMinor - (windowSpend - cumulative));
     points.push({
       label: new Intl.DateTimeFormat("en-GB", { month: "short", day: "numeric" }).format(date),
       spendMinor: cumulative,
-      outstandingMinor,
+      outstandingMinor: estimatedOutstanding,
       limitMinor,
       daySpendMinor: daySpend,
     });
@@ -584,7 +592,7 @@ function SpendingTrendChart({
       <header>
         <div>
           <h2>Spending &amp; outstanding trend</h2>
-          <small>Last 30 days — spending vs outstanding balance.</small>
+          <small>Last 30 days — spending vs estimated outstanding.</small>
         </div>
       </header>
       <div className="cards-trend-body">

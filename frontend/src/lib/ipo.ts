@@ -240,19 +240,31 @@ export function ipoPlSummary(list: IpoApplication[]) {
   };
 }
 
+function ipoValuationDate(item: IpoApplication) {
+  return item.allotmentOn ?? item.appliedOn;
+}
+
+function valuedIpos(list: IpoApplication[]) {
+  return list.filter((item) => item.status === "Allotted" || item.status === "Listed");
+}
+
+/** Cumulative current P/L ordered by allotment/application date (not a historical price series). */
 export function ipoPerformanceTrend(list: IpoApplication[]) {
-  const sorted = [...list].sort((left, right) => left.appliedOn.localeCompare(right.appliedOn));
+  const sorted = [...valuedIpos(list)].sort((left, right) =>
+    ipoValuationDate(left).localeCompare(ipoValuationDate(right)),
+  );
   let running = 0;
   return sorted.map((item) => {
     running += ipoStats(item).plMinor;
-    return { label: displayDate(item.appliedOn), value: running };
+    return { label: displayDate(ipoValuationDate(item)), value: running };
   });
 }
 
+/** Cumulative current P/L by valuation date (allotment, else application). */
 export function ipoReturnsTrend(list: IpoApplication[]) {
   const byDay = new Map<string, number>();
-  for (const item of list) {
-    const key = item.appliedOn;
+  for (const item of valuedIpos(list)) {
+    const key = ipoValuationDate(item);
     const pl = ipoStats(item).plMinor;
     byDay.set(key, (byDay.get(key) ?? 0) + pl);
   }
@@ -265,6 +277,7 @@ export function ipoReturnsTrend(list: IpoApplication[]) {
 }
 
 export function downloadIpoCsv(list: IpoApplication[], currency: string) {
+  void currency;
   const rows = [
     [
       "IPO",

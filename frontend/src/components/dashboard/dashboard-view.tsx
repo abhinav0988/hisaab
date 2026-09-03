@@ -4,7 +4,6 @@ import { creditSummary, savingsRate } from "@hisaab/validation";
 import { useQuery } from "@tanstack/react-query";
 import {
   ArrowDownRight,
-  ArrowRight,
   ArrowUpRight,
   Bell,
   CalendarClock,
@@ -133,7 +132,6 @@ export function DashboardView() {
   const cardOverdue = sumMinor(cards, (item) => item.overdueMinor);
   const upiUsed = sumMinor(modules.upi, (item) => item.usedMinor);
   const upiLimit = sumMinor(modules.upi, (item) => item.limitMinor);
-  const upiToday = sumMinor(modules.upi, (item) => item.todaySpendMinor);
   const netWorth = totalBalance + investmentValue - loanOutstanding - cardUsed;
   const utilization = cardLimit ? Math.round((cardUsed / cardLimit) * 100) : 0;
   const emiBurden = data.incomeThisMonth

@@ -49,8 +49,8 @@ export function ReportsView() {
     queryFn: () => reportService.daily(range),
   });
   const monthly = useQuery({
-    queryKey: ["report-monthly"],
-    queryFn: () => reportService.monthly(),
+    queryKey: ["report-monthly", range],
+    queryFn: () => reportService.monthly(range),
   });
   const categories = useQuery({
     queryKey: ["report-categories", range],
@@ -69,7 +69,9 @@ export function ReportsView() {
   if (!report.data || !monthly.data || !categories.data || !profile.data)
     return <ErrorState retry={() => void report.refetch()} />;
   const currency = profile.data.defaultCurrency;
-  const months = monthly.data.slice(-6);
+  const months = monthly.data;
+  const chartLabel =
+    period === "year" ? "This year comparison" : period === "12" ? "Twelve-month comparison" : "Six-month comparison";
   const top = categories.data[0];
   const best = months.reduce(
     (winner, item) => {
@@ -138,7 +140,7 @@ export function ReportsView() {
         <Card className="p-[22px]">
           <CardHead
             title="Income vs expenses"
-            description="Six-month comparison"
+            description={chartLabel}
             action={<ProLabel />}
           />
           <div className="premium-chart h-[300px] min-w-0" role="img" aria-label="Income and expenses by month">

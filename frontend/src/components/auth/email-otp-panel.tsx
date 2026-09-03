@@ -32,13 +32,17 @@ export function EmailOtpPanel({
   const [sent, setSent] = useState(false);
   const [seconds, setSeconds] = useState(0);
   const autoSent = useRef(false);
-
-  useEffect(() => {
+  const [trackedEmail, setTrackedEmail] = useState(email);
+  if (email !== trackedEmail) {
+    setTrackedEmail(email);
     setSent(false);
     setCode("");
     setError("");
     setInvalid(false);
     setSeconds(0);
+  }
+  useEffect(() => {
+    autoSent.current = false;
   }, [email]);
   useEffect(() => {
     if (seconds <= 0) return;
@@ -71,7 +75,10 @@ export function EmailOtpPanel({
     if (!autoSend || verified || autoSent.current || sending) return;
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) return;
     autoSent.current = true;
-    void send();
+    const timer = window.setTimeout(() => {
+      void send();
+    }, 0);
+    return () => window.clearTimeout(timer);
   }, [autoSend, email, verified, sending]);
 
   const verify = async (nextCode = code) => {

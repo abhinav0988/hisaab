@@ -92,9 +92,12 @@ export function GlobalSearch() {
       pages.find((item) => item.href === "/settings"),
     ].filter((item): item is SearchItem => Boolean(item));
   }, [categories.data, budgets.data, goals.data, query]);
-  useEffect(() => {
+  const [trackedQuery, setTrackedQuery] = useState(query);
+  if (query !== trackedQuery) {
+    setTrackedQuery(query);
     setIndex(0);
-  }, [query, items.length]);
+  }
+  const safeIndex = Math.min(index, Math.max(0, items.length - 1));
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
       if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
@@ -126,7 +129,7 @@ export function GlobalSearch() {
       <form
         onSubmit={(event) => {
           event.preventDefault();
-          go(items[index]);
+          go(items[safeIndex]);
         }}
       >
         <div className="search-shell">
@@ -136,11 +139,13 @@ export function GlobalSearch() {
           <input
             ref={inputRef}
             name="q"
+            role="combobox"
             autoComplete="off"
             placeholder="Search anything in Hisaab..."
             aria-label="Search Hisaab"
             aria-expanded={open}
             aria-controls="global-search-results"
+            aria-autocomplete="list"
             value={query}
             onChange={(event) => {
               setQuery(event.target.value);
@@ -175,8 +180,8 @@ export function GlobalSearch() {
                 key={`${item.type}-${item.href}-${item.label}`}
                 type="button"
                 role="option"
-                aria-selected={i === index}
-                className={`search-result${i === index ? " active" : ""}`}
+                aria-selected={i === safeIndex}
+                className={`search-result${i === safeIndex ? " active" : ""}`}
                 onMouseEnter={() => setIndex(i)}
                 onClick={() => go(item)}
               >

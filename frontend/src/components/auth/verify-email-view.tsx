@@ -15,16 +15,14 @@ import { authService } from "@/services/auth.service";
 export function VerifyEmailView() {
   const router = useRouter();
   const search = useSearchParams();
+  const searchEmail = search.get("email") ?? "";
   const { data: session, isPending, refetch } = authService.useSession();
-  const [email, setEmail] = useState(search.get("email") ?? "");
+  const [emailDraft, setEmailDraft] = useState(searchEmail);
   const [verifiedEmail, setVerifiedEmail] = useState("");
+  const email = emailDraft || session?.user.email || "";
   const verified =
     session?.user.emailVerified === true ||
     (verifiedEmail !== "" && verifiedEmail === email.trim().toLowerCase());
-
-  useEffect(() => {
-    if (!email && session?.user.email) setEmail(session.user.email);
-  }, [email, session?.user.email]);
 
   useEffect(() => {
     if (session?.user.emailVerified === true) enterApp("/dashboard");
@@ -76,7 +74,7 @@ export function VerifyEmailView() {
               placeholder="name@example.com"
               className="min-h-[58px] rounded-[17px] bg-[var(--surface-2)] px-[17px] text-[16px]"
               value={email}
-              onChange={(event) => setEmail(event.target.value)}
+              onChange={(event) => setEmailDraft(event.target.value)}
             />
           </EmailOtpPanel>
         </div>

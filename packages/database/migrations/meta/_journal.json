@@ -71,6 +71,41 @@
       "when": 1787906000000,
       "tag": "0009_card_hold",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "6",
+      "when": 1787907000000,
+      "tag": "0010_ipo_payment_source",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "6",
+      "when": 1787907100000,
+      "tag": "0011_ipo_tracker_fields",
+      "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "6",
+      "when": 1787907200000,
+      "tag": "0012_transaction_credit_facility",
+      "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "6",
+      "when": 1787907300000,
+      "tag": "0013_ipo_hold_released",
+      "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "6",
+      "when": 1787907400000,
+      "tag": "0014_transfers",
+      "breakpoints": true
     }
   ]
 }

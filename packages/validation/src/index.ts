@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 export const currencySchema = z.enum(["INR", "NPR", "PKR", "BDT", "USD"]);
-export const transactionTypeSchema = z.enum(["INCOME", "EXPENSE"]);
+export const transactionTypeSchema = z.enum(["INCOME", "EXPENSE", "TRANSFER"]);
 export const accountTypeSchema = z.enum([
   "CASH",
   "BANK",
@@ -70,19 +70,37 @@ export const categorySchema = z.object({
 });
 export const categoryPatchSchema = categorySchema.partial();
 
-export const transactionSchema = z.object({
-  accountId: idSchema,
-  categoryId: idSchema,
-  type: transactionTypeSchema,
-  amountMinor: z.number().int().positive().safe(),
-  currency: currencySchema,
-  merchant: z.string().trim().max(120).nullable().optional(),
-  notes: z.string().trim().max(500).nullable().optional(),
-  transactionAt: z.iso.datetime({ offset: true }),
-  tags: z.array(z.string().trim().min(1).max(30)).max(10).optional(),
-  recurring: z.boolean().optional(),
-  creditFacilityId: idSchema.optional(),
-});
+export const transactionSchema = z
+  .object({
+    accountId: idSchema,
+    categoryId: idSchema,
+    type: transactionTypeSchema,
+    amountMinor: z.number().int().positive().safe(),
+    currency: currencySchema,
+    merchant: z.string().trim().max(120).nullable().optional(),
+    notes: z.string().trim().max(500).nullable().optional(),
+    transactionAt: z.iso.datetime({ offset: true }),
+    tags: z.array(z.string().trim().min(1).max(30)).max(10).optional(),
+    recurring: z.boolean().optional(),
+    creditFacilityId: idSchema.optional(),
+    destinationAccountId: idSchema.optional(),
+  })
+  .superRefine((value, ctx) => {
+    if (value.type !== "TRANSFER") return;
+    if (!value.destinationAccountId) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["destinationAccountId"],
+        message: "Choose the destination account for this transfer.",
+      });
+    } else if (value.destinationAccountId === value.accountId) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["destinationAccountId"],
+        message: "Source and destination accounts must be different.",
+      });
+    }
+  });
 export const transactionPatchSchema = transactionSchema.partial();
 
 export const budgetSchema = z.object({
@@ -95,7 +113,7 @@ export const budgetPatchSchema = budgetSchema.partial().omit({ month: true });
 
 export const goalSchema = z.object({
   name: z.string().trim().min(1).max(80),
-  icon: z.string().trim().min(1).max(8).default("★"),
+  icon: z.string().trim().min(1).max(8).default("*"),
   targetAmountMinor: z.number().int().positive().safe(),
   savedAmountMinor: z.number().int().nonnegative().safe().optional(),
   currency: currencySchema,
@@ -105,6 +123,9 @@ export const goalSchema = z.object({
 export const goalContributionSchema = z.object({
   amountMinor: z.number().int().positive().safe(),
   notes: z.string().trim().max(200).nullable().optional(),
+});
+export const goalPatchSchema = goalSchema.partial().extend({
+  isActive: z.boolean().optional(),
 });
 
 export const isoDateSchema = z.string().regex(/^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$/, "Use YYYY-MM-DD");

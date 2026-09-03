@@ -23,19 +23,46 @@ import { newId, now } from "../../shared/http";
 type CreateTransaction = z.infer<typeof transactionSchema>;
 type PatchTransaction = z.infer<typeof transactionPatchSchema>;
 type Query = z.infer<typeof transactionQuerySchema>;
+
+async function ensureTransferCategory(env: Env, userId: string) {
+  const db = createDatabase(env.DB);
+  const existing = await db.query.categories.findFirst({
+    where: and(
+      eq(categories.type, "TRANSFER"),
+      or(isNull(categories.userId), eq(categories.userId, userId)),
+    ),
+  });
+  if (existing) return existing;
+  const value = {
+    id: newId(),
+    userId: null as string | null,
+    name: "Transfer",
+    type: "TRANSFER",
+    icon: "ArrowLeftRight",
+    colour: "#6d7d73",
+    isSystem: true,
+    createdAt: now(),
+    updatedAt: now(),
+  };
+  await db.insert(categories).values(value);
+  return value;
+}
+
 async function validateReferences(
   env: Env,
   userId: string,
-  input: { accountId: string; categoryId: string; type: string; currency: string },
+  input: {
+    accountId: string;
+    categoryId: string;
+    type: string;
+    currency: string;
+    destinationAccountId?: string | null;
+  },
 ) {
   const db = createDatabase(env.DB);
   const [account, category, preferences] = await Promise.all([
     db.query.accounts.findFirst({
-      where: and(
-        eq(accounts.id, input.accountId),
-        eq(accounts.userId, userId),
-        eq(accounts.isActive, true),
-      ),
+      where: and(eq(accounts.id, input.accountId), eq(accounts.userId, userId)),
     }),
     db.query.categories.findFirst({
       where: and(
@@ -45,12 +72,30 @@ async function validateReferences(
     }),
     db.query.userPreferences.findFirst({ where: eq(userPreferences.userId, userId) }),
   ]);
-  if (!account) throw new AppError(400, "INVALID_ACCOUNT", "Select one of your active accounts.");
+  if (!account || Number(account.isActive) !== 1)
+    throw new AppError(400, "INVALID_ACCOUNT", "Select one of your active accounts.");
   if (!category || category.type !== input.type)
     throw new AppError(400, "INVALID_CATEGORY", "Select a category matching the transaction type.");
   const currency = preferences?.defaultCurrency ?? account.currency;
   if (input.currency !== currency || account.currency !== currency)
     throw new AppError(400, "CURRENCY_MISMATCH", `Transactions must use ${currency}.`);
+  if (input.type === "TRANSFER") {
+    if (!input.destinationAccountId) {
+      throw new AppError(400, "INVALID_ACCOUNT", "Choose the destination account for this transfer.");
+    }
+    if (input.destinationAccountId === input.accountId) {
+      throw new AppError(400, "INVALID_ACCOUNT", "Source and destination accounts must be different.");
+    }
+    const destination = await db.query.accounts.findFirst({
+      where: and(eq(accounts.id, input.destinationAccountId), eq(accounts.userId, userId)),
+    });
+    if (!destination || Number(destination.isActive) !== 1) {
+      throw new AppError(400, "INVALID_ACCOUNT", "Select an active destination account.");
+    }
+    if (destination.currency !== currency) {
+      throw new AppError(400, "CURRENCY_MISMATCH", `Transfers must use ${currency}.`);
+    }
+  }
 }
 
 export async function listTransactions(env: Env, userId: string, query: Query) {
@@ -69,8 +114,8 @@ export async function listTransactions(env: Env, userId: string, query: Query) {
     values.push(query.category_id);
   }
   if (query.account_id) {
-    conditions.push("t.account_id = ?");
-    values.push(query.account_id);
+    conditions.push("(t.account_id = ? OR t.destination_account_id = ?)");
+    values.push(query.account_id, query.account_id);
   }
   if (query.type) {
     conditions.push("t.type = ?");
@@ -89,7 +134,7 @@ export async function listTransactions(env: Env, userId: string, query: Query) {
   }[query.sort];
   const where = conditions.join(" AND ");
   const offset = (query.page - 1) * query.limit;
-  const statement = `SELECT t.id, t.account_id AS accountId, t.category_id AS categoryId, t.type, t.amount_minor AS amountMinor, t.currency, t.merchant, t.notes, t.transaction_at AS transactionAt, a.name AS accountName, c.name AS categoryName, c.icon AS categoryIcon, c.colour AS categoryColour FROM transactions t JOIN accounts a ON a.id=t.account_id JOIN categories c ON c.id=t.category_id WHERE ${where} ORDER BY ${order} LIMIT ? OFFSET ?`;
+  const statement = `SELECT t.id, t.account_id AS accountId, t.category_id AS categoryId, t.type, t.amount_minor AS amountMinor, t.currency, t.merchant, t.notes, t.transaction_at AS transactionAt, t.destination_account_id AS destinationAccountId, a.name AS accountName, dest.name AS destinationAccountName, c.name AS categoryName, c.icon AS categoryIcon, c.colour AS categoryColour FROM transactions t JOIN accounts a ON a.id=t.account_id LEFT JOIN accounts dest ON dest.id=t.destination_account_id JOIN categories c ON c.id=t.category_id WHERE ${where} ORDER BY ${order} LIMIT ? OFFSET ?`;
   const [rows, count] = await Promise.all([
     env.DB.prepare(statement)
       .bind(...values, query.limit, offset)
@@ -123,7 +168,15 @@ export async function getTransaction(env: Env, userId: string, id: string) {
   return row;
 }
 export async function createTransaction(env: Env, userId: string, input: CreateTransaction) {
-  await validateReferences(env, userId, input);
+  const categoryId =
+    input.type === "TRANSFER"
+      ? (await ensureTransferCategory(env, userId)).id
+      : input.categoryId;
+  await validateReferences(env, userId, {
+    ...input,
+    categoryId,
+    destinationAccountId: input.destinationAccountId,
+  });
   const db = createDatabase(env.DB);
   const { tags: tagNames, creditFacilityId, ...data } = input;
   delete data.recurring;
@@ -131,6 +184,8 @@ export async function createTransaction(env: Env, userId: string, input: CreateT
     id: newId(),
     userId,
     ...data,
+    categoryId,
+    destinationAccountId: input.type === "TRANSFER" ? (input.destinationAccountId ?? null) : null,
     creditFacilityId: creditFacilityId ?? null,
     merchant: data.merchant ?? null,
     notes: data.notes ?? null,
@@ -168,6 +223,7 @@ export async function createTransaction(env: Env, userId: string, input: CreateT
       type: value.type,
       amountMinor: value.amountMinor,
       accountId: value.accountId,
+      destinationAccountId: value.destinationAccountId,
       categoryId: value.categoryId,
     },
   });
@@ -185,6 +241,8 @@ export async function updateTransaction(
     categoryId: input.categoryId ?? existing.categoryId,
     type: input.type ?? existing.type,
     currency: input.currency ?? existing.currency,
+    destinationAccountId:
+      input.destinationAccountId ?? existing.destinationAccountId,
   };
   await validateReferences(env, userId, merged);
   const db = createDatabase(env.DB);

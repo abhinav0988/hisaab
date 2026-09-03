@@ -1,6 +1,7 @@
 "use client";
 
 import type {
+  CreditFacility,
   Investment,
   LendKind,
   LendRecord,
@@ -8,12 +9,12 @@ import type {
 import { Button, Card, Field, Input, Select } from "@hisaab/ui";
 import { majorToMinor } from "@hisaab/validation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowRight, Sparkles, Wallet } from "lucide-react";
+import { ArrowRight, Pencil, Sparkles, Trash2, Wallet } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 import { toast } from "sonner";
 import { CardHead, ProgressBar, ProLabel } from "@/components/layout/chrome";
-import { Modal } from "@/components/layout/modal";
+import { ConfirmDialog, Modal } from "@/components/layout/modal";
 import { PageHeader } from "@/components/layout/page-header";
 import { EmptyState, ErrorState, PageSkeleton } from "@/components/layout/states";
 import { ApiError } from "@/lib/api-client";
@@ -55,13 +56,35 @@ export function InvestmentsView() {
     queryFn: () => financeService.listInvestments(),
     retry: false,
   });
-  const [open, setOpen] = useState<"investment" | "sip" | Investment | null>(null);
+  const [open, setOpen] = useState<"investment" | "sip" | null>(null);
+  const [editing, setEditing] = useState<Investment | null>(null);
+  const [deleting, setDeleting] = useState<Investment | null>(null);
   const create = useMutation({
     mutationFn: (body: unknown) => financeService.createInvestment(body),
     onSuccess: async () => {
       await client.invalidateQueries({ queryKey: ["investments"] });
       setOpen(null);
       toast.success("Investment saved");
+    },
+    onError: (error) => toast.error(failMessage(error)),
+  });
+  const update = useMutation({
+    mutationFn: ({ id, body }: { id: string; body: unknown }) =>
+      financeService.updateInvestment(id, body),
+    onSuccess: async () => {
+      await client.invalidateQueries({ queryKey: ["investments"] });
+      setEditing(null);
+      toast.success("Investment updated");
+    },
+    onError: (error) => toast.error(failMessage(error)),
+  });
+  const remove = useMutation({
+    mutationFn: (id: string) => financeService.deleteInvestment(id),
+    onSuccess: async () => {
+      await client.invalidateQueries({ queryKey: ["investments"] });
+      setDeleting(null);
+      setEditing(null);
+      toast.success("Investment removed");
     },
     onError: (error) => toast.error(failMessage(error)),
   });
@@ -113,7 +136,7 @@ export function InvestmentsView() {
                 {list.map((item) => (
                   <tr key={item.id}>
                     <td>
-                      <button type="button" className="text-left font-extrabold" onClick={() => setOpen(item)}>
+                      <button type="button" className="text-left font-extrabold" onClick={() => setEditing(item)}>
                         {item.name}
                       </button>
                       <small className="mt-1 block text-[11px] text-[var(--muted-foreground)]">
@@ -153,39 +176,59 @@ export function InvestmentsView() {
         />
       </Modal>
       <Modal
-        open={typeof open === "object" && open !== null}
-        onClose={() => setOpen(null)}
-        title={typeof open === "object" && open ? open.name : "Investment"}
+        open={Boolean(editing)}
+        onClose={() => setEditing(null)}
+        title={editing ? `Edit ${editing.name}` : "Investment"}
       >
-        {typeof open === "object" && open ? (
-          <div className="grid gap-3 sm:grid-cols-2">
-            <Detail label="Invested" value={money(open.investedMinor, currency)} />
-            <Detail label="Current value" value={money(open.currentMinor, currency)} />
-            <Detail label="Return" value={`${returnPct(open.investedMinor, open.currentMinor)}%`} />
-            <Detail label="SIP" value={open.sipMinor ? money(open.sipMinor, currency) : "None"} />
-          </div>
+        {editing ? (
+          <InvestmentForm
+            key={editing.id}
+            currency={currency}
+            initial={editing}
+            pending={update.isPending}
+            onSave={(body) => update.mutate({ id: editing.id, body })}
+            onDelete={() => {
+              const item = editing;
+              setEditing(null);
+              setDeleting(item);
+            }}
+          />
         ) : null}
       </Modal>
+      <ConfirmDialog
+        open={Boolean(deleting)}
+        title={`Delete ${deleting?.name ?? "investment"}?`}
+        description="This removes the holding from your portfolio. Historical account transactions are not changed."
+        busy={remove.isPending}
+        onClose={() => setDeleting(null)}
+        onConfirm={() => deleting && remove.mutate(deleting.id)}
+      />
     </div>
   );
 }
 
 function InvestmentForm({
-  sipOnly,
+  sipOnly = false,
   currency,
+  initial,
   pending,
   onSave,
+  onDelete,
 }: {
-  sipOnly: boolean;
+  sipOnly?: boolean;
   currency: string;
+  initial?: Investment;
   pending: boolean;
   onSave: (body: unknown) => void;
+  onDelete?: () => void;
 }) {
-  const [name, setName] = useState("");
-  const [type, setType] = useState("Mutual Fund");
-  const [invested, setInvested] = useState("");
-  const [current, setCurrent] = useState("");
-  const [sip, setSip] = useState(sipOnly ? "" : "0");
+  const [name, setName] = useState(initial?.name ?? "");
+  const [type, setType] = useState(initial?.type ?? "Mutual Fund");
+  const [invested, setInvested] = useState(initial ? String(initial.investedMinor / 100) : "");
+  const [current, setCurrent] = useState(initial ? String(initial.currentMinor / 100) : "");
+  const [sip, setSip] = useState(
+    initial ? String(initial.sipMinor / 100) : sipOnly ? "" : "0",
+  );
   return (
     <form
       className="grid gap-3 sm:grid-cols-2"
@@ -200,7 +243,7 @@ function InvestmentForm({
           investedMinor,
           currentMinor: current ? majorToMinor(current) : investedMinor,
           sipMinor,
-          sipDay: sipMinor ? "5th" : null,
+          sipDay: sipMinor ? initial?.sipDay ?? "5th" : null,
           currency,
         });
       }}
@@ -219,21 +262,28 @@ function InvestmentForm({
       <Field label="Invested">
         <Input type="number" min="0" step="0.01" value={invested} onChange={(event) => setInvested(event.target.value)} required />
       </Field>
-      <Field label={sipOnly ? "Monthly SIP" : "Current value"}>
+      <Field label={sipOnly && !initial ? "Monthly SIP" : "Current value"}>
         <Input
           type="number"
           min="0"
           step="0.01"
-          value={sipOnly ? sip : current}
-          onChange={(event) => (sipOnly ? setSip(event.target.value) : setCurrent(event.target.value))}
+          value={sipOnly && !initial ? sip : current}
+          onChange={(event) =>
+            sipOnly && !initial ? setSip(event.target.value) : setCurrent(event.target.value)
+          }
         />
       </Field>
-      {!sipOnly ? (
+      {!sipOnly || initial ? (
         <Field label="Monthly SIP">
           <Input type="number" min="0" step="0.01" value={sip} onChange={(event) => setSip(event.target.value)} />
         </Field>
       ) : null}
-      <div className="flex justify-end sm:col-span-2">
+      <div className="flex flex-wrap justify-end gap-2 sm:col-span-2">
+        {onDelete ? (
+          <Button type="button" variant="danger" onClick={onDelete}>
+            <Trash2 size={16} /> Delete
+          </Button>
+        ) : null}
         <Button type="submit" disabled={pending}>
           {pending ? "Saving…" : "Save"}
         </Button>
@@ -251,12 +301,34 @@ export function UpiCreditView() {
     retry: false,
   });
   const [open, setOpen] = useState(false);
+  const [editing, setEditing] = useState<CreditFacility | null>(null);
+  const [deleting, setDeleting] = useState<CreditFacility | null>(null);
   const create = useMutation({
     mutationFn: (body: unknown) => financeService.createCreditFacility(body),
     onSuccess: async () => {
       await client.invalidateQueries({ queryKey: ["credit-facilities"] });
       setOpen(false);
       toast.success("UPI credit saved");
+    },
+    onError: (error) => toast.error(failMessage(error)),
+  });
+  const update = useMutation({
+    mutationFn: ({ id, body }: { id: string; body: unknown }) =>
+      financeService.updateCreditFacility(id, body),
+    onSuccess: async () => {
+      await client.invalidateQueries({ queryKey: ["credit-facilities"] });
+      setEditing(null);
+      toast.success("UPI credit updated");
+    },
+    onError: (error) => toast.error(failMessage(error)),
+  });
+  const remove = useMutation({
+    mutationFn: (id: string) => financeService.deleteCreditFacility(id),
+    onSuccess: async () => {
+      await client.invalidateQueries({ queryKey: ["credit-facilities"] });
+      setDeleting(null);
+      setEditing(null);
+      toast.success("UPI credit removed");
     },
     onError: (error) => toast.error(failMessage(error)),
   });
@@ -292,12 +364,30 @@ export function UpiCreditView() {
                   <span className="oc-iconbox">
                     <Wallet size={16} />
                   </span>
-                  <div>
+                  <div className="min-w-0 flex-1">
                     <h3>{line.name}</h3>
                     <small className="text-[11px] text-[var(--muted-foreground)]">
                       {line.provider || "Credit line"}
                       {line.mask ? ` · ${line.mask}` : ""}
                     </small>
+                  </div>
+                  <div className="flex gap-1">
+                    <Button
+                      variant="ghost"
+                      className="px-3"
+                      aria-label={`Edit ${line.name}`}
+                      onClick={() => setEditing(line)}
+                    >
+                      <Pencil size={16} />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      className="px-3 hover:text-[var(--danger)]"
+                      aria-label={`Delete ${line.name}`}
+                      onClick={() => setDeleting(line)}
+                    >
+                      <Trash2 size={16} />
+                    </Button>
                   </div>
                 </div>
                 <div className="oc-credit-row">
@@ -323,27 +413,58 @@ export function UpiCreditView() {
       <Modal open={open} onClose={() => setOpen(false)} title="Add UPI credit line">
         <UpiForm currency={currency} pending={create.isPending} onSave={(body) => create.mutate(body)} />
       </Modal>
+      <Modal open={Boolean(editing)} onClose={() => setEditing(null)} title="Edit UPI credit line">
+        {editing ? (
+          <UpiForm
+            key={editing.id}
+            currency={currency}
+            initial={editing}
+            pending={update.isPending}
+            onSave={(body) => update.mutate({ id: editing.id, body })}
+          />
+        ) : null}
+      </Modal>
+      <ConfirmDialog
+        open={Boolean(deleting)}
+        title={`Delete ${deleting?.name ?? "UPI credit"}?`}
+        description="This removes the credit line from your account. Card and transaction history are not changed."
+        busy={remove.isPending}
+        onClose={() => setDeleting(null)}
+        onConfirm={() => deleting && remove.mutate(deleting.id)}
+      />
     </div>
   );
 }
 
 function UpiForm({
   currency,
+  initial,
   pending,
   onSave,
 }: {
   currency: string;
+  initial?: CreditFacility;
   pending: boolean;
   onSave: (body: unknown) => void;
 }) {
-  const [name, setName] = useState("Paytm UPI Credit");
-  const [limit, setLimit] = useState("");
-  const [used, setUsed] = useState("");
+  const [name, setName] = useState(initial?.name ?? "Paytm UPI Credit");
+  const [limit, setLimit] = useState(initial ? String(initial.limitMinor / 100) : "");
+  const [used, setUsed] = useState(initial ? String(initial.usedMinor / 100) : "");
   return (
     <form
       className="grid gap-3 sm:grid-cols-2"
       onSubmit={(event) => {
         event.preventDefault();
+        if (initial) {
+          onSave({
+            name,
+            provider: initial.provider ?? "Credit line",
+            mask: initial.mask,
+            limitMinor: majorToMinor(limit || "0"),
+            usedMinor: used ? majorToMinor(used) : 0,
+          });
+          return;
+        }
         onSave({
           kind: "UPI",
           name,
@@ -363,6 +484,10 @@ function UpiForm({
           <option>Paytm UPI Credit</option>
           <option>PhonePe UPI Credit</option>
           <option>Google Pay UPI Credit</option>
+          {initial &&
+          !["Paytm UPI Credit", "PhonePe UPI Credit", "Google Pay UPI Credit"].includes(initial.name) ? (
+            <option value={initial.name}>{initial.name}</option>
+          ) : null}
         </Select>
       </Field>
       <Field label="Total limit">
@@ -389,13 +514,40 @@ export function LendView() {
     retry: false,
   });
   const [tab, setTab] = useState<"all" | "lent" | "borrowed" | "settled">("all");
-  const [open, setOpen] = useState<"lend" | "borrow" | LendRecord | null>(null);
+  const [open, setOpen] = useState<"lend" | "borrow" | null>(null);
+  const [editing, setEditing] = useState<LendRecord | null>(null);
+  const [deleting, setDeleting] = useState<LendRecord | null>(null);
   const create = useMutation({
     mutationFn: (body: unknown) => financeService.createLendRecord(body),
     onSuccess: async () => {
       await client.invalidateQueries({ queryKey: ["lend-records"] });
       setOpen(null);
       toast.success("Record saved");
+    },
+    onError: (error) => toast.error(failMessage(error)),
+  });
+  const update = useMutation({
+    mutationFn: ({ id, body }: { id: string; body: unknown }) =>
+      financeService.patchLendRecord(id, body),
+    onSuccess: async (_, variables) => {
+      await client.invalidateQueries({ queryKey: ["lend-records"] });
+      const settled =
+        variables.body &&
+        typeof variables.body === "object" &&
+        "status" in variables.body &&
+        (variables.body as { status?: string }).status === "settled";
+      setEditing(null);
+      toast.success(settled ? "Marked as settled" : "Record updated");
+    },
+    onError: (error) => toast.error(failMessage(error)),
+  });
+  const remove = useMutation({
+    mutationFn: (id: string) => financeService.deleteLendRecord(id),
+    onSuccess: async () => {
+      await client.invalidateQueries({ queryKey: ["lend-records"] });
+      setDeleting(null);
+      setEditing(null);
+      toast.success("Record deleted");
     },
     onError: (error) => toast.error(failMessage(error)),
   });
@@ -468,7 +620,7 @@ export function LendView() {
                 {rows.map((item) => (
                   <tr key={item.id}>
                     <td>
-                      <button type="button" className="font-extrabold" onClick={() => setOpen(item)}>
+                      <button type="button" className="font-extrabold" onClick={() => setEditing(item)}>
                         {item.person}
                       </button>
                       <small className="mt-1 block text-[11px] text-[var(--muted-foreground)]">
@@ -505,19 +657,34 @@ export function LendView() {
         />
       </Modal>
       <Modal
-        open={typeof open === "object" && open !== null}
-        onClose={() => setOpen(null)}
-        title={typeof open === "object" && open ? open.person : "Record"}
+        open={Boolean(editing)}
+        onClose={() => setEditing(null)}
+        title={editing ? editing.person : "Record"}
       >
-        {typeof open === "object" && open ? (
-          <div className="grid gap-3 sm:grid-cols-2">
-            <Detail label="Amount" value={money(open.amountMinor, currency)} />
-            <Detail label="Type" value={open.kind === "lent" ? "Lent" : "Borrowed"} />
-            <Detail label="Given" value={displayDate(open.givenOn)} />
-            <Detail label="Due" value={displayDate(open.dueOn)} />
-          </div>
+        {editing ? (
+          <LendDetailForm
+            key={editing.id}
+            record={editing}
+            currency={currency}
+            pending={update.isPending}
+            onSave={(body) => update.mutate({ id: editing.id, body })}
+            onSettle={() => update.mutate({ id: editing.id, body: { status: "settled" } })}
+            onDelete={() => {
+              const item = editing;
+              setEditing(null);
+              setDeleting(item);
+            }}
+          />
         ) : null}
       </Modal>
+      <ConfirmDialog
+        open={Boolean(deleting)}
+        title={`Delete record for ${deleting?.person ?? "this person"}?`}
+        description="This permanently removes the borrow/lend record from your account."
+        busy={remove.isPending}
+        onClose={() => setDeleting(null)}
+        onConfirm={() => deleting && remove.mutate(deleting.id)}
+      />
     </div>
   );
 }
@@ -563,6 +730,87 @@ function LendForm({
         <Input type="number" min="0.01" step="0.01" value={amount} onChange={(event) => setAmount(event.target.value)} required />
       </Field>
       <div className="flex justify-end sm:col-span-2">
+        <Button type="submit" disabled={pending}>
+          {pending ? "Saving…" : "Save"}
+        </Button>
+      </div>
+    </form>
+  );
+}
+
+function LendDetailForm({
+  record,
+  currency,
+  pending,
+  onSave,
+  onSettle,
+  onDelete,
+}: {
+  record: LendRecord;
+  currency: string;
+  pending: boolean;
+  onSave: (body: unknown) => void;
+  onSettle: () => void;
+  onDelete: () => void;
+}) {
+  const [person, setPerson] = useState(record.person);
+  const [relation, setRelation] = useState(record.relation ?? "");
+  const [amount, setAmount] = useState(String(record.amountMinor / 100));
+  const [givenOn, setGivenOn] = useState(record.givenOn);
+  const [dueOn, setDueOn] = useState(record.dueOn);
+  const [status, setStatus] = useState(record.status);
+  return (
+    <form
+      className="grid gap-3 sm:grid-cols-2"
+      onSubmit={(event) => {
+        event.preventDefault();
+        onSave({
+          person: person || record.person,
+          relation: relation || null,
+          kind: record.kind,
+          amountMinor: majorToMinor(amount || "1"),
+          givenOn,
+          dueOn,
+          status,
+          currency,
+        });
+      }}
+    >
+      <div className="grid gap-3 sm:col-span-2 sm:grid-cols-2">
+        <Detail label="Type" value={record.kind === "lent" ? "Lent" : "Borrowed"} />
+        <Detail label="Status" value={record.status} />
+      </div>
+      <Field label="Person name">
+        <Input value={person} onChange={(event) => setPerson(event.target.value)} required />
+      </Field>
+      <Field label="Relation">
+        <Input value={relation} onChange={(event) => setRelation(event.target.value)} />
+      </Field>
+      <Field label="Amount">
+        <Input type="number" min="0.01" step="0.01" value={amount} onChange={(event) => setAmount(event.target.value)} required />
+      </Field>
+      <Field label="Status">
+        <Select value={status} onChange={(event) => setStatus(event.target.value as LendRecord["status"])}>
+          <option value="pending">pending</option>
+          <option value="due">due</option>
+          <option value="settled">settled</option>
+        </Select>
+      </Field>
+      <Field label="Given on">
+        <Input type="date" value={givenOn} onChange={(event) => setGivenOn(event.target.value)} required />
+      </Field>
+      <Field label="Due on">
+        <Input type="date" value={dueOn} onChange={(event) => setDueOn(event.target.value)} required />
+      </Field>
+      <div className="flex flex-wrap justify-end gap-2 sm:col-span-2">
+        <Button type="button" variant="danger" onClick={onDelete}>
+          <Trash2 size={16} /> Delete
+        </Button>
+        {record.status !== "settled" ? (
+          <Button type="button" variant="secondary" disabled={pending} onClick={onSettle}>
+            Settle
+          </Button>
+        ) : null}
         <Button type="submit" disabled={pending}>
           {pending ? "Saving…" : "Save"}
         </Button>

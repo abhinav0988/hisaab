@@ -21,10 +21,28 @@ reportRoutes.get("/reports/daily", async (c) => {
   );
   return ok(c, {
     ...(await totals(c.env, c.get("userId"), ctx.from, ctx.to)),
-    trend: await daily(c.env, c.get("userId"), ctx.from, ctx.to),
+    trend: await daily(c.env, c.get("userId"), ctx.from, ctx.to, ctx.timezone),
   });
 });
-reportRoutes.get("/reports/monthly", async (c) => ok(c, await monthly(c.env, c.get("userId"))));
+reportRoutes.get("/reports/monthly", async (c) => {
+  const ctx = await reportingContext(c.env, c.get("userId"));
+  const accountIds = c.req
+    .query("accountIds")
+    ?.split(",")
+    .map((item) => item.trim())
+    .filter(Boolean);
+  return ok(
+    c,
+    await monthly(
+      c.env,
+      c.get("userId"),
+      ctx.timezone,
+      c.req.query("from"),
+      c.req.query("to"),
+      accountIds,
+    ),
+  );
+});
 reportRoutes.get("/reports/categories", async (c) => {
   const ctx = await reportingContext(
     c.env,

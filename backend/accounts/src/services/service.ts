@@ -10,7 +10,7 @@ import {
 } from "@hisaab/database";
 import type { z } from "zod";
 import type { accountPatchSchema, accountSchema } from "@hisaab/validation";
-import { and, asc, eq, isNull, sql } from "drizzle-orm";
+import { and, asc, eq, isNull, or, sql } from "drizzle-orm";
 import { AppError, audit, notFound, now } from "@hisaab/worker-lib";
 
 type PatchAccount = z.infer<typeof accountPatchSchema>;
@@ -58,7 +58,13 @@ export async function listAccounts(env: Env, userId: string) {
     .leftJoin(accountCatalog, eq(accounts.catalogId, accountCatalog.id))
     .leftJoin(
       transactions,
-      and(eq(transactions.accountId, accounts.id), isNull(transactions.deletedAt)),
+      and(
+        isNull(transactions.deletedAt),
+        or(
+          eq(transactions.accountId, accounts.id),
+          eq(transactions.destinationAccountId, accounts.id),
+        ),
+      ),
     )
     .where(eq(accounts.userId, userId))
     .groupBy(accounts.id)
@@ -143,7 +149,13 @@ export async function listBankAccounts(env: Env, userId: string) {
     .from(accounts)
     .leftJoin(
       transactions,
-      and(eq(transactions.accountId, accounts.id), isNull(transactions.deletedAt)),
+      and(
+        isNull(transactions.deletedAt),
+        or(
+          eq(transactions.accountId, accounts.id),
+          eq(transactions.destinationAccountId, accounts.id),
+        ),
+      ),
     )
     .where(and(eq(accounts.userId, userId), eq(accounts.type, "BANK")))
     .groupBy(accounts.id)

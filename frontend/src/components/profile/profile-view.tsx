@@ -55,9 +55,11 @@ function ProfileForm({ initial, onSaved }: { initial: Profile; onSaved: () => vo
   const [sessionsOpen, setSessionsOpen] = useState(false);
   const [logoutOpen, setLogoutOpen] = useState(false);
   const pathname = usePathname();
-  useEffect(() => {
+  const [trackedTheme, setTrackedTheme] = useState(liveTheme);
+  if (liveTheme !== trackedTheme) {
+    setTrackedTheme(liveTheme);
     if (liveTheme === "dark" || liveTheme === "light") setThemeValue(liveTheme);
-  }, [liveTheme]);
+  }
   const mutation = useMutation({
     mutationFn: () =>
       profileService.update({

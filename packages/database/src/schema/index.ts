@@ -226,6 +226,9 @@ export const transactions = sqliteTable(
     notes: text("notes"),
     transactionAt: text("transaction_at").notNull(),
     creditFacilityId: text("credit_facility_id"),
+    destinationAccountId: text("destination_account_id").references(() => accounts.id, {
+      onDelete: "restrict",
+    }),
     ...timestamps,
     deletedAt: text("deleted_at"),
   },
@@ -234,6 +237,7 @@ export const transactions = sqliteTable(
     index("transactions_user_category_idx").on(table.userId, table.categoryId),
     index("transactions_user_account_idx").on(table.userId, table.accountId),
     index("transactions_credit_facility_idx").on(table.creditFacilityId),
+    index("transactions_destination_account_idx").on(table.destinationAccountId),
     check("transaction_amount_positive", sql`${table.amountMinor} > 0`),
   ],
 );
@@ -359,7 +363,7 @@ export const savingsGoals = sqliteTable(
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
     name: text("name").notNull(),
-    icon: text("icon").notNull().default("★"),
+    icon: text("icon").notNull().default("*"),
     targetAmountMinor: integer("target_amount_minor").notNull(),
     savedAmountMinor: integer("saved_amount_minor").notNull().default(0),
     currency: text("currency").notNull(),

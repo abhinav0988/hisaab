@@ -6,7 +6,7 @@ export function money(minor: number, currency = "INR") {
   }).format(minor / 100);
 }
 
-export function signedMoney(minor: number, currency: string, type: "INCOME" | "EXPENSE") {
+export function signedMoney(minor: number, currency: string, type: "INCOME" | "EXPENSE" | "TRANSFER") {
   return `${type === "INCOME" ? "+ " : "− "}${money(minor, currency)}`;
 }
 

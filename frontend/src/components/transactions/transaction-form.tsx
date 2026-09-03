@@ -5,7 +5,7 @@ import { creditSpendDelta, majorToMinor, nextCreditBalances } from "@hisaab/vali
 import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 import { Calendar, Clock } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { ApiError } from "@/lib/api-client";
 import {
   accountDisplayName,
@@ -37,6 +37,36 @@ function shiftDate(value: string, days: number) {
   return `${year}-${month}-${day}`;
 }
 
+
+function resolveChannelDefaults(input: {
+  options: Account[];
+  accounts: Account[];
+  bankAccounts: Account[];
+  initial?: Transaction;
+  defaultBankAccountId?: string;
+}) {
+  const { options, accounts, bankAccounts, initial, defaultBankAccountId } = input;
+  if (initial) {
+    const hit =
+      accounts.find((item) => item.id === initial.accountId) ??
+      bankAccounts.find((item) => item.id === initial.accountId);
+    if (hit?.type === "BANK") {
+      return {
+        channelAccountId: options.find((item) => item.type === "BANK")?.id ?? hit.id,
+        bankAccountId: hit.id,
+      };
+    }
+    return { channelAccountId: initial.accountId, bankAccountId: "" };
+  }
+  if (defaultBankAccountId && bankAccounts.some((item) => item.id === defaultBankAccountId)) {
+    const catalogBank = options.find((item) => item.type === "BANK");
+    if (catalogBank) {
+      return { channelAccountId: catalogBank.id, bankAccountId: defaultBankAccountId };
+    }
+  }
+  return { channelAccountId: options[0]?.id ?? "", bankAccountId: "" };
+}
+
 export function TransactionForm({
   accounts,
   bankAccounts,
@@ -52,7 +82,7 @@ export function TransactionForm({
   categories: Category[];
   currency: string;
   initial?: Transaction;
-  defaultType?: "INCOME" | "EXPENSE";
+  defaultType?: "INCOME" | "EXPENSE" | "TRANSFER";
   defaultBankAccountId?: string;
   onSaved: (credit?: CreditSpendImpact | null, bankMessage?: string) => void;
 }) {
@@ -60,10 +90,30 @@ export function TransactionForm({
     () => uniqueCatalogAccounts(accounts, initial?.accountId),
     [accounts, initial?.accountId],
   );
-  const [type, setType] = useState<"INCOME" | "EXPENSE">(initial?.type ?? defaultType);
+  const defaults = useMemo(
+    () =>
+      resolveChannelDefaults({
+        options,
+        accounts,
+        bankAccounts,
+        initial,
+        defaultBankAccountId,
+      }),
+    [options, accounts, bankAccounts, initial, defaultBankAccountId],
+  );
+  const [type, setType] = useState<"INCOME" | "EXPENSE" | "TRANSFER">(
+    initial?.type ?? defaultType,
+  );
   const [amount, setAmount] = useState(initial ? String(initial.amountMinor / 100) : "");
-  const [channelAccountId, setChannelAccountId] = useState("");
-  const [bankAccountId, setBankAccountId] = useState("");
+  const [channelOverride, setChannelOverride] = useState<string | null>(null);
+  const [bankOverride, setBankOverride] = useState<string | null>(null);
+  const [destinationAccountId, setDestinationAccountId] = useState(
+    initial?.destinationAccountId ?? "",
+  );
+  const channelAccountId = channelOverride ?? defaults.channelAccountId;
+  const bankAccountId = bankOverride ?? defaults.bankAccountId;
+  const setChannelAccountId = (value: string) => setChannelOverride(value);
+  const setBankAccountId = (value: string) => setBankOverride(value);
   const [categoryId, setCategoryId] = useState(
     initial?.categoryId ?? categories.find((item) => item.type === (initial?.type ?? defaultType))?.id ?? "",
   );
@@ -77,35 +127,10 @@ export function TransactionForm({
   const [saving, setSaving] = useState(false);
   const [creditFacilityId, setCreditFacilityId] = useState("");
 
-  useEffect(() => {
-    if (initial) {
-      if (channelAccountId) return;
-      const hit =
-        accounts.find((item) => item.id === initial.accountId) ??
-        bankAccounts.find((item) => item.id === initial.accountId);
-      if (hit?.type === "BANK") {
-        setChannelAccountId(options.find((item) => item.type === "BANK")?.id ?? hit.id);
-        setBankAccountId(hit.id);
-        return;
-      }
-      setChannelAccountId(initial.accountId);
-      return;
-    }
-    if (defaultBankAccountId && bankAccounts.some((item) => item.id === defaultBankAccountId)) {
-      const catalogBank = options.find((item) => item.type === "BANK");
-      if (catalogBank) {
-        setChannelAccountId(catalogBank.id);
-        setBankAccountId(defaultBankAccountId);
-      }
-      return;
-    }
-    if (channelAccountId) return;
-    setChannelAccountId(options[0]?.id ?? "");
-  }, [channelAccountId, initial, accounts, bankAccounts, options, defaultBankAccountId]);
-
   const methodOptions = paymentMethodAccounts(options);
   const selectedChannel = options.find((item) => item.id === channelAccountId);
   const isBankChannel = selectedChannel?.type === "BANK";
+  const isTransfer = type === "TRANSFER";
   const activeBankId = isBankChannel
     ? bankAccountId || bankAccounts[0]?.id || ""
     : "";
@@ -119,16 +144,20 @@ export function TransactionForm({
     queryFn: () => financeService.listCreditFacilities(),
     retry: false,
   });
-  const creditKind = selectedChannel ? creditKindForAccount(selectedChannel.type) : null;
+  const creditKind = !isTransfer && selectedChannel ? creditKindForAccount(selectedChannel.type) : null;
   const creditOptions = (facilities.data ?? []).filter((item) => item.kind === creditKind);
   const selectedBank = isBankChannel
     ? bankAccounts.find((item) => item.id === activeBankId)
     : undefined;
+  const destinationAccount =
+    accounts.find((item) => item.id === destinationAccountId) ??
+    bankAccounts.find((item) => item.id === destinationAccountId);
   const bankPreview = useMemo(() => {
     if (!selectedBank) return null;
     try {
+      const amountMinor = majorToMinor(amount || "0");
       const deltaMinor =
-        type === "EXPENSE" ? -majorToMinor(amount || "0") : majorToMinor(amount || "0");
+        type === "EXPENSE" || type === "TRANSFER" ? -amountMinor : amountMinor;
       return {
         deltaMinor,
         nextBalanceMinor: selectedBank.currentBalanceMinor + deltaMinor,
@@ -140,6 +169,21 @@ export function TransactionForm({
       };
     }
   }, [amount, selectedBank, type]);
+  const destPreview = useMemo(() => {
+    if (!isTransfer || !destinationAccount) return null;
+    try {
+      const amountMinor = majorToMinor(amount || "0");
+      return {
+        deltaMinor: amountMinor,
+        nextBalanceMinor: destinationAccount.currentBalanceMinor + amountMinor,
+      };
+    } catch {
+      return {
+        deltaMinor: 0,
+        nextBalanceMinor: destinationAccount.currentBalanceMinor,
+      };
+    }
+  }, [amount, destinationAccount, isTransfer]);
   const selectedFacility =
     creditKind === "CARD"
       ? (creditOptions.find((item) => item.id === creditFacilityId) ??
@@ -148,8 +192,17 @@ export function TransactionForm({
       : creditKind === "UPI"
         ? creditOptions.find((item) => item.id === creditFacilityId)
         : undefined;
-  const creditPreview = useMemo(() => {
-    if (!selectedFacility) return null;
+  let creditPreview: {
+    spentMinor?: number;
+    usedMinor: number;
+    availableMinor: number;
+    pendingMinor: number;
+    name: string;
+    dueOn: string | null | undefined;
+    deltaMinor: number;
+    todaySpendMinor?: number;
+  } | null = null;
+  if (selectedFacility) {
     try {
       const deltaMinor = creditSpendDelta(type, majorToMinor(amount || "0"));
       const next = nextCreditBalances({
@@ -161,9 +214,9 @@ export function TransactionForm({
         minDueMinor: selectedFacility.minDueMinor,
         deltaMinor,
       });
-      return { ...next, name: selectedFacility.name, dueOn: selectedFacility.dueOn, deltaMinor };
+      creditPreview = { ...next, name: selectedFacility.name, dueOn: selectedFacility.dueOn, deltaMinor };
     } catch {
-      return {
+      creditPreview = {
         spentMinor: 0,
         usedMinor: selectedFacility.usedMinor,
         availableMinor: Math.max(
@@ -179,9 +232,15 @@ export function TransactionForm({
         deltaMinor: 0,
       };
     }
-  }, [amount, selectedFacility, type]);
-  const setKind = (next: "INCOME" | "EXPENSE") => {
+  }
+  const setKind = (next: "INCOME" | "EXPENSE" | "TRANSFER") => {
     setType(next);
+    if (next === "TRANSFER") {
+      setCategoryId(
+        categories.find((item) => item.type === "TRANSFER")?.id ?? categories[0]?.id ?? "",
+      );
+      return;
+    }
     setCategoryId(categories.find((item) => item.type === next)?.id ?? "");
   };
   const pick = (nextType: "INCOME" | "EXPENSE", categoryName: string, merchantValue: string) => {
@@ -215,12 +274,24 @@ export function TransactionForm({
         setError("Select a saved bank account. Expenses deduct and income credits that account.");
         return;
       }
+      if (isTransfer) {
+        if (!destinationAccountId) {
+          setError("Choose the destination account for this transfer.");
+          return;
+        }
+        if (destinationAccountId === accountId) {
+          setError("Source and destination accounts must be different.");
+          return;
+        }
+      }
+      const transferCategoryId =
+        categories.find((item) => item.type === "TRANSFER")?.id ?? categoryId;
       const body = {
         type,
         amountMinor: majorToMinor(amount),
         currency,
         accountId,
-        categoryId,
+        categoryId: isTransfer ? transferCategoryId : categoryId,
         merchant: merchant || null,
         notes: notes || null,
         transactionAt: new Date(`${date}T${time || "00:00"}`).toISOString(),
@@ -228,7 +299,8 @@ export function TransactionForm({
           .split(",")
           .map((tag) => tag.trim())
           .filter(Boolean),
-        ...(selectedFacility ? { creditFacilityId: selectedFacility.id } : {}),
+        ...(selectedFacility && !isTransfer ? { creditFacilityId: selectedFacility.id } : {}),
+        ...(isTransfer ? { destinationAccountId } : {}),
       };
       const saved = initial
         ? await transactionService.update(initial.id, body)
@@ -282,7 +354,7 @@ export function TransactionForm({
               </div>
               <span className="tx-step">01</span>
             </div>
-            <div className="grid grid-cols-2 gap-2 rounded-xl bg-[var(--muted)] p-1 sm:max-w-[280px]">
+            <div className="grid grid-cols-3 gap-2 rounded-xl bg-[var(--muted)] p-1 sm:max-w-[420px]">
               <button
                 type="button"
                 onClick={() => setKind("EXPENSE")}
@@ -297,14 +369,21 @@ export function TransactionForm({
               >
                 Income
               </button>
+              <button
+                type="button"
+                onClick={() => setKind("TRANSFER")}
+                className={`rounded-lg py-2 text-sm font-semibold ${type === "TRANSFER" ? "bg-[var(--surface)] shadow-sm" : "text-[var(--muted-foreground)]"}`}
+              >
+                Transfer
+              </button>
             </div>
             <div className="form-grid mt-4">
-              <Field label={type === "EXPENSE" ? "Merchant" : "Source"}>
+              <Field label={isTransfer ? "Note" : type === "EXPENSE" ? "Merchant" : "Source"}>
                 <Input
                   maxLength={120}
                   value={merchant}
                   onChange={(event) => setMerchant(event.target.value)}
-                  placeholder="e.g. Fresh Basket, Uber, Salary"
+                  placeholder={isTransfer ? "e.g. Move to savings" : "e.g. Fresh Basket, Uber, Salary"}
                 />
               </Field>
               <Field label={`Amount (${currency})`}>
@@ -316,6 +395,7 @@ export function TransactionForm({
                   placeholder="1500"
                 />
               </Field>
+              {!isTransfer ? (
               <Field label="Category">
                 <Select required value={categoryId} onChange={(event) => setCategoryId(event.target.value)}>
                   {categories
@@ -327,11 +407,14 @@ export function TransactionForm({
                     ))}
                 </Select>
               </Field>
+              ) : null}
               <Field
-                label="Account"
+                label={isTransfer ? "From account" : "Account"}
                 hint={
                   options.length
-                    ? "Choose the payment account this money moved through."
+                    ? isTransfer
+                      ? "Money leaves this account."
+                      : "Choose the payment account this money moved through."
                     : undefined
                 }
               >
@@ -372,7 +455,32 @@ export function TransactionForm({
                   </div>
                 )}
               </Field>
-              {methodOptions.length ? (
+              {isTransfer ? (
+                <Field label="To account" hint="Money arrives in this account.">
+                  <Select
+                    required
+                    value={destinationAccountId}
+                    onChange={(event) => setDestinationAccountId(event.target.value)}
+                    aria-label="Destination account"
+                  >
+                    <option value="" disabled>
+                      Select destination
+                    </option>
+                    {[...accounts, ...bankAccounts]
+                      .filter(
+                        (item, index, list) =>
+                          list.findIndex((candidate) => candidate.id === item.id) === index,
+                      )
+                      .filter((item) => item.id !== accountId)
+                      .map((item) => (
+                        <option key={item.id} value={item.id}>
+                          {accountDisplayName(item)}
+                        </option>
+                      ))}
+                  </Select>
+                </Field>
+              ) : null}
+              {!isTransfer && methodOptions.length ? (
                 <Field
                   label="Payment method"
                   hint="Bank, UPI and credit card let you pick a saved account or card."
@@ -456,10 +564,15 @@ export function TransactionForm({
                       <p>
                         {type === "EXPENSE" && bankPreview.deltaMinor < 0
                           ? `${money(Math.abs(bankPreview.deltaMinor), currency)} will be deducted from this account. `
-                          : type === "INCOME" && bankPreview.deltaMinor > 0
-                            ? `${money(bankPreview.deltaMinor, currency)} will be added to this account. `
-                            : null}
+                          : type === "TRANSFER" && bankPreview.deltaMinor < 0
+                            ? `${money(Math.abs(bankPreview.deltaMinor), currency)} will leave this account. `
+                            : type === "INCOME" && bankPreview.deltaMinor > 0
+                              ? `${money(bankPreview.deltaMinor, currency)} will be added to this account. `
+                              : null}
                         Available balance will be {money(bankPreview.nextBalanceMinor, currency)}.
+                        {destPreview
+                          ? ` Destination balance will be ${money(destPreview.nextBalanceMinor, currency)}.`
+                          : null}
                       </p>
                     </div>
                   ) : null}

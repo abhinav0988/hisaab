@@ -1,6 +1,6 @@
 import { createDatabase, userPreferences } from "@hisaab/database";
+import { addLocalDays, currentMonth, monthBounds, zonedDateKey, zonedMonthKey, zonedParts } from "../../shared/dates";
 import { eq } from "drizzle-orm";
-import { currentMonth, monthBounds, zonedParts } from "../../shared/dates";
 
 export async function reportingContext(env: Env, userId: string, from?: string, to?: string) {
   const db = createDatabase(env.DB);
@@ -11,6 +11,51 @@ export async function reportingContext(env: Env, userId: string, from?: string, 
   const month = currentMonth(timezone);
   const bounds = from && to ? { from, to } : monthBounds(month, timezone);
   return { timezone, currency: prefs?.defaultCurrency ?? "INR", month, ...bounds };
+}
+
+type LedgerRow = { transactionAt: string; type: string; amountMinor: number };
+
+async function ledgerRows(
+  env: Env,
+  userId: string,
+  from: string,
+  to: string,
+  accountIds?: string[],
+) {
+  const filters = ["user_id=?", "deleted_at IS NULL", "transaction_at>=?", "transaction_at<?"];
+  const values: unknown[] = [userId, from, to];
+  if (accountIds?.length) {
+    filters.push(
+      `(account_id IN (${accountIds.map(() => "?").join(",")}) OR destination_account_id IN (${accountIds.map(() => "?").join(",")}))`,
+    );
+    values.push(...accountIds, ...accountIds);
+  }
+  return (
+    await env.DB.prepare(
+      `SELECT transaction_at AS transactionAt, type, amount_minor AS amountMinor, account_id AS accountId, destination_account_id AS destinationAccountId FROM transactions WHERE ${filters.join(" AND ")}`,
+    )
+      .bind(...values)
+      .all<LedgerRow & { accountId: string; destinationAccountId: string | null }>()
+  ).results;
+}
+
+function incomeExpenseFor(
+  row: LedgerRow & { accountId?: string; destinationAccountId?: string | null },
+  accountIds?: string[],
+) {
+  if (row.type === "TRANSFER") {
+    if (!accountIds?.length) return { income: 0, expense: 0 };
+    const inSet = accountIds.includes(row.destinationAccountId ?? "");
+    const outSet = accountIds.includes(row.accountId ?? "");
+    return {
+      income: inSet ? Number(row.amountMinor) : 0,
+      expense: outSet ? Number(row.amountMinor) : 0,
+    };
+  }
+  return {
+    income: row.type === "INCOME" ? Number(row.amountMinor) : 0,
+    expense: row.type === "EXPENSE" ? Number(row.amountMinor) : 0,
+  };
 }
 
 export async function totals(env: Env, userId: string, from: string, to: string) {
@@ -52,38 +97,73 @@ export async function byAccount(env: Env, userId: string, from: string, to: stri
       .all()
   ).results;
 }
-export async function daily(env: Env, userId: string, from: string, to: string) {
-  return (
-    await env.DB.prepare(
-      "SELECT substr(transaction_at,1,10) AS date, coalesce(sum(CASE WHEN type='EXPENSE' THEN amount_minor ELSE 0 END),0) AS expense, coalesce(sum(CASE WHEN type='INCOME' THEN amount_minor ELSE 0 END),0) AS income FROM transactions WHERE user_id=? AND deleted_at IS NULL AND transaction_at>=? AND transaction_at<? GROUP BY substr(transaction_at,1,10) ORDER BY date",
-    )
-      .bind(userId, from, to)
-      .all()
-  ).results;
+export async function daily(
+  env: Env,
+  userId: string,
+  from: string,
+  to: string,
+  timezone = "UTC",
+  accountIds?: string[],
+) {
+  const rows = await ledgerRows(env, userId, from, to, accountIds);
+  const buckets = new Map<string, { date: string; income: number; expense: number }>();
+  for (const row of rows) {
+    const date = zonedDateKey(String(row.transactionAt), timezone);
+    const current = buckets.get(date) ?? { date, income: 0, expense: 0 };
+    const delta = incomeExpenseFor(row, accountIds);
+    current.income += delta.income;
+    current.expense += delta.expense;
+    buckets.set(date, current);
+  }
+  return [...buckets.values()].sort((left, right) => left.date.localeCompare(right.date));
 }
-export async function monthly(env: Env, userId: string) {
-  return (
-    await env.DB.prepare(
-      "SELECT substr(transaction_at,1,7) AS month, coalesce(sum(CASE WHEN type='EXPENSE' THEN amount_minor ELSE 0 END),0) AS expense, coalesce(sum(CASE WHEN type='INCOME' THEN amount_minor ELSE 0 END),0) AS income FROM transactions WHERE user_id=? AND deleted_at IS NULL AND transaction_at>=datetime('now','start of month','-5 months') GROUP BY substr(transaction_at,1,7) ORDER BY month",
-    )
-      .bind(userId)
-      .all()
-  ).results;
+export async function monthly(
+  env: Env,
+  userId: string,
+  timezone = "UTC",
+  from?: string,
+  to?: string,
+  accountIds?: string[],
+) {
+  const now = new Date();
+  const start =
+    from ??
+    (() => {
+      const part = zonedParts(now, timezone);
+      const startMonth = part.month - 11;
+      const year = startMonth > 0 ? part.year : part.year - 1;
+      const month = startMonth > 0 ? startMonth : startMonth + 12;
+      return monthBounds(
+        `${year}-${String(month).padStart(2, "0")}`,
+        timezone,
+      ).from;
+    })();
+  const end = to ?? addLocalDays(now, timezone, 1).toISOString();
+  const rows = await ledgerRows(env, userId, start, end, accountIds);
+  const buckets = new Map<string, { month: string; income: number; expense: number }>();
+  for (const row of rows) {
+    const month = zonedMonthKey(String(row.transactionAt), timezone);
+    const current = buckets.get(month) ?? { month, income: 0, expense: 0 };
+    const delta = incomeExpenseFor(row, accountIds);
+    current.income += delta.income;
+    current.expense += delta.expense;
+    buckets.set(month, current);
+  }
+  return [...buckets.values()].sort((left, right) => left.month.localeCompare(right.month));
 }
 
 export async function dashboard(env: Env, userId: string) {
   const context = await reportingContext(env, userId);
   const nowDate = new Date();
-  const parts = zonedParts(nowDate, context.timezone);
-  const todayStart = new Date(Date.UTC(parts.year, parts.month - 1, parts.day));
-  const sevenStart = new Date(nowDate.getTime() - 6 * 86400000);
+  const todayStart = addLocalDays(nowDate, context.timezone, 0);
+  const sevenStart = addLocalDays(nowDate, context.timezone, -6);
   const [summary, categorySpending, monthlyComparison, recent, todayRow, sevenDay, budget] =
     await Promise.all([
       totals(env, userId, context.from, context.to),
       byCategory(env, userId, context.from, context.to),
-      monthly(env, userId),
+      monthly(env, userId, context.timezone),
       env.DB.prepare(
-        "SELECT t.id,t.account_id AS accountId,t.category_id AS categoryId,t.type,t.amount_minor AS amountMinor,t.currency,t.merchant,t.notes,t.transaction_at AS transactionAt,a.name AS accountName,c.name AS categoryName,c.icon AS categoryIcon,c.colour AS categoryColour FROM transactions t JOIN accounts a ON a.id=t.account_id JOIN categories c ON c.id=t.category_id WHERE t.user_id=? AND t.deleted_at IS NULL ORDER BY t.transaction_at DESC LIMIT 12",
+        "SELECT t.id,t.account_id AS accountId,t.category_id AS categoryId,t.type,t.amount_minor AS amountMinor,t.currency,t.merchant,t.notes,t.transaction_at AS transactionAt,t.destination_account_id AS destinationAccountId,a.name AS accountName,dest.name AS destinationAccountName,c.name AS categoryName,c.icon AS categoryIcon,c.colour AS categoryColour FROM transactions t JOIN accounts a ON a.id=t.account_id LEFT JOIN accounts dest ON dest.id=t.destination_account_id JOIN categories c ON c.id=t.category_id WHERE t.user_id=? AND t.deleted_at IS NULL ORDER BY t.transaction_at DESC LIMIT 12",
       )
         .bind(userId)
         .all(),
@@ -96,7 +176,8 @@ export async function dashboard(env: Env, userId: string) {
         env,
         userId,
         sevenStart.toISOString(),
-        new Date(nowDate.getTime() + 86400000).toISOString(),
+        addLocalDays(nowDate, context.timezone, 1).toISOString(),
+        context.timezone,
       ),
       env.DB.prepare(
         "SELECT amount_minor AS amount FROM budgets WHERE user_id=? AND month=? AND category_id IS NULL LIMIT 1",

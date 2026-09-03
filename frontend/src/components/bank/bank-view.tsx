@@ -23,7 +23,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import {
   Area,
   AreaChart,
@@ -62,6 +62,7 @@ import { localDateKey, money, signedMoney } from "@/lib/format";
 import { accountService } from "@/services/account.service";
 import { dashboardService } from "@/services/dashboard.service";
 import { profileService } from "@/services/profile.service";
+import { reportService } from "@/services/report.service";
 import { transactionService } from "@/services/transaction.service";
 
 function failMessage(error: unknown) {
@@ -299,15 +300,20 @@ export function BankView() {
   const [editing, setEditing] = useState<Account | null>(null);
   const [menuId, setMenuId] = useState<string | null>(null);
   const [balanceRange, setBalanceRange] = useState<BalanceRange>("1M");
-  const [chartsReady, setChartsReady] = useState(false);
-
-  useEffect(() => {
-    setChartsReady(true);
-  }, []);
+  const [chartsReady] = useState(true);
 
   const profile = useQuery({ queryKey: ["profile"], queryFn: () => profileService.get() });
   const banks = useQuery({ queryKey: ["bank-accounts"], queryFn: () => accountService.listBanks() });
   const dashboard = useQuery({ queryKey: ["dashboard"], queryFn: () => dashboardService.summary() });
+  const bankIdsKey = (banks.data ?? [])
+    .map((item) => item.id)
+    .sort()
+    .join(",");
+  const bankMonthly = useQuery({
+    queryKey: ["bank-monthly", bankIdsKey],
+    enabled: Boolean(bankIdsKey),
+    queryFn: () => reportService.monthly(`accountIds=${bankIdsKey}`),
+  });
   const transactions = useQuery({
     queryKey: ["bank-transactions"],
     queryFn: async () => {
@@ -323,7 +329,13 @@ export function BankView() {
     },
   });
 
-  if (profile.isLoading || banks.isLoading || dashboard.isLoading) return <PageSkeleton />;
+  if (
+    profile.isLoading ||
+    banks.isLoading ||
+    dashboard.isLoading ||
+    (Boolean(bankIdsKey) && bankMonthly.isLoading)
+  )
+    return <PageSkeleton />;
   if (!profile.data || !banks.data || !dashboard.data)
     return <ErrorState retry={() => void banks.refetch()} />;
 
@@ -332,7 +344,7 @@ export function BankView() {
   const bankIds = new Set(accounts.map((item) => item.id));
   const totalMinor = accounts.reduce((sum, item) => sum + item.currentBalanceMinor, 0);
   const data = dashboard.data;
-  const monthly = data.monthlyComparison;
+  const monthly = bankMonthly.data?.length ? bankMonthly.data : data.monthlyComparison;
   const lastMonth = monthly.at(-2);
   const incomeDelta = lastMonth ? deltaPct(data.incomeThisMonth, lastMonth.income) : 0;
   const expenseDelta = lastMonth ? deltaPct(data.spentThisMonth, lastMonth.expense) : 0;
@@ -1070,14 +1082,16 @@ function EditBankAccountModal({
   const [active, setActive] = useState(true);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
-  useEffect(() => {
-    if (!account) return;
+  const accountKey = account?.id ?? "";
+  const [loadedKey, setLoadedKey] = useState(accountKey);
+  if (account && accountKey !== loadedKey) {
     const institution = account.institutionName?.trim() ?? "";
     const [bankPart, ...branchParts] = institution.split(" · ");
     const matchedBank =
       INDIAN_BANKS.find((item) => item.toLowerCase() === (bankPart ?? "").toLowerCase()) ??
       bankPart?.trim() ??
       "HDFC Bank";
+    setLoadedKey(accountKey);
     setBank(matchedBank);
     setBranch(branchParts.join(" · ").trim());
     setAccountType(bankSubtype(account));
@@ -1085,7 +1099,7 @@ function EditBankAccountModal({
     setOpening(String((account.openingBalanceMinor ?? 0) / 100));
     setActive(account.isActive === true || Number(account.isActive) === 1);
     setErrors({});
-  }, [account]);
+  }
 
   const mutation = useMutation({
     mutationFn: () => {

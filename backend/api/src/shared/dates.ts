@@ -55,6 +55,27 @@ export function currentMonth(timeZone: string, date = new Date()) {
   const part = zonedParts(date, timeZone);
   return `${part.year}-${String(part.month).padStart(2, "0")}`;
 }
+
+export function zonedDateKey(date: Date | string, timeZone: string) {
+  const part = zonedParts(date instanceof Date ? date : new Date(date), timeZone);
+  return `${part.year}-${String(part.month).padStart(2, "0")}-${String(part.day).padStart(2, "0")}`;
+}
+
+export function zonedMonthKey(date: Date | string, timeZone: string) {
+  const part = zonedParts(date instanceof Date ? date : new Date(date), timeZone);
+  return `${part.year}-${String(part.month).padStart(2, "0")}`;
+}
+
+export function addLocalDays(date: Date, timeZone: string, days: number) {
+  const part = zonedParts(date, timeZone);
+  const shifted = new Date(Date.UTC(part.year, part.month - 1, part.day + days));
+  return zonedDateToUtc(
+    shifted.getUTCFullYear(),
+    shifted.getUTCMonth() + 1,
+    shifted.getUTCDate(),
+    timeZone,
+  );
+}
 export function addFrequency(iso: string, frequency: "DAILY" | "WEEKLY" | "MONTHLY" | "YEARLY") {
   const date = new Date(iso);
   if (frequency === "DAILY") date.setUTCDate(date.getUTCDate() + 1);

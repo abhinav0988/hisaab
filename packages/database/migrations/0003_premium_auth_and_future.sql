@@ -24,7 +24,7 @@ CREATE TABLE `savings_goals` (
 	`id` text PRIMARY KEY NOT NULL,
 	`user_id` text NOT NULL,
 	`name` text NOT NULL,
-	`icon` text DEFAULT '★' NOT NULL,
+	`icon` text DEFAULT '*' NOT NULL,
 	`target_amount_minor` integer NOT NULL,
 	`saved_amount_minor` integer DEFAULT 0 NOT NULL,
 	`currency` text NOT NULL,

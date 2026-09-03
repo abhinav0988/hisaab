@@ -1,5 +1,5 @@
 export type Currency = "INR" | "NPR" | "PKR" | "BDT" | "USD";
-export type TransactionType = "INCOME" | "EXPENSE";
+export type TransactionType = "INCOME" | "EXPENSE" | "TRANSFER";
 export type AccountType =
   | "CASH"
   | "BANK"
@@ -61,7 +61,9 @@ export interface Transaction {
   merchant: string | null;
   notes: string | null;
   transactionAt: string;
+  destinationAccountId?: string | null;
   accountName?: string;
+  destinationAccountName?: string;
   categoryName?: string;
   categoryIcon?: string;
   tags?: string[];

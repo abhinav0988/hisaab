@@ -1,9 +1,9 @@
-import { createDatabase, userPreferences, users } from "@hisaab/database";
+import { createDatabase, defaultUserPreferences, userPreferences, users } from "@hisaab/database";
 import { profilePatchSchema } from "@hisaab/validation";
 import { eq } from "drizzle-orm";
 import { Hono } from "hono";
 import { fromZod, notFound } from "../../shared/errors";
-import { newId, now, ok } from "../../shared/http";
+import { now, ok } from "../../shared/http";
 
 export const profileRoutes = new Hono<{ Bindings: Env; Variables: { userId: string } }>();
 
@@ -16,17 +16,7 @@ profileRoutes.get("/", async (c) => {
     where: eq(userPreferences.userId, userId),
   });
   if (!preferences) {
-    const value = {
-      id: newId(),
-      userId,
-      countryCode: "IN",
-      defaultCurrency: "INR",
-      timezone: "Asia/Kolkata",
-      dateFormat: "DD/MM/YYYY",
-      theme: "system",
-      createdAt: now(),
-      updatedAt: now(),
-    };
+    const value = defaultUserPreferences(userId);
     await db.insert(userPreferences).values(value);
     preferences = value;
   }
@@ -41,6 +31,11 @@ profileRoutes.get("/", async (c) => {
     timezone: preferences.timezone,
     dateFormat: preferences.dateFormat,
     theme: preferences.theme,
+    language: preferences.language,
+    profileNote: preferences.profileNote,
+    smartNotifications: preferences.smartNotifications,
+    weeklySummary: preferences.weeklySummary,
+    appLockEnabled: preferences.appLockEnabled,
     createdAt: preferences.createdAt,
     updatedAt: preferences.updatedAt,
   });
@@ -63,17 +58,9 @@ profileRoutes.patch("/", async (c) => {
         .set({ ...preferences, updatedAt: now() })
         .where(eq(userPreferences.userId, userId));
     else
-      await db.insert(userPreferences).values({
-        id: newId(),
-        userId,
-        countryCode: preferences.countryCode ?? "IN",
-        defaultCurrency: preferences.defaultCurrency ?? "INR",
-        timezone: preferences.timezone ?? "Asia/Kolkata",
-        dateFormat: preferences.dateFormat ?? "DD/MM/YYYY",
-        theme: preferences.theme ?? "system",
-        createdAt: now(),
-        updatedAt: now(),
-      });
+      await db.insert(userPreferences).values(
+        defaultUserPreferences(userId, preferences.countryCode),
+      );
   }
   return ok(c, { updated: true });
 });

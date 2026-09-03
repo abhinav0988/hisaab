@@ -13,8 +13,10 @@ export type ReportBreakdown = Array<{ id: string; name: string; value: number; c
 
 export const reportService = {
   daily: (range: string) => api<DailyReport>(`/api/v1/reports/daily?${range}`),
-  monthly: () =>
-    api<Array<{ month: string; income: number; expense: number }>>("/api/v1/reports/monthly"),
+  monthly: (range?: string) =>
+    api<Array<{ month: string; income: number; expense: number }>>(
+      range ? `/api/v1/reports/monthly?${range}` : "/api/v1/reports/monthly",
+    ),
   categories: (range: string) => api<ReportBreakdown>(`/api/v1/reports/categories?${range}`),
   accounts: (range: string) => api<ReportBreakdown>(`/api/v1/reports/accounts?${range}`),
   exportUrl: (range: string) => `${API_URL}/api/v1/reports/export.csv?${range}`,

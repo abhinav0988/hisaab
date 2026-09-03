@@ -10,7 +10,7 @@ type CreateContribution = z.infer<typeof goalContributionSchema>;
 export async function listGoals(env: Env, userId: string) {
   const db = createDatabase(env.DB);
   return db.query.savingsGoals.findMany({
-    where: and(eq(savingsGoals.userId, userId), eq(savingsGoals.isActive, true)),
+    where: eq(savingsGoals.userId, userId),
     orderBy: desc(savingsGoals.createdAt),
   });
 }
@@ -21,7 +21,7 @@ export async function createGoal(env: Env, userId: string, input: CreateGoal) {
     id: newId(),
     userId,
     name: input.name,
-    icon: input.icon ?? "★",
+    icon: input.icon ?? "*",
     targetAmountMinor: input.targetAmountMinor,
     savedAmountMinor: input.savedAmountMinor ?? 0,
     currency: input.currency,
@@ -102,4 +102,50 @@ export async function addContribution(
     newValue: input,
   });
   return { ...value, savedAmountMinor: nextSaved };
+}
+
+export async function updateGoal(
+  env: Env,
+  userId: string,
+  id: string,
+  input: Partial<CreateGoal> & { isActive?: boolean },
+) {
+  const existing = await getGoal(env, userId, id);
+  const db = createDatabase(env.DB);
+  const next = {
+    name: input.name ?? existing.name,
+    icon: input.icon ?? existing.icon,
+    targetAmountMinor: input.targetAmountMinor ?? existing.targetAmountMinor,
+    savedAmountMinor: input.savedAmountMinor ?? existing.savedAmountMinor,
+    currency: input.currency ?? existing.currency,
+    targetDate: input.targetDate === undefined ? existing.targetDate : input.targetDate,
+    notes: input.notes === undefined ? existing.notes : input.notes,
+    isActive: input.isActive ?? existing.isActive,
+    updatedAt: now(),
+  };
+  await db
+    .update(savingsGoals)
+    .set(next)
+    .where(and(eq(savingsGoals.id, id), eq(savingsGoals.userId, userId)));
+  await audit(db, {
+    userId,
+    action: "UPDATE",
+    entityType: "SAVINGS_GOAL",
+    entityId: id,
+    oldValue: existing,
+    newValue: input,
+  });
+  return { ...existing, ...next };
+}
+
+export async function deleteGoal(env: Env, userId: string, id: string) {
+  await getGoal(env, userId, id);
+  const db = createDatabase(env.DB);
+  await db.delete(savingsGoals).where(and(eq(savingsGoals.id, id), eq(savingsGoals.userId, userId)));
+  await audit(db, {
+    userId,
+    action: "DELETE",
+    entityType: "SAVINGS_GOAL",
+    entityId: id,
+  });
 }

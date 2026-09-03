@@ -20,6 +20,8 @@ function patch<T>(path: string, body: unknown) {
 export const financeService = {
   listInvestments: () => api<Investment[]>("/api/v1/investments"),
   createInvestment: (body: unknown) => post<Investment>("/api/v1/investments", body),
+  updateInvestment: (id: string, body: unknown) => patch<Investment>(`/api/v1/investments/${id}`, body),
+  deleteInvestment: (id: string) => api(`/api/v1/investments/${id}`, { method: "DELETE" }),
   listIpos: () => api<IpoApplication[]>("/api/v1/ipos"),
   createIpo: (body: unknown) => post<IpoApplication>("/api/v1/ipos", body),
   updateIpo: (id: string, body: unknown) => patch<IpoApplication>(`/api/v1/ipos/${id}`, body),
@@ -43,4 +45,5 @@ export const financeService = {
   listLendRecords: () => api<LendRecord[]>("/api/v1/lend-records"),
   createLendRecord: (body: unknown) => post<LendRecord>("/api/v1/lend-records", body),
   patchLendRecord: (id: string, body: unknown) => patch<LendRecord>(`/api/v1/lend-records/${id}`, body),
+  deleteLendRecord: (id: string) => api(`/api/v1/lend-records/${id}`, { method: "DELETE" }),
 };

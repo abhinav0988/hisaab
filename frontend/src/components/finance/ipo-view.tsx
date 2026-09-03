@@ -35,14 +35,12 @@ import { Modal } from "@/components/layout/modal";
 import { PageHeader } from "@/components/layout/page-header";
 import { EmptyState, ErrorState, PageSkeleton } from "@/components/layout/states";
 import { ApiError } from "@/lib/api-client";
-import { accountDisplayName, uniqueCatalogAccounts } from "@/lib/accounts";
 import { bankLabel } from "@/lib/bank";
 import { displayDate, isoToday } from "@/lib/finance-modules";
 import { money } from "@/lib/format";
 import {
   downloadIpoCsv,
   filterIposByPeriod,
-  IPO_BROKERS,
   IPO_MARKET_CATEGORIES,
   IPO_STATUSES,
   ipoAbbrev,
@@ -279,25 +277,6 @@ export function IpoView() {
     [banks.data],
   );
 
-  const paymentLookup = useMemo(() => {
-    const bankList = banks.data ?? [];
-    const catalog = uniqueCatalogAccounts(accounts.data ?? []);
-    const upi = catalog.find((item) => item.type === "UPI");
-    return [
-      ...bankList.map((item) => ({
-        id: item.id,
-        label: bankLabel(item),
-        group: "bank" as const,
-      })),
-      ...(upi ? [{ id: upi.id, label: accountDisplayName(upi), group: "upi" as const }] : []),
-      ...IPO_BROKERS.map((broker) => ({
-        id: `broker:${broker}`,
-        label: broker,
-        group: "broker" as const,
-      })),
-    ];
-  }, [banks.data, accounts.data]);
-
   if (
     profile.isLoading ||
     ipos.isLoading ||
@@ -412,8 +391,8 @@ export function IpoView() {
           <div className="ipo-charts-row">
             <Card className="ipo-chart-card">
               <header>
-                <h3>Performance Overview</h3>
-                <small>{metrics.returnPct}% overall returns</small>
+                <h3>Current P/L by allotment date</h3>
+                <small>{metrics.returnPct}% overall · not a historical price series</small>
               </header>
               <strong className="ipo-chart-kpi">{money(metrics.totalPlMinor, currency)}</strong>
               <ResponsiveContainer width="100%" height={120}>
@@ -677,7 +656,7 @@ export function IpoView() {
 
           <Card className="ipo-side-card">
             <header>
-              <h3>Returns Over Time</h3>
+              <h3>Current P/L by allotment/application date</h3>
               <strong className="ipo-gain">{money(metrics.totalPlMinor, currency)}</strong>
             </header>
             <ResponsiveContainer width="100%" height={100}>
