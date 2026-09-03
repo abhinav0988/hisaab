@@ -295,6 +295,7 @@ export function BankView() {
   const client = useQueryClient();
   const [hideBalance, setHideBalance] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
+  const [addFormKey, setAddFormKey] = useState(0);
   const [editing, setEditing] = useState<Account | null>(null);
   const [menuId, setMenuId] = useState<string | null>(null);
   const [balanceRange, setBalanceRange] = useState<BalanceRange>("1M");
@@ -365,6 +366,11 @@ export function BankView() {
     accounts.find((item) => (item as Account & { catalogId?: string | null }).catalogId)?.id ??
     accounts[0]?.id;
 
+  function openAddForm() {
+    setAddFormKey((value) => value + 1);
+    setAddOpen(true);
+  }
+
   function refresh() {
     void client.invalidateQueries({ queryKey: ["bank-accounts"] });
     void client.invalidateQueries({ queryKey: ["accounts"] });
@@ -383,7 +389,7 @@ export function BankView() {
         title="Bank"
         description="Your complete view of balances, cash flow, and activity across linked bank accounts."
         actions={
-          <Button variant="secondary" onClick={() => setAddOpen(true)}>
+          <Button variant="secondary" onClick={openAddForm}>
             <Plus size={14} />
             Add Bank Account
           </Button>
@@ -506,14 +512,14 @@ export function BankView() {
                 title="No bank accounts yet"
                 description="Add your first bank account to track balances and transactions here."
                 action={
-                  <Button onClick={() => setAddOpen(true)}>
+                  <Button onClick={openAddForm}>
                     <Plus size={14} />
                     Add bank account
                   </Button>
                 }
               />
             )}
-            <button type="button" className="bank-add-link" onClick={() => setAddOpen(true)}>
+            <button type="button" className="bank-add-link" onClick={openAddForm}>
               <Plus size={14} />
               Add New Bank Account
             </button>
@@ -607,7 +613,7 @@ export function BankView() {
                 onClick={() =>
                   accounts[0]
                     ? router.push(bankTransactionHref(accounts[0].id, "INCOME"))
-                    : setAddOpen(true)
+                    : openAddForm()
                 }
               />
               <QuickAction
@@ -620,7 +626,7 @@ export function BankView() {
                 icon={Plus}
                 label="Add bank account"
                 description="Link a new bank account"
-                onClick={() => setAddOpen(true)}
+                onClick={openAddForm}
               />
               <QuickAction
                 icon={Download}
@@ -770,6 +776,7 @@ export function BankView() {
       </div>
 
       <AddBankAccountModal
+        key={addFormKey}
         open={addOpen}
         currency={currency}
         onClose={() => setAddOpen(false)}
@@ -903,12 +910,12 @@ function AddBankAccountModal({
   onClose: () => void;
   onSaved: () => void;
 }) {
-  const [bank, setBank] = useState<string>(INDIAN_BANKS[0]);
+  const [bank, setBank] = useState<string>(INDIAN_BANKS[0] ?? "HDFC Bank");
   const [holder, setHolder] = useState("");
   const [accountNumber, setAccountNumber] = useState("");
   const [showNumber, setShowNumber] = useState(false);
   const [ifsc, setIfsc] = useState("");
-  const [accountType, setAccountType] = useState<string>(BANK_ACCOUNT_TYPES[0]);
+  const [accountType, setAccountType] = useState<string>(BANK_ACCOUNT_TYPES[0] ?? "Savings");
   const [nickname, setNickname] = useState("");
   const [branch, setBranch] = useState("");
   const [linkingDate, setLinkingDate] = useState(isoToday());
