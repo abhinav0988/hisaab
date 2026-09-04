@@ -156,7 +156,9 @@ export async function sendAuthEmail(
     }
   };
 
-  if (env.ENVIRONMENT === "production") {
+  // OTP must await so Resend/domain failures are returned to the client instead of
+  // looking like a successful send while no email ever arrives.
+  if (kind === "otp" || env.ENVIRONMENT === "production") {
     await send();
     return;
   }

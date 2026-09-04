@@ -31,6 +31,7 @@ export function EmailOtpPanel({
   const [verifying, setVerifying] = useState(false);
   const [sent, setSent] = useState(false);
   const [seconds, setSeconds] = useState(0);
+  const [devOtp, setDevOtp] = useState("");
   const autoSent = useRef(false);
   const [trackedEmail, setTrackedEmail] = useState(email);
   if (email !== trackedEmail) {
@@ -40,6 +41,7 @@ export function EmailOtpPanel({
     setError("");
     setInvalid(false);
     setSeconds(0);
+    setDevOtp("");
   }
   useEffect(() => {
     autoSent.current = false;
@@ -60,10 +62,17 @@ export function EmailOtpPanel({
     setError("");
     setCode("");
     try {
-      await authService.sendVerificationCode(email);
+      const result = await authService.sendVerificationCode(email);
       setSent(true);
       setSeconds(60);
-      toast.success("Verification code sent to your email");
+      if (result.otp) {
+        setDevOtp(result.otp);
+        setCode(result.otp);
+        toast.success(`Verification code: ${result.otp}`);
+      } else {
+        setDevOtp("");
+        toast.success("Verification code sent to your email");
+      }
     } catch (cause) {
       toast.error(cause instanceof Error ? cause.message : "Unable to send verification code.");
     } finally {
@@ -161,7 +170,11 @@ export function EmailOtpPanel({
             </div>
             <div>
               <b>Verify your email</b>
-              <small>Enter the 6-digit code sent to {email}.</small>
+              <small>
+                {devOtp
+                  ? `Email delivery is limited on this deploy. Use code ${devOtp}.`
+                  : `Enter the 6-digit code sent to ${email}.`}
+              </small>
             </div>
             <span className="verify-step">Required</span>
           </div>
@@ -179,6 +192,11 @@ export function EmailOtpPanel({
               document.querySelector<HTMLButtonElement>(".verify-code-btn")?.focus();
             }}
           />
+          {devOtp ? (
+            <p className="otp-dev-hint" role="status">
+              Your code is <b>{devOtp}</b>
+            </p>
+          ) : null}
           {error ? <p className="otp-error">{error}</p> : null}
           <div className="email-verify-actions">
             <Button

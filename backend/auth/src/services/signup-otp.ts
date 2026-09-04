@@ -73,8 +73,21 @@ export async function sendSignupOtp(env: Env, ctx: WaitUntilContext, email: stri
   );
   await deleteVerification(env, verifiedKey(normalized));
   await deleteVerification(env, failKey(normalized));
-  await sendAuthEmail(env, ctx, "otp", normalized, code);
   const exposeOtp = shouldExposeSignupOtp(env);
+  try {
+    await sendAuthEmail(env, ctx, "otp", normalized, code);
+  } catch (cause) {
+    // Local/live-dev can keep registering from the returned code when email
+    // delivery is blocked (Resend test sender / unverified domain).
+    if (!exposeOtp) throw cause;
+    console.error(
+      JSON.stringify({
+        level: "error",
+        event: "auth_otp_email_failed_exposing_code",
+        message: cause instanceof Error ? cause.message : "unknown",
+      }),
+    );
+  }
   return {
     sent: true as const,
     otp: exposeOtp ? code : undefined,

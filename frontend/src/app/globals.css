@@ -1944,6 +1944,20 @@ html[data-theme="dark"] .tx-category-chip.active {
   font-weight: 750;
   margin: 0 0 10px;
 }
+.otp-dev-hint {
+  margin: 0 0 10px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid color-mix(in srgb, var(--gold) 35%, var(--border));
+  background: color-mix(in srgb, var(--gold) 12%, var(--surface));
+  color: var(--foreground);
+  font-size: 12px;
+  font-weight: 650;
+}
+.otp-dev-hint b {
+  letter-spacing: 0.18em;
+  font-weight: 850;
+}
 .email-verify-actions {
   display: flex;
   align-items: center;
