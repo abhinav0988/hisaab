@@ -82,59 +82,6 @@
   color: var(--b-muted);
   white-space: nowrap;
 }
-.bank23-top-actions {
-  height: 44px;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin: 0;
-}
-.bank23-mainbtn {
-  height: 42px;
-  min-width: 171px;
-  border-radius: 10px;
-  padding: 0 17px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 9px;
-  background: linear-gradient(180deg, var(--primary-hover), var(--primary));
-  border: 1px solid color-mix(in srgb, var(--primary) 35%, transparent);
-  color: #fff;
-  font-size: 12px;
-  font-weight: 700;
-}
-.bank23-mainbtn svg {
-  width: 16px;
-  height: 16px;
-}
-.bank23-iconbtn {
-  width: 42px;
-  height: 42px;
-  min-width: 42px;
-  border-radius: 10px;
-  border: 1px solid var(--b-line);
-  background: var(--surface-2);
-  display: grid;
-  place-items: center;
-  padding: 0;
-  position: relative;
-  color: var(--foreground);
-}
-.bank23-iconbtn svg {
-  width: 18px;
-  height: 18px;
-  stroke-width: 1.75;
-}
-.bank23-iconbtn .dot {
-  position: absolute;
-  width: 6px;
-  height: 6px;
-  top: 7px;
-  right: 7px;
-  border-radius: 50%;
-  background: var(--b-red);
-}
 .bank23-subactions {
   height: 34px;
   margin: -4px 0 0;
@@ -887,11 +834,6 @@ html[data-theme="dark"] .bank23-kpi.blue {
   background: linear-gradient(145deg, #071d2d, #071319);
   border-color: #1b3e58;
 }
-html.dark .bank23-mainbtn,
-html[data-theme="dark"] .bank23-mainbtn {
-  background: linear-gradient(180deg, #08a75d, #087d48);
-  border-color: rgba(52, 230, 138, 0.24);
-}
 html.dark .bank23-row,
 html[data-theme="dark"] .bank23-row {
   background: #07141a;
@@ -944,9 +886,6 @@ html[data-theme="dark"] .bank23-row {
     min-height: 0;
     grid-template-columns: 50px 1fr;
     row-gap: 12px;
-  }
-  .bank23-top-actions {
-    grid-column: 1 / -1;
   }
   .bank23-title p {
     white-space: normal;

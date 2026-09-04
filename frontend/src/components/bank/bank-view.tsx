@@ -19,20 +19,17 @@ import {
   EyeOff,
   FileText,
   Landmark,
-  Moon,
   MoreVertical,
   Plus,
   ShieldCheck,
   ShoppingBag,
-  Sun,
   TrendingDown,
   Wallet,
   WalletCards,
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useTheme } from "next-themes";
-import { useState, useSyncExternalStore, type ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import {
   Area,
   AreaChart,
@@ -253,26 +250,6 @@ function DeltaText({ value, invert }: { value: number; invert?: boolean }) {
   );
 }
 
-function BankThemeButton() {
-  const { theme, setTheme } = useTheme();
-  const mounted = useSyncExternalStore(
-    () => () => undefined,
-    () => true,
-    () => false,
-  );
-  const dark = mounted && theme === "dark";
-  return (
-    <button
-      type="button"
-      className="bank23-iconbtn"
-      aria-label={dark ? "Switch to light theme" : "Switch to dark theme"}
-      onClick={() => setTheme(dark ? "light" : "dark")}
-    >
-      {dark ? <Moon /> : <Sun />}
-    </button>
-  );
-}
-
 export function BankView() {
   const router = useRouter();
   const client = useQueryClient();
@@ -384,17 +361,6 @@ export function BankView() {
         <div className="bank23-title">
           <h2>Bank</h2>
           <p>Your complete view of balances, cash flow, and activity across linked bank accounts.</p>
-        </div>
-        <div className="bank23-top-actions">
-          <button
-            type="button"
-            className="bank23-mainbtn"
-            onClick={() => router.push("/transactions?action=add")}
-          >
-            <Plus />
-            <span>Add transaction</span>
-          </button>
-          <BankThemeButton />
         </div>
       </header>
 
