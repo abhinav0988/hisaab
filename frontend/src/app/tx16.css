@@ -381,6 +381,37 @@ html[data-theme="dark"] .tx16-add {
 .tx16-search.is-refreshing {
   border-color: color-mix(in srgb, var(--primary) 35%, var(--tx-line));
 }
+.tx16-filter-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 36px;
+  padding: 8px 16px;
+  border-bottom: 1px solid var(--tx-line);
+  background: color-mix(in srgb, var(--primary) 10%, var(--surface-2));
+  color: var(--foreground);
+  font-size: 11px;
+  font-weight: 650;
+}
+.tx16-filter-banner button {
+  border: 0;
+  background: transparent;
+  color: var(--primary);
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.tx16-filter-status {
+  margin: 28px auto;
+  text-align: center;
+  color: var(--muted-foreground);
+  font-size: 12px;
+}
+.tx16-bottom.is-refreshing .tx16-ledger {
+  opacity: 0.72;
+  transition: opacity 0.15s ease;
+}
 .tx16-selects {
   display: grid;
   grid-template-columns: repeat(3, 1fr);

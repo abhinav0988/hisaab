@@ -1,7 +1,7 @@
 "use client";
 import type { Category, CreditSpendImpact, Transaction } from "@hisaab/types";
 import { Button, Select } from "@hisaab/ui";
-import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   ArrowDownLeft,
   ArrowUpRight,
@@ -154,28 +154,52 @@ export function TransactionsView() {
     new Date(new Date().getFullYear(), new Date().getMonth(), new Date().getDate() - 19),
   );
   const monthStart = localDateKey(new Date(new Date().getFullYear(), new Date().getMonth(), 1));
-  const filters = useMemo(() => {
-    const value = new URLSearchParams({ page: String(page), limit: "20", sort });
+  const filterSignature = useMemo(() => {
+    const value = new URLSearchParams();
     if (debouncedSearch) value.set("search", debouncedSearch);
     if (type) value.set("type", type);
     if (category) value.set("category_id", category);
     if (account) value.set("account_id", account);
     if (from) value.set("from", isoDayStart(from));
     if (to) value.set("to", isoDayEndExclusive(to));
+    value.set("sort", sort);
     return value.toString();
-  }, [page, sort, debouncedSearch, type, category, account, from, to]);
+  }, [debouncedSearch, type, category, account, from, to, sort]);
+  const filters = useMemo(() => {
+    const value = new URLSearchParams(filterSignature);
+    value.set("page", String(page));
+    value.set("limit", "20");
+    return value.toString();
+  }, [filterSignature, page]);
+  const analyticsExtra = useMemo(() => {
+    const value = new URLSearchParams();
+    if (debouncedSearch) value.set("search", debouncedSearch);
+    if (type) value.set("type", type);
+    if (category) value.set("category_id", category);
+    if (account) value.set("account_id", account);
+    return value.toString();
+  }, [debouncedSearch, type, category, account]);
   const transactions = useQuery({
     queryKey: ["transactions", filters],
     queryFn: () => transactionService.list(filters),
-    placeholderData: keepPreviousData,
+    // Keep prior rows only when paging/sorting within the same filters — never for new filters.
+    placeholderData: (previousData, previousQuery) => {
+      const previousFilters = previousQuery?.queryKey[1];
+      if (typeof previousFilters !== "string" || !previousData) return undefined;
+      const previous = new URLSearchParams(previousFilters);
+      const next = new URLSearchParams(filters);
+      previous.delete("page");
+      next.delete("page");
+      return previous.toString() === next.toString() ? previousData : undefined;
+    },
   });
   const monthRows = useQuery({
-    queryKey: ["transactions-month", monthStart, today],
-    queryFn: () => transactionService.list(rangeQuery(monthStart, today)),
+    queryKey: ["transactions-month", monthStart, today, analyticsExtra],
+    queryFn: () => transactionService.list(rangeQuery(monthStart, today, analyticsExtra)),
   });
   const lookbackRows = useQuery({
-    queryKey: ["transactions-lookback", lookbackStart, today],
-    queryFn: () => transactionService.list(rangeQuery(lookbackStart, today)),
+    queryKey: ["transactions-lookback", lookbackStart, today, analyticsExtra],
+    queryFn: () => transactionService.list(rangeQuery(lookbackStart, today, analyticsExtra)),
   });
   const accounts = useQuery({ queryKey: ["accounts"], queryFn: () => accountService.list() });
   const bankAccounts = useQuery({
@@ -197,21 +221,26 @@ export function TransactionsView() {
       void queryClient.invalidateQueries({ queryKey: ["credit-dashboard"] });
     },
   });
+  const shellReady = Boolean(accounts.data && bankAccounts.data && categories.data && profile.data);
   const bootstrapping =
-    (transactions.isPending && !transactions.data) ||
     accounts.isLoading ||
     bankAccounts.isLoading ||
     categories.isLoading ||
-    profile.isLoading;
+    profile.isLoading ||
+    (transactions.isPending && !transactions.data && !shellReady);
   if (bootstrapping) return <PageSkeleton />;
   if (
-    transactions.isError ||
-    !transactions.data ||
+    accounts.isError ||
+    bankAccounts.isError ||
+    categories.isError ||
+    profile.isError ||
     !accounts.data ||
     !bankAccounts.data ||
     !categories.data ||
     !profile.data
   )
+    return <ErrorState retry={() => void accounts.refetch()} />;
+  if (transactions.isError && !transactions.data)
     return <ErrorState retry={() => void transactions.refetch()} />;
   const currency = profile.data.defaultCurrency;
   const { channelOptions, bankAccounts: banks, allAccounts } = accountsForTransactions(
@@ -241,7 +270,7 @@ export function TransactionsView() {
     setPeriod("all");
     setPage(1);
   };
-  const rows = transactions.data.data;
+  const rows = transactions.data?.data ?? [];
   const groups = groupByDate(rows);
   const { featured, extra } = splitCategoryChips(categories.data);
   const visibleCategories = showMoreCategories ? [...featured, ...extra] : featured;
@@ -268,14 +297,14 @@ export function TransactionsView() {
   const topCategory = topExpenseCategory(lookbackItems);
   const highDay = daily.reduce((best, item) => (item.minor > best.minor ? item : best), daily[0]!);
   const avg10 = Math.round(spend10 / 10);
-  const total = Number(transactions.data.meta?.total ?? rows.length);
-  const totalPages = Number(transactions.data.meta?.totalPages ?? 1);
+  const total = Number(transactions.data?.meta?.total ?? rows.length);
+  const totalPages = Number(transactions.data?.meta?.totalPages ?? 1);
   const showingFrom = total ? (page - 1) * 20 + 1 : 0;
   const showingTo = Math.min(page * 20, total);
-  const filtered = Boolean(search || type || category || account || period !== "all");
+  const filtered = Boolean(debouncedSearch || type || category || account || period !== "all");
   const chartLoading = lookbackRows.isPending && !lookbackRows.data;
-  const listRefreshing = transactions.isFetching && !transactions.isPending;
-  return (
+  const listRefreshing = transactions.isFetching;
+  const listWaiting = transactions.isFetching && !transactions.data;  return (
     <div className="tx16">
       <header className="tx16-head">
         <div>
@@ -446,7 +475,7 @@ export function TransactionsView() {
                 key={item.id}
                 active={category === item.id}
                 onClick={() => {
-                  setCategory(item.id);
+                  setCategory((current) => (current === item.id ? "" : item.id));
                   setPage(1);
                 }}
                 icon={<CategoryGlyph name={item.icon} size={13} />}
@@ -464,9 +493,22 @@ export function TransactionsView() {
         </article>
       </section>
 
-      {rows.length ? (
-        <section className="tx16-bottom">
+      {listWaiting ? (
+        <div className="tx16-ledger tx16-empty">
+          <p className="tx16-filter-status">Updating results…</p>
+        </div>
+      ) : rows.length ? (
+        <section className={`tx16-bottom${listRefreshing ? " is-refreshing" : ""}`}>
           <div className="tx16-ledger">
+            {filtered ? (
+              <div className="tx16-filter-banner">
+                Showing filtered results
+                {listRefreshing ? "…" : ` · ${total} match${total === 1 ? "" : "es"}`}
+                <button type="button" onClick={resetFilters}>
+                  Clear filters
+                </button>
+              </div>
+            ) : null}
             <div className="tx16-table-head">
               <span>DATE</span>
               <span>MERCHANT / CATEGORY</span>
@@ -665,7 +707,7 @@ export function TransactionsView() {
           </aside>
         </section>
       ) : filtered ? (
-        <NoResults query={search || "these filters"} onClear={resetFilters} />
+        <NoResults query={debouncedSearch || "these filters"} onClear={resetFilters} />
       ) : (
         <div className="tx16-ledger tx16-empty">
           <EmptyState
