@@ -85,6 +85,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           ? "spending-limits"
           : pathname === "/goals"
             ? "savings-goals"
+            : pathname === "/accounts"
+              ? "accounts"
             : undefined
       }
     >
