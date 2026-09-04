@@ -220,7 +220,7 @@ export function BudgetsView() {
     <div className="sl29">
       <header className="sl29-header">
         <div className="sl29-title-icon">
-          <SlidersHorizontal />
+          <UtensilsCrossed />
         </div>
         <div className="sl29-title">
           <h2>Spending Limits</h2>
