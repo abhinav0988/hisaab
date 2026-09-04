@@ -1,7 +1,7 @@
 "use client";
 import type { Category, CreditSpendImpact, Transaction } from "@hisaab/types";
 import { Button, Select } from "@hisaab/ui";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   ArrowDownLeft,
   ArrowUpRight,
@@ -25,7 +25,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { toast } from "sonner";
 import { ConfirmDialog, Modal } from "@/components/layout/modal";
 import { EmptyState, ErrorState, NoResults, PageSkeleton } from "@/components/layout/states";
@@ -88,14 +88,17 @@ function periodBounds(period: string) {
 function isoDayStart(day: string) {
   return new Date(`${day}T00:00:00`).toISOString();
 }
-function isoDayEnd(day: string) {
-  return new Date(`${day}T23:59:59`).toISOString();
+/** Exclusive end bound for `transaction_at < to` on the API. */
+function isoDayEndExclusive(day: string) {
+  const date = new Date(`${day}T00:00:00`);
+  date.setDate(date.getDate() + 1);
+  return date.toISOString();
 }
 
 function rangeQuery(from: string, to: string, extra = "") {
   const value = new URLSearchParams({ page: "1", limit: "500", sort: "newest" });
   if (from) value.set("from", isoDayStart(from));
-  if (to) value.set("to", isoDayEnd(to));
+  if (to) value.set("to", isoDayEndExclusive(to));
   if (extra) {
     const more = new URLSearchParams(extra);
     more.forEach((item, key) => value.set(key, item));
@@ -103,11 +106,21 @@ function rangeQuery(from: string, to: string, extra = "") {
   return value.toString();
 }
 
+function useDebouncedValue<T>(value: T, delayMs: number) {
+  const [debounced, setDebounced] = useState(value);
+  useEffect(() => {
+    const timer = window.setTimeout(() => setDebounced(value), delayMs);
+    return () => window.clearTimeout(timer);
+  }, [value, delayMs]);
+  return debounced;
+}
+
 export function TransactionsView() {
   const queryClient = useQueryClient();
   const router = useRouter();
   const searchParams = useSearchParams();
   const [search, setSearch] = useState(searchParams.get("q") ?? "");
+  const debouncedSearch = useDebouncedValue(search.trim(), 350);
   const [type, setType] = useState("");
   const [category, setCategory] = useState("");
   const [account, setAccount] = useState("");
@@ -133,21 +146,24 @@ export function TransactionsView() {
   };
   const { from, to } = periodBounds(period);
   const today = localDateKey(new Date());
-  const lookbackStart = localDateKey(new Date(new Date().getFullYear(), new Date().getMonth(), new Date().getDate() - 19));
+  const lookbackStart = localDateKey(
+    new Date(new Date().getFullYear(), new Date().getMonth(), new Date().getDate() - 19),
+  );
   const monthStart = localDateKey(new Date(new Date().getFullYear(), new Date().getMonth(), 1));
   const filters = useMemo(() => {
     const value = new URLSearchParams({ page: String(page), limit: "20", sort });
-    if (search) value.set("search", search);
+    if (debouncedSearch) value.set("search", debouncedSearch);
     if (type) value.set("type", type);
     if (category) value.set("category_id", category);
     if (account) value.set("account_id", account);
     if (from) value.set("from", isoDayStart(from));
-    if (to) value.set("to", isoDayEnd(to));
+    if (to) value.set("to", isoDayEndExclusive(to));
     return value.toString();
-  }, [page, sort, search, type, category, account, from, to]);
+  }, [page, sort, debouncedSearch, type, category, account, from, to]);
   const transactions = useQuery({
     queryKey: ["transactions", filters],
     queryFn: () => transactionService.list(filters),
+    placeholderData: keepPreviousData,
   });
   const monthRows = useQuery({
     queryKey: ["transactions-month", monthStart, today],
@@ -177,8 +193,13 @@ export function TransactionsView() {
       void queryClient.invalidateQueries({ queryKey: ["credit-dashboard"] });
     },
   });
-  if (transactions.isLoading || accounts.isLoading || bankAccounts.isLoading || categories.isLoading || profile.isLoading)
-    return <PageSkeleton />;
+  const bootstrapping =
+    (transactions.isPending && !transactions.data) ||
+    accounts.isLoading ||
+    bankAccounts.isLoading ||
+    categories.isLoading ||
+    profile.isLoading;
+  if (bootstrapping) return <PageSkeleton />;
   if (
     transactions.isError ||
     !transactions.data ||
@@ -230,8 +251,8 @@ export function TransactionsView() {
   const spend10 = daily.reduce((sum, item) => sum + item.minor, 0);
   const previous10 = previousTenDaySpend(lookbackItems);
   const spendChange = percentChange(spend10, previous10);
-  const maxSpend = Math.max(...daily.map((item) => item.minor), 1);
-  const axisMax = niceAxis(maxSpend);
+  const maxSpend = Math.max(...daily.map((item) => item.minor), 0);
+  const axisMax = niceAxis(Math.max(maxSpend, 1));
   const trendPoints = daily
     .map((item, index) => {
       const x = daily.length > 1 ? (index / (daily.length - 1)) * 100 : 50;
@@ -248,7 +269,8 @@ export function TransactionsView() {
   const showingFrom = total ? (page - 1) * 20 + 1 : 0;
   const showingTo = Math.min(page * 20, total);
   const filtered = Boolean(search || type || category || account || period !== "all");
-  return (
+  const chartLoading = lookbackRows.isPending && !lookbackRows.data;
+  const listRefreshing = transactions.isFetching && !transactions.isPending;  return (
     <div className="tx16">
       <header className="tx16-head">
         <div>
@@ -322,9 +344,11 @@ export function TransactionsView() {
             </span>
           </div>
           <div className="tx16-spend-total">
-            <b>{money(spend10, currency)}</b>
+            <b>{chartLoading ? "…" : money(spend10, currency)}</b>
             <span>Total spent in last 10 days</span>
-            <em className={spendChange.down ? "is-down" : undefined}>{spendChange.label}</em>
+            <em className={spendChange.down ? "is-down" : undefined}>
+              {chartLoading ? "Loading spending…" : spendChange.label}
+            </em>
           </div>
           <div className="tx16-chart">
             <div className="tx16-y">
@@ -332,17 +356,23 @@ export function TransactionsView() {
               <span>{axisLabel(Math.round(axisMax * 0.66), currency)}</span>
               <span>{axisLabel(Math.round(axisMax * 0.33), currency)}</span>
               <span>₹0</span>
-          </div>
-          <div className="tx16-plot">
-            {hasSpendingTrend ? (
-              <svg className="tx16-trend" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden>
-                <polyline points={trendPoints} />
-              </svg>
-            ) : null}
-            {daily.map((item) => (
+            </div>
+            <div className="tx16-plot">
+              {hasSpendingTrend ? (
+                <svg className="tx16-trend" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden>
+                  <polyline points={trendPoints} />
+                </svg>
+              ) : null}
+              {daily.map((item) => (
                 <div key={item.key} className="tx16-bar-col" title={money(item.minor, currency)}>
                   <b>{item.minor ? money(item.minor, currency).replace(".00", "") : ""}</b>
-                  <i style={{ height: `${Math.max(4, Math.round((item.minor / axisMax) * 78))}%` }} />
+                  <i
+                    style={{
+                      height: item.minor
+                        ? `${Math.max(4, Math.round((item.minor / axisMax) * 78))}%`
+                        : "2px",
+                    }}
+                  />
                   <span>{item.label}</span>
                 </div>
               ))}
@@ -361,7 +391,7 @@ export function TransactionsView() {
               Clear all
             </button>
           </div>
-          <label className="tx16-search">
+          <label className={`tx16-search${listRefreshing ? " is-refreshing" : ""}`}>
             <Search size={16} aria-hidden />
             <input
               placeholder="Search merchant, category, account..."

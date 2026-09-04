@@ -378,6 +378,9 @@ html[data-theme="dark"] .tx16-add {
   outline: none;
   box-shadow: none;
 }
+.tx16-search.is-refreshing {
+  border-color: color-mix(in srgb, var(--primary) 35%, var(--tx-line));
+}
 .tx16-selects {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
