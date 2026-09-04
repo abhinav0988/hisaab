@@ -1,0 +1,419 @@
+
+[data-app-shell][data-page="ipo"]{grid-template-columns:236px minmax(0,1fr)!important;background:radial-gradient(circle at 78% -12%,rgba(0,132,89,.09),transparent 34%),linear-gradient(180deg,#020c11 0%,#031017 100%)!important}
+[data-app-shell][data-page="ipo"]>aside{width:236px!important;padding:15px 14px 14px!important;background:radial-gradient(circle at 15% 3%,rgba(0,128,86,.13),transparent 23%),linear-gradient(180deg,#021017 0%,#03131a 58%,#020c11 100%)!important;border-color:#143039!important}
+[data-app-shell][data-page="ipo"] .app-header{padding-left:18px!important;padding-right:22px!important;background:rgba(2,15,20,.92)!important;border-color:#143039!important}
+[data-app-shell][data-page="ipo"] .app-main{max-width:none!important;margin:0!important;padding:17px 18px 18px!important;background:linear-gradient(180deg,#020d12 0%,#031017 100%)!important}
+
+
+/* =========================================================
+   HISAAB V36 — IPO TRACKER PREMIUM
+   Scoped only to the IPO Tracker page.
+   ========================================================= */
+.ip36{
+  --p:#081710;
+  --p2:#0a1913;
+  --line:rgba(145,255,205,.105);
+  --green:#36e18f;
+  --blue:#45bdf1;
+  --gold:#e7bd53;
+  --purple:#aa65f2;
+  --red:#ff6570;
+  --muted:#899f93;
+  display:grid;
+  gap:13px;
+  color:#f3f7f4;
+}
+.ip36 *{box-sizing:border-box}
+.ip36 svg{display:block}
+.ip36 button{font:inherit}
+
+/* Header */
+.ip36-head{
+  min-height:70px;display:flex;align-items:center;justify-content:space-between;gap:16px;
+  padding:0 2px 11px;border-bottom:1px solid rgba(255,255,255,.06);
+}
+.ip36-head-left{display:flex;align-items:center;gap:13px}
+.ip36-page-icon{
+  width:50px;height:50px;border-radius:14px;display:grid;place-items:center;
+  background:linear-gradient(145deg,#087443,#05462f);
+  border:1px solid rgba(64,229,147,.2);
+  box-shadow:0 10px 24px rgba(0,0,0,.22),inset 0 1px rgba(255,255,255,.08)
+}
+.ip36-page-icon svg{width:24px;height:24px;fill:none;stroke:#4fe19a;stroke-width:1.85;stroke-linecap:round;stroke-linejoin:round}
+.ip36-head h1{margin:0;font-size:26px;line-height:1;letter-spacing:-.04em}
+.ip36-head p{margin:6px 0 0;color:#91a79c;font-size:11.2px}
+.ip36-head-actions{display:flex;align-items:center;gap:8px}
+.ip36-search{
+  width:215px;height:38px;border:1px solid rgba(255,255,255,.08);border-radius:11px;background:#091610;
+  color:#dce8e1;padding:0 12px;display:flex;align-items:center;gap:8px
+}
+.ip36-search svg{width:16px;height:16px;fill:none;stroke:#7f9589;stroke-width:1.8;stroke-linecap:round}
+.ip36-search span{font-size:10px;color:#80968a}
+.ip36-btn{
+  height:38px;padding:0 13px;border-radius:10px;border:1px solid rgba(255,255,255,.09);
+  background:#091610;color:#edf5f0;display:inline-flex;align-items:center;justify-content:center;gap:7px;
+  font-size:10.5px;font-weight:780;cursor:pointer
+}
+.ip36-btn svg{width:15px;height:15px;fill:none;stroke:currentColor;stroke-width:1.85;stroke-linecap:round;stroke-linejoin:round}
+.ip36-btn.primary{
+  background:linear-gradient(180deg,#22c776,#0f8d53);
+  border-color:#2fdb86;color:#fff;
+  box-shadow:0 8px 20px rgba(19,176,97,.16),inset 0 1px rgba(255,255,255,.14)
+}
+
+/* KPI */
+.ip36-kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:11px}
+.ip36-kpi{
+  min-height:108px;padding:15px 16px;border-radius:15px;border:1px solid var(--line);
+  background:linear-gradient(145deg,#091812,#06110d);
+  display:grid;grid-template-columns:1fr 44px;gap:10px
+}
+.ip36-kpi.green{border-color:rgba(54,225,143,.30);background:linear-gradient(145deg,rgba(8,76,48,.8),#07140f)}
+.ip36-kpi.blue{border-color:rgba(69,189,241,.22);background:linear-gradient(145deg,rgba(9,43,65,.54),#07120f)}
+.ip36-kpi.gold{border-color:rgba(231,189,83,.24);background:linear-gradient(145deg,rgba(62,48,16,.52),#0b130f)}
+.ip36-kpi.purple{border-color:rgba(170,101,242,.22);background:linear-gradient(145deg,rgba(48,27,61,.53),#09110f)}
+.ip36-kpi .label{font-size:9px;text-transform:uppercase;letter-spacing:.065em;color:#a4b6ac;font-weight:820}
+.ip36-kpi strong{display:block;margin-top:7px;font-size:21px;letter-spacing:-.025em}
+.ip36-kpi small{display:block;margin-top:7px;color:#83998d;font-size:9.5px}
+.ip36-kpi small em{font-style:normal;color:#44df94}
+.ip36-kpi-icon{width:44px;height:44px;border-radius:12px;display:grid;place-items:center;background:#0b3927;border:1px solid rgba(66,224,146,.12)}
+.ip36-kpi-icon svg{width:21px;height:21px;fill:none;stroke:#49df95;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.ip36-kpi.blue .ip36-kpi-icon{background:#0a3043}.ip36-kpi.blue .ip36-kpi-icon svg{stroke:#4cc2f2}
+.ip36-kpi.gold .ip36-kpi-icon{background:#34290e}.ip36-kpi.gold .ip36-kpi-icon svg{stroke:#e8bf55}
+.ip36-kpi.purple .ip36-kpi-icon{background:#2b1937}.ip36-kpi.purple .ip36-kpi-icon svg{stroke:#b46ef5}
+
+/* Hero and upcoming */
+.ip36-top{display:grid;grid-template-columns:minmax(0,1.9fr) minmax(305px,.75fr);gap:13px}
+.ip36-panel{
+  border:1px solid var(--line);border-radius:16px;background:linear-gradient(150deg,#081610,#06110d);
+  box-shadow:inset 0 1px rgba(255,255,255,.025)
+}
+.ip36-hero{
+  min-height:245px;padding:24px;position:relative;overflow:hidden;border-color:rgba(54,225,143,.25);
+  background:
+    radial-gradient(circle at 78% 47%,rgba(27,197,111,.17),transparent 35%),
+    linear-gradient(135deg,#073720 0%,#081811 45%,#06110d 100%)
+}
+.ip36-hero-copy{position:relative;z-index:2;max-width:55%}
+.ip36-overline{font-size:10.5px;text-transform:uppercase;letter-spacing:.14em;color:#43df94;font-weight:850}
+.ip36-hero h2{margin:10px 0 10px;font-size:34px;line-height:1.04;letter-spacing:-.046em}
+.ip36-hero h2 span{color:#3dde8d}
+.ip36-hero p{margin:0;color:#adbbb3;font-size:12px;line-height:1.55;max-width:470px}
+.ip36-hero-actions{display:flex;gap:9px;margin-top:18px}
+.ip36-hero-actions .ip36-btn{height:42px;padding:0 16px}
+.ip36-hero-art{position:absolute;right:2%;top:18px;width:42%;height:215px}
+.ip36-ipo-text{position:absolute;right:32px;bottom:14px;font-size:68px;font-weight:950;letter-spacing:-.065em;color:#d7aa38;text-shadow:0 8px 20px rgba(0,0,0,.32)}
+.ip36-artbar{position:absolute;bottom:45px;width:28px;border-radius:6px 6px 2px 2px;background:linear-gradient(180deg,#16b96d,#07512f);border:1px solid rgba(72,232,151,.18);box-shadow:0 12px 18px rgba(0,0,0,.24)}
+.ip36-artbar.b1{height:50px;left:44px}.ip36-artbar.b2{height:77px;left:79px}.ip36-artbar.b3{height:103px;left:114px}.ip36-artbar.b4{height:128px;left:149px}
+.ip36-art-arrow{position:absolute;left:84px;top:44px;width:110px;height:76px;border-top:6px solid #3be18d;border-right:6px solid #3be18d;border-radius:0 16px 0 0;transform:rotate(-28deg)}
+.ip36-art-arrow:after{content:"";position:absolute;right:-8px;top:-11px;width:22px;height:22px;border-top:6px solid #3be18d;border-right:6px solid #3be18d}
+.ip36-bell{position:absolute;right:28px;top:22px;width:42px;height:42px;border-radius:12px;background:#3a2d0d;display:grid;place-items:center;box-shadow:0 10px 20px rgba(0,0,0,.25)}
+.ip36-bell svg{width:21px;height:21px;fill:none;stroke:#efc65c;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+.ip36-alertbubble{position:absolute;right:63px;top:10px;padding:8px 10px;border-radius:10px;background:rgba(14,36,26,.88);border:1px solid rgba(231,189,83,.18);font-size:8.5px;line-height:1.35;color:#dfe9e3}
+
+/* Upcoming IPOs */
+.ip36-panel-head{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;padding:15px 15px 0}
+.ip36-panel-head h3{margin:0;font-size:15px;letter-spacing:-.02em}.ip36-panel-head p{margin:5px 0 0;color:#869c90;font-size:10px}
+.ip36-upcoming{padding:8px 15px 14px;display:grid;gap:8px}
+.ip36-upitem{
+  min-height:58px;padding:9px 10px;border:1px solid rgba(255,255,255,.07);border-radius:10px;background:#091811;
+  display:grid;grid-template-columns:35px 1fr auto 13px;gap:9px;align-items:center
+}
+.ip36-upicon{width:35px;height:35px;border-radius:10px;display:grid;place-items:center;background:#0b3043;color:#69c8ef;font-size:9px;font-weight:900}
+.ip36-upicon.purple{background:#2b1937;color:#c17bf7}.ip36-upicon.gold{background:#34290e;color:#e9c158}
+.ip36-upitem b{display:block;font-size:10.5px}.ip36-upitem small{display:block;margin-top:2px;color:#80958a;font-size:8.4px;line-height:1.35}
+.ip36-badge{padding:4px 6px;border-radius:999px;background:#0c3a27;color:#4ae095;font-size:7.8px;font-weight:850}
+.ip36-upitem>svg{width:13px;height:13px;fill:none;stroke:#748a7e;stroke-width:1.8}
+
+/* tabs */
+.ip36-tabsbar{
+  display:flex;align-items:center;justify-content:space-between;gap:12px;padding:0 2px
+}
+.ip36-tabs{display:flex;gap:6px;flex-wrap:wrap}
+.ip36-tab{height:34px;padding:0 12px;border-radius:10px;border:1px solid rgba(255,255,255,.07);background:#091710;color:#899f93;font-size:9px;font-weight:760}
+.ip36-tab.active{background:linear-gradient(180deg,#1bb76a,#0e824b);border-color:#2bd782;color:#fff}
+
+/* summary cards */
+.ip36-summary{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:11px}
+.ip36-scard{min-height:100px;padding:14px;border:1px solid var(--line);border-radius:14px;background:#081610}
+.ip36-scard h4{margin:0;font-size:11px}.ip36-scard strong{display:block;margin-top:10px;font-size:20px}.ip36-scard small{display:block;margin-top:4px;color:#81968a;font-size:8.8px}
+.ip36-statusrow{display:grid;grid-template-columns:38px 1fr auto;gap:8px;align-items:center;margin-top:10px}
+.ip36-mini-donut{width:38px;height:38px;border-radius:50%;background:conic-gradient(#43df91 0 34%,#2b8fd7 34% 68%,#e7bd53 68% 84%,#7d63e6 84% 100%);position:relative}
+.ip36-mini-donut:after{content:"";position:absolute;inset:9px;border-radius:50%;background:#081610}
+.ip36-statuslist{display:grid;gap:3px}.ip36-statuslist span{font-size:8px;color:#869b8f}.ip36-statuslist i{display:inline-block;width:6px;height:6px;border-radius:50%;margin-right:5px}
+
+/* body grid */
+.ip36-body{display:grid;grid-template-columns:minmax(0,1.75fr) minmax(300px,.72fr);gap:13px}
+.ip36-tablewrap{padding:9px 13px 13px}
+.ip36-table-tools{display:flex;gap:7px;align-items:center}
+.ip36-tsearch{height:32px;width:180px;border:1px solid rgba(255,255,255,.07);border-radius:9px;background:#091710;display:flex;align-items:center;gap:7px;padding:0 9px;color:#7f9589}
+.ip36-tsearch svg{width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.8}.ip36-tsearch span{font-size:8.6px}
+.ip36-iconbtn{width:32px;height:32px;border-radius:9px;border:1px solid rgba(255,255,255,.07);background:#091710;color:#84998d;display:grid;place-items:center}
+.ip36-iconbtn svg{width:15px;height:15px;fill:none;stroke:currentColor;stroke-width:1.8}
+.ip36-table{margin-top:10px;border:1px solid rgba(255,255,255,.07);border-radius:12px;overflow:hidden}
+.ip36-row{
+  display:grid;grid-template-columns:1.55fr .95fr .55fr .85fr .8fr .8fr .85fr .55fr;
+  align-items:center;gap:8px;min-height:43px;padding:0 10px;border-bottom:1px solid rgba(255,255,255,.055)
+}
+.ip36-row:last-child{border-bottom:0}.ip36-row.head{min-height:31px;background:#0a1b14;color:#81968a;font-size:8px;text-transform:uppercase;letter-spacing:.04em}
+.ip36-co{display:flex;align-items:center;gap:8px;min-width:0}
+.ip36-coicon{width:28px;height:28px;border-radius:8px;display:grid;place-items:center;background:#0b3043;color:#61c3ed;font-size:8px;font-weight:900}
+.ip36-coicon.purple{background:#2b1937;color:#bf7af7}.ip36-coicon.gold{background:#34290e;color:#e8bf55}.ip36-coicon.orange{background:#3a220e;color:#ff9d4f}
+.ip36-co b{display:block;font-size:9.3px}.ip36-co small{display:block;margin-top:2px;color:#7f9589;font-size:7.7px}
+.ip36-cell{font-size:8.8px;color:#dce6e0}.ip36-pl{color:#45df95;font-weight:800}.ip36-status{display:inline-flex;padding:4px 7px;border-radius:999px;font-size:7.6px;font-weight:800}
+.ip36-status.upcoming{background:#0b3144;color:#59c4f1}.ip36-status.applied{background:#3b2d0d;color:#eac157}.ip36-status.allotted{background:#0d3b28;color:#4adf95}.ip36-status.listed{background:#2c1939;color:#be79f6}
+.ip36-view{height:26px;padding:0 9px;border-radius:8px;border:1px solid rgba(255,255,255,.07);background:#091710;color:#dce5df;font-size:7.8px}
+
+/* right side insights / quick actions */
+.ip36-side{display:grid;gap:13px;align-content:start}
+.ip36-insights{padding:7px 15px 13px}
+.ip36-insight{display:grid;grid-template-columns:34px 1fr 13px;gap:9px;align-items:center;padding:9px 0;border-bottom:1px solid rgba(255,255,255,.055)}
+.ip36-insight:last-child{border-bottom:0}
+.ip36-insight-icon{width:34px;height:34px;border-radius:10px;display:grid;place-items:center;background:#0c3927}
+.ip36-insight-icon svg{width:17px;height:17px;fill:none;stroke:#48df95;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.ip36-insight.gold .ip36-insight-icon{background:#34290e}.ip36-insight.gold .ip36-insight-icon svg{stroke:#e9c158}
+.ip36-insight b{display:block;font-size:10px}.ip36-insight small{display:block;margin-top:2px;color:#81968a;font-size:8.3px}
+.ip36-insight>svg{width:13px;height:13px;fill:none;stroke:#748a7e;stroke-width:1.8}
+.ip36-actions{display:grid;grid-template-columns:1fr 1fr;gap:7px;padding:10px 14px 13px}
+.ip36-action{min-height:68px;border:1px solid rgba(255,255,255,.07);border-radius:10px;background:#091811;padding:9px;color:#edf4f0;text-align:left;cursor:pointer}
+.ip36-action-icon{width:31px;height:31px;border-radius:9px;display:grid;place-items:center;background:#0b3927;margin-bottom:7px}
+.ip36-action-icon svg{width:16px;height:16px;fill:none;stroke:#49df95;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.ip36-action b{display:block;font-size:8.8px}.ip36-action small{display:block;margin-top:2px;color:#80958a;font-size:7.6px;line-height:1.3}
+
+@media(max-width:1180px){
+  .ip36-top,.ip36-body{grid-template-columns:1fr}
+  .ip36-kpis{grid-template-columns:repeat(2,1fr)}
+}
+@media(max-width:820px){
+  .ip36-head{align-items:flex-start;flex-direction:column}
+  .ip36-head-actions{width:100%;flex-wrap:wrap}.ip36-search{width:100%}.ip36-head-actions .ip36-btn{flex:1}
+  .ip36-hero{min-height:390px}.ip36-hero-copy{max-width:100%}.ip36-hero-art{top:190px;right:10%;width:70%}
+  .ip36-summary{grid-template-columns:1fr}
+  .ip36-row{grid-template-columns:1.4fr .8fr .7fr .8fr}.ip36-row>*:nth-child(n+5){display:none}
+}
+@media(max-width:560px){
+  .ip36-kpis{grid-template-columns:1fr}
+  .ip36-tabsbar{align-items:flex-start;flex-direction:column}
+}
+
+
+
+/* =========================================================
+   V38 — IPO TRACKER PIXEL-MATCH PASS
+   Fixes page shell + exact geometry against supplied reference.
+   ========================================================= */
+[data-app-shell][data-page="ipo"]{
+  background:
+    radial-gradient(circle at 78% -12%,rgba(0,132,89,.09),transparent 34%),
+    linear-gradient(180deg,#020c11 0%,#031017 100%)!important;
+}
+[data-app-shell][data-page="ipo"]{
+  grid-template-columns:236px minmax(0,1fr)!important;
+}
+[data-app-shell][data-page="ipo"] .app-main{
+  min-width:0!important;
+  background:linear-gradient(180deg,#020d12 0%,#031017 100%)!important;
+}
+[data-app-shell][data-page="ipo"]>aside{
+  width:236px!important;
+  padding:15px 14px 14px!important;
+  background:
+    radial-gradient(circle at 15% 3%,rgba(0,128,86,.13),transparent 23%),
+    linear-gradient(180deg,#021017 0%,#03131a 58%,#020c11 100%)!important;
+  border-right:1px solid #143039!important;
+  box-shadow:10px 0 34px rgba(0,0,0,.18)!important;
+}
+[data-app-shell][data-page="ipo"] .brand{padding:2px 5px 12px!important}
+[data-app-shell][data-page="ipo"] .brand .logo{
+  width:40px!important;height:40px!important;border-radius:11px!important;
+  background:linear-gradient(145deg,#d8a72d,#8c6308)!important;
+  color:#1c1302!important;box-shadow:0 8px 18px rgba(183,128,14,.18)!important
+}
+[data-app-shell][data-page="ipo"] .brand b{font-size:20px!important;color:#f1c654!important}
+[data-app-shell][data-page="ipo"] .brand small{color:#d9b45b!important;font-size:8px!important;text-transform:uppercase!important;letter-spacing:.06em!important}
+[data-app-shell][data-page="ipo"] .profile{padding:10px!important;border-radius:14px!important;background:#061a18!important;border-color:#14333a!important}
+[data-app-shell][data-page="ipo"] .nav button{min-height:38px!important;padding:8px 10px!important;border-radius:10px!important;font-size:11px!important}
+[data-app-shell][data-page="ipo"] .nav button svg{width:18px!important;height:18px!important;color:#21d98b!important}
+[data-app-shell][data-page="ipo"] .nav button.active{
+  background:linear-gradient(90deg,rgba(0,122,84,.58),rgba(4,75,58,.38))!important;
+  box-shadow:inset 2px 0 #27e994,0 0 18px rgba(17,185,112,.08)!important
+}
+[data-app-shell][data-page="ipo"] .side-promo{
+  border-radius:13px!important;padding:12px!important;
+  background:linear-gradient(145deg,rgba(76,58,11,.58),rgba(21,30,19,.76))!important;
+  border-color:rgba(230,186,72,.22)!important
+}
+
+/* page density */
+[data-app-shell][data-page="ipo"] .ip36{
+  gap:12px!important;
+  max-width:1300px!important;
+  margin:0 auto!important;
+}
+[data-app-shell][data-page="ipo"] .ip36-head{
+  min-height:58px!important;
+  padding:0 0 10px!important;
+  gap:12px!important;
+}
+[data-app-shell][data-page="ipo"] .ip36-page-icon{
+  width:48px!important;height:48px!important;border-radius:13px!important
+}
+[data-app-shell][data-page="ipo"] .ip36-page-icon svg{width:23px!important;height:23px!important}
+[data-app-shell][data-page="ipo"] .ip36-head h1{font-size:26px!important}
+[data-app-shell][data-page="ipo"] .ip36-head p{font-size:10.5px!important;margin-top:4px!important}
+[data-app-shell][data-page="ipo"] .ip36-head-actions{gap:7px!important}
+[data-app-shell][data-page="ipo"] .ip36-search{width:200px!important;height:36px!important}
+[data-app-shell][data-page="ipo"] .ip36-btn{height:36px!important;border-radius:9px!important;font-size:9.8px!important;padding:0 11px!important}
+[data-app-shell][data-page="ipo"] .ip36-btn.primary{min-width:88px!important}
+
+/* KPI geometry */
+[data-app-shell][data-page="ipo"] .ip36-kpis{gap:10px!important}
+[data-app-shell][data-page="ipo"] .ip36-kpi{
+  min-height:102px!important;
+  padding:14px 15px!important;
+  border-radius:14px!important;
+  grid-template-columns:1fr 43px!important
+}
+[data-app-shell][data-page="ipo"] .ip36-kpi .label{font-size:8.4px!important}
+[data-app-shell][data-page="ipo"] .ip36-kpi strong{font-size:20px!important;margin-top:6px!important}
+[data-app-shell][data-page="ipo"] .ip36-kpi small{font-size:8.9px!important;margin-top:6px!important}
+[data-app-shell][data-page="ipo"] .ip36-kpi-icon{width:43px!important;height:43px!important;border-radius:11px!important}
+
+/* Hero & upcoming — reference proportions */
+[data-app-shell][data-page="ipo"] .ip36-top{
+  grid-template-columns:minmax(0,2.12fr) minmax(292px,.78fr)!important;
+  gap:12px!important
+}
+[data-app-shell][data-page="ipo"] .ip36-hero{
+  min-height:232px!important;
+  padding:20px 22px!important;
+  border-radius:15px!important
+}
+[data-app-shell][data-page="ipo"] .ip36-overline{display:none!important}
+[data-app-shell][data-page="ipo"] .ip36-hero-copy{max-width:53%!important}
+[data-app-shell][data-page="ipo"] .ip36-hero h2{
+  margin:0 0 9px!important;
+  font-size:32px!important;
+  line-height:1.03!important
+}
+[data-app-shell][data-page="ipo"] .ip36-hero p{font-size:11px!important;line-height:1.48!important;max-width:455px!important}
+[data-app-shell][data-page="ipo"] .ip36-hero-actions{margin-top:14px!important}
+[data-app-shell][data-page="ipo"] .ip36-hero-actions .ip36-btn{height:39px!important;padding:0 14px!important}
+[data-app-shell][data-page="ipo"] .ip36-hero-art{
+  right:1.5%!important;top:8px!important;width:44%!important;height:216px!important
+}
+[data-app-shell][data-page="ipo"] .ip36-ipo-text{
+  right:25px!important;bottom:4px!important;font-size:76px!important;
+  background:linear-gradient(180deg,#f4d066,#b57e12);
+  -webkit-background-clip:text;background-clip:text;color:transparent!important;
+  text-shadow:0 10px 22px rgba(0,0,0,.25)!important
+}
+[data-app-shell][data-page="ipo"] .ip36-artbar{width:31px!important;bottom:41px!important}
+[data-app-shell][data-page="ipo"] .ip36-artbar.b1{height:51px!important;left:43px!important}
+[data-app-shell][data-page="ipo"] .ip36-artbar.b2{height:74px!important;left:80px!important}
+[data-app-shell][data-page="ipo"] .ip36-artbar.b3{height:99px!important;left:117px!important}
+[data-app-shell][data-page="ipo"] .ip36-artbar.b4{height:125px!important;left:154px!important}
+[data-app-shell][data-page="ipo"] .ip36-alertbubble{right:66px!important;top:13px!important}
+[data-app-shell][data-page="ipo"] .ip36-bell{right:25px!important;top:16px!important}
+
+[data-app-shell][data-page="ipo"] .ip36-panel{border-radius:14px!important}
+[data-app-shell][data-page="ipo"] .ip36-panel-head{padding:13px 13px 0!important}
+[data-app-shell][data-page="ipo"] .ip36-panel-head h3{font-size:13.5px!important}
+[data-app-shell][data-page="ipo"] .ip36-panel-head p{font-size:8.8px!important;margin-top:3px!important}
+[data-app-shell][data-page="ipo"] .ip36-upcoming{padding:7px 12px 12px!important;gap:6px!important}
+[data-app-shell][data-page="ipo"] .ip36-upitem{
+  min-height:53px!important;padding:7px 8px!important;
+  grid-template-columns:33px 1fr auto 11px!important;gap:7px!important
+}
+[data-app-shell][data-page="ipo"] .ip36-upicon{width:33px!important;height:33px!important;border-radius:9px!important}
+[data-app-shell][data-page="ipo"] .ip36-upitem b{font-size:9.6px!important}
+[data-app-shell][data-page="ipo"] .ip36-upitem small{font-size:7.5px!important}
+
+/* tabs exactly as low-height strip */
+[data-app-shell][data-page="ipo"] .ip36-tabsbar{padding:0 1px!important}
+[data-app-shell][data-page="ipo"] .ip36-tabs{gap:5px!important}
+[data-app-shell][data-page="ipo"] .ip36-tab{
+  height:31px!important;padding:0 10px!important;border-radius:9px!important;font-size:8.3px!important
+}
+
+/* summary strip */
+[data-app-shell][data-page="ipo"] .ip36-summary{gap:9px!important}
+[data-app-shell][data-page="ipo"] .ip36-scard{
+  min-height:91px!important;padding:12px!important;border-radius:13px!important
+}
+[data-app-shell][data-page="ipo"] .ip36-scard h4{font-size:10px!important}
+[data-app-shell][data-page="ipo"] .ip36-scard strong{font-size:19px!important;margin-top:8px!important}
+[data-app-shell][data-page="ipo"] .ip36-scard small{font-size:8px!important}
+[data-app-shell][data-page="ipo"] .ip36-statusrow{margin-top:7px!important}
+
+/* table/right rail */
+[data-app-shell][data-page="ipo"] .ip36-body{
+  grid-template-columns:minmax(0,2.05fr) minmax(286px,.73fr)!important;
+  gap:12px!important
+}
+[data-app-shell][data-page="ipo"] .ip36-tablewrap{padding:8px 11px 10px!important}
+[data-app-shell][data-page="ipo"] .ip36-tsearch{width:165px!important;height:30px!important}
+[data-app-shell][data-page="ipo"] .ip36-iconbtn{width:30px!important;height:30px!important}
+[data-app-shell][data-page="ipo"] .ip36-table{margin-top:8px!important;border-radius:10px!important}
+[data-app-shell][data-page="ipo"] .ip36-row{
+  min-height:40px!important;
+  grid-template-columns:1.55fr .92fr .52fr .86fr .78fr .75fr .82fr .55fr!important;
+  gap:6px!important;padding:0 8px!important
+}
+[data-app-shell][data-page="ipo"] .ip36-row.head{min-height:28px!important;font-size:7.2px!important}
+[data-app-shell][data-page="ipo"] .ip36-coicon{width:27px!important;height:27px!important}
+[data-app-shell][data-page="ipo"] .ip36-co b{font-size:8.7px!important}
+[data-app-shell][data-page="ipo"] .ip36-co small{font-size:7px!important}
+[data-app-shell][data-page="ipo"] .ip36-cell{font-size:8px!important}
+[data-app-shell][data-page="ipo"] .ip36-view{height:24px!important;font-size:7.1px!important}
+[data-app-shell][data-page="ipo"] .ip36-insights{padding:6px 12px 10px!important}
+[data-app-shell][data-page="ipo"] .ip36-insight{
+  grid-template-columns:32px 1fr 11px!important;gap:8px!important;padding:8px 0!important
+}
+[data-app-shell][data-page="ipo"] .ip36-insight-icon{width:32px!important;height:32px!important}
+[data-app-shell][data-page="ipo"] .ip36-insight b{font-size:9.2px!important}
+[data-app-shell][data-page="ipo"] .ip36-insight small{font-size:7.5px!important}
+[data-app-shell][data-page="ipo"] .ip36-actions{gap:6px!important;padding:8px 12px 11px!important}
+[data-app-shell][data-page="ipo"] .ip36-action{min-height:61px!important;padding:8px!important}
+[data-app-shell][data-page="ipo"] .ip36-action-icon{width:29px!important;height:29px!important;margin-bottom:5px!important}
+[data-app-shell][data-page="ipo"] .ip36-action b{font-size:8px!important}
+[data-app-shell][data-page="ipo"] .ip36-action small{font-size:6.9px!important}
+
+/* remove hover movement for pixel stability */
+[data-app-shell][data-page="ipo"] .ip36 button:hover,
+[data-app-shell][data-page="ipo"] .nav button:hover{transform:none!important}
+
+/* Full-HD / 1536-ish reference */
+@media(min-width:1280px){
+  [data-app-shell][data-page="ipo"] .ip36{max-width:1282px!important}
+}
+@media(max-width:1100px){
+  [data-app-shell][data-page="ipo"]{grid-template-columns:1fr!important}
+  [data-app-shell][data-page="ipo"]>aside{width:min(280px,88vw)!important}
+  [data-app-shell][data-page="ipo"] .ip36-top,
+  [data-app-shell][data-page="ipo"] .ip36-body{grid-template-columns:1fr!important}
+}
+
+.ip36-search input,.ip36-tsearch input{flex:1;min-width:0;border:0;outline:0;background:transparent;color:inherit;font:inherit;font-size:10px}
+.ip36-status.cancelled,.ip36-status.rejected{background:#3a1719;color:#ff7d86}
+.ip36-pl.neg{color:#ff6570}
+.ip36-empty{padding:28px 16px;text-align:center;color:#80958a;font-size:11px}
+.ip36-empty h4{margin:0 0 6px;color:#edf4f0;font-size:14px}
+.ip36-menu-pop{position:absolute;right:0;top:100%;z-index:5;min-width:110px;padding:6px;border-radius:10px;border:1px solid rgba(255,255,255,.08);background:#0a1b14;display:grid;gap:2px}
+.ip36-menu-pop button{height:28px;border:0;background:transparent;color:#dce5df;text-align:left;padding:0 8px;border-radius:7px;font-size:9px;cursor:pointer}
+.ip36-menu-pop button:hover{background:rgba(255,255,255,.05)}
+.ip36-action-cell{position:relative;display:flex;align-items:center;gap:4px}
+
+html:not(.dark):not([data-theme="dark"]) .ip36{color:#10251a}
+html:not(.dark):not([data-theme="dark"]) .ip36-head{border-color:rgba(16,37,26,.08)}
+html:not(.dark):not([data-theme="dark"]) .ip36-head p{color:#6d7f74}
+html:not(.dark):not([data-theme="dark"]) .ip36-btn,
+html:not(.dark):not([data-theme="dark"]) .ip36-search,
+html:not(.dark):not([data-theme="dark"]) .ip36-tab,
+html:not(.dark):not([data-theme="dark"]) .ip36-upitem,
+html:not(.dark):not([data-theme="dark"]) .ip36-action,
+html:not(.dark):not([data-theme="dark"]) .ip36-scard,
+html:not(.dark):not([data-theme="dark"]) .ip36-panel{background:#fff;border-color:#d7e5dd;color:#10251a}
+html:not(.dark):not([data-theme="dark"]) .ip36-search input,
+html:not(.dark):not([data-theme="dark"]) .ip36-tsearch input{color:#10251a}
+html:not(.dark):not([data-theme="dark"]) .ip36-kpi{background:linear-gradient(145deg,#fff,#f4faf6);border-color:rgba(16,55,35,.1);color:inherit}

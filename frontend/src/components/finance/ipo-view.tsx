@@ -1,42 +1,32 @@
 "use client";
 
 import type { IpoApplication, IpoMarketCategory, IpoStatus } from "@hisaab/types";
-import { Button, Card, Field, Input, Select } from "@hisaab/ui";
+import { Button, Field, Input, Select } from "@hisaab/ui";
 import { majorToMinor } from "@hisaab/validation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
-  ArrowUpRight,
+  ArrowRight,
+  Bell,
+  Briefcase,
   Calendar,
   CalendarDays,
-  Download,
+  FileText,
   Filter,
-  LayoutGrid,
-  List,
   MoreVertical,
+  PieChart,
   Plus,
   Search,
   ShieldCheck,
   TrendingUp,
+  Wallet,
 } from "lucide-react";
 import { useMemo, useState } from "react";
-import {
-  Bar,
-  BarChart,
-  Cell,
-  Pie,
-  PieChart,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from "recharts";
 import { toast } from "sonner";
 import { Modal } from "@/components/layout/modal";
-import { PageHeader } from "@/components/layout/page-header";
-import { EmptyState, ErrorState, PageSkeleton } from "@/components/layout/states";
+import { ErrorState, PageSkeleton } from "@/components/layout/states";
 import { ApiError } from "@/lib/api-client";
 import { bankLabel } from "@/lib/bank";
-import { displayDate, isoToday } from "@/lib/finance-modules";
+import { isoToday } from "@/lib/finance-modules";
 import { money } from "@/lib/format";
 import {
   downloadIpoCsv,
@@ -44,13 +34,8 @@ import {
   IPO_MARKET_CATEGORIES,
   IPO_STATUSES,
   ipoAbbrev,
-  ipoCurrentPlBars,
   ipoDashboardMetrics,
-  ipoListingVsCurrent,
-  ipoPlSummary,
   ipoStats,
-  ipoStatusBreakdown,
-  ipoStatusTone,
   periodRangeLabel,
   UPCOMING_IPO_FEED,
   type IpoPeriod,
@@ -60,15 +45,11 @@ import { categoryService } from "@/services/category.service";
 import { financeService } from "@/services/finance.service";
 import { profileService } from "@/services/profile.service";
 import { transactionService } from "@/services/transaction.service";
+import "../../app/ipo38.css";
 
-const PERIOD_TABS: Array<{ id: IpoPeriod; label: string }> = [
-  { id: "today", label: "Today" },
-  { id: "week", label: "This Week" },
-  { id: "month", label: "This Month" },
-  { id: "quarter", label: "This Quarter" },
-  { id: "year", label: "This Year" },
-  { id: "all", label: "All Time" },
-];
+type StatusTab = "all" | "upcoming" | "applied" | "allotted" | "listed" | "cancelled";
+
+const PERIOD_CYCLE: IpoPeriod[] = ["month", "quarter", "year", "all", "today", "week"];
 
 function failMessage(error: unknown) {
   return error instanceof ApiError ? error.message : "Could not save. Try again.";
@@ -146,14 +127,99 @@ async function releaseBankForIpo(
   });
 }
 
+function monthLabel(date = new Date()) {
+  return new Intl.DateTimeFormat("en-GB", { month: "long", year: "numeric" }).format(date);
+}
+
+function formatShort(iso: string) {
+  return new Intl.DateTimeFormat("en-GB", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  }).format(new Date(iso));
+}
+
+function formatShortDay(iso: string) {
+  return new Intl.DateTimeFormat("en-GB", {
+    day: "2-digit",
+    month: "short",
+  }).format(new Date(iso));
+}
+
+function statusClass(status: IpoStatus) {
+  if (status === "Listed") return "listed";
+  if (status === "Allotted") return "allotted";
+  if (status === "Not Allotted") return "cancelled";
+  return "applied";
+}
+
+function statusLabel(status: IpoStatus) {
+  if (status === "Not Allotted") return "Cancelled";
+  if (status === "In progress") return "Applied";
+  return status;
+}
+
+function iconTone(name: string, index: number) {
+  const tones = ["", "purple", "gold", "orange"] as const;
+  const hash = name.split("").reduce((sum, ch) => sum + ch.charCodeAt(0), 0);
+  return tones[(hash + index) % tones.length] ?? "";
+}
+
+function matchesStatusTab(item: IpoApplication, tab: StatusTab) {
+  if (tab === "all") return true;
+  if (tab === "upcoming") return false;
+  if (tab === "applied") return item.status === "Applied" || item.status === "In progress";
+  if (tab === "allotted") return item.status === "Allotted";
+  if (tab === "listed") return item.status === "Listed";
+  return item.status === "Not Allotted";
+}
+
+function avgListingGainPct(list: IpoApplication[]) {
+  const listed = list.filter((item) => item.status === "Listed");
+  if (!listed.length) return 0;
+  const rows = listed.map((item) => ipoStats(item)).filter((row) => row.investedMinor > 0);
+  if (!rows.length) return 0;
+  const avg = rows.reduce((sum, row) => sum + row.plPct, 0) / rows.length;
+  return Math.round(avg * 10) / 10;
+}
+
+function donutGradient(counts: {
+  upcoming: number;
+  applied: number;
+  allotted: number;
+  listed: number;
+}) {
+  const total = counts.upcoming + counts.applied + counts.allotted + counts.listed;
+  if (!total) {
+    return "conic-gradient(#1b2f27 0 100%)";
+  }
+  let cursor = 0;
+  const stops: string[] = [];
+  const parts: Array<[number, string]> = [
+    [counts.upcoming, "#4bbdf1"],
+    [counts.applied, "#e7bd53"],
+    [counts.allotted, "#43df91"],
+    [counts.listed, "#7c62e7"],
+  ];
+  for (const [value, color] of parts) {
+    if (!value) continue;
+    const start = (cursor / total) * 100;
+    cursor += value;
+    const end = (cursor / total) * 100;
+    stops.push(`${color} ${start}% ${end}%`);
+  }
+  return `conic-gradient(${stops.join(",")})`;
+}
+
 export function IpoView() {
   const client = useQueryClient();
   const [period, setPeriod] = useState<IpoPeriod>("month");
+  const [statusTab, setStatusTab] = useState<StatusTab>("all");
   const [search, setSearch] = useState("");
+  const [tableSearch, setTableSearch] = useState("");
   const [addOpen, setAddOpen] = useState(false);
   const [editing, setEditing] = useState<IpoApplication | null>(null);
   const [menuId, setMenuId] = useState<string | null>(null);
-  const [tableView, setTableView] = useState<"table" | "grid">("table");
 
   const profile = useQuery({ queryKey: ["profile"], queryFn: () => profileService.get() });
   const ipos = useQuery({ queryKey: ["ipos"], queryFn: () => financeService.listIpos(), retry: false });
@@ -171,9 +237,7 @@ export function IpoView() {
         status: IpoStatus;
       };
       const needsHold =
-        payload.bankAccountId &&
-        categories.data &&
-        shouldBlockBankHold(body.status);
+        payload.bankAccountId && categories.data && shouldBlockBankHold(body.status);
 
       const ipo = await financeService.createIpo(payload.body);
       if (needsHold) {
@@ -255,6 +319,7 @@ export function IpoView() {
     mutationFn: (id: string) => financeService.deleteIpo(id),
     onSuccess: async () => {
       await refresh();
+      setMenuId(null);
       toast.success("IPO removed");
     },
     onError: (error) => toast.error(failMessage(error)),
@@ -290,427 +355,571 @@ export function IpoView() {
 
   const currency = profile.data?.defaultCurrency ?? "INR";
   const all = ipos.data ?? [];
-  const filtered = filterIposByPeriod(all, period);
-  const list = filtered.filter((item) =>
-    !search.trim() ? true : item.name.toLowerCase().includes(search.trim().toLowerCase()),
-  );
-  const metrics = ipoDashboardMetrics(filtered);
-  const plSummary = ipoPlSummary(filtered);
-  const statusBreakdown = ipoStatusBreakdown(filtered);
-  const performanceTrend = ipoCurrentPlBars(filtered);
-  const listingVsCurrent = ipoListingVsCurrent(filtered);
+  const periodFiltered = filterIposByPeriod(all, period);
+  const query = (search || tableSearch).trim().toLowerCase();
+  const list = periodFiltered.filter((item) => {
+    if (!matchesStatusTab(item, statusTab)) return false;
+    if (!query) return true;
+    return item.name.toLowerCase().includes(query);
+  });
+  const metrics = ipoDashboardMetrics(periodFiltered);
+  const listingGain = avgListingGainPct(periodFiltered);
+  const appliedCount = periodFiltered.filter(
+    (item) => item.status === "Applied" || item.status === "In progress",
+  ).length;
+  const allottedOnly = periodFiltered.filter((item) => item.status === "Allotted").length;
+  const listedCount = periodFiltered.filter((item) => item.status === "Listed").length;
+  const cancelledCount = periodFiltered.filter((item) => item.status === "Not Allotted").length;
+  const upcomingCount = UPCOMING_IPO_FEED.length as number;
+  const successRate =
+    metrics.count > 0 ? Math.round((metrics.allottedCount / metrics.count) * 100) : 0;
+  const statusCounts = {
+    upcoming: upcomingCount,
+    applied: appliedCount,
+    allotted: allottedOnly,
+    listed: listedCount,
+  };
+
+  const cyclePeriod = () => {
+    const index = PERIOD_CYCLE.indexOf(period);
+    setPeriod(PERIOD_CYCLE[(index + 1) % PERIOD_CYCLE.length] ?? "month");
+  };
 
   return (
-    <div>
-      <PageHeader
-        title="IPO Tracker"
-        description="Track IPO applications, allotment status, listing performance and returns."
-        actions={
-          <Button onClick={() => setAddOpen(true)}>
-            <Plus size={14} />
-            Add IPO
-          </Button>
-        }
-      />
-
-      <div className="ipo-dash">
-        <div className="ipo-dash-main">
-          <Card className="ipo-summary-row">
-            <div className="ipo-summary-cards">
-              {(
-                [
-                  {
-                    label: "Total Invested",
-                    value: money(metrics.totalInvestedMinor, currency),
-                    note: `Across ${metrics.count} IPO application${metrics.count === 1 ? "" : "s"}`,
-                  },
-                  {
-                    label: "Current Value",
-                    value: money(metrics.currentValueMinor, currency),
-                    note: (
-                      <span className="ipo-gain">
-                        <ArrowUpRight size={12} />
-                        {metrics.returnPct}% ({money(metrics.totalPlMinor, currency)})
-                      </span>
-                    ),
-                  },
-                  {
-                    label: "Total Profit / Loss",
-                    value: money(metrics.totalPlMinor, currency),
-                    note: (
-                      <span className={metrics.totalPlMinor >= 0 ? "ipo-gain" : "ipo-loss"}>
-                        <ArrowUpRight size={12} />
-                        {metrics.returnPct}%
-                      </span>
-                    ),
-                    loss: metrics.totalPlMinor < 0,
-                  },
-                  {
-                    label: "Allotted Amount",
-                    value: money(metrics.allottedMinor, currency),
-                    note: `Allotted in ${metrics.allottedCount} IPO${metrics.allottedCount === 1 ? "" : "s"}`,
-                  },
-                ] as const
-              ).map((item) => (
-                <article key={item.label} className="ipo-summary-card">
-                  <small>{item.label}</small>
-                  <strong className={"loss" in item && item.loss ? "is-loss" : undefined}>
-                    {item.value}
-                  </strong>
-                  <span>{item.note}</span>
-                </article>
-              ))}
-            </div>
-            <div className="ipo-summary-art" aria-hidden="true">
-              <TrendingUp size={56} strokeWidth={1.2} />
-            </div>
-          </Card>
-
-          <Card className="ipo-filter-bar">
-            <div className="ipo-period-tabs">
-              {PERIOD_TABS.map((tab) => (
-                <button
-                  key={tab.id}
-                  type="button"
-                  className={period === tab.id ? "is-active" : undefined}
-                  onClick={() => setPeriod(tab.id)}
-                >
-                  {tab.label}
-                </button>
-              ))}
-            </div>
-            <div className="ipo-filter-meta">
-              <span className="ipo-range">{periodRangeLabel(period)}</span>
-              <Button type="button" variant="secondary" className="ipo-filter-btn">
-                <Filter size={14} />
-                Filter
-              </Button>
-            </div>
-          </Card>
-
-          <div className="ipo-charts-row">
-            <Card className="ipo-chart-card">
-              <header>
-                <h3>Current P/L by IPO</h3>
-                <small>Today&apos;s P/L for allotted and listed applications — not a time series</small>
-              </header>
-              <strong className="ipo-chart-kpi">{money(metrics.totalPlMinor, currency)}</strong>
-              <ResponsiveContainer width="100%" height={120}>
-                <BarChart data={performanceTrend}>
-                  <XAxis dataKey="label" hide />
-                  <YAxis hide />
-                  <Tooltip formatter={(value) => money(Number(value ?? 0), currency)} />
-                  <Bar dataKey="value" fill="var(--primary)" radius={[4, 4, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
-            </Card>
-            <Card className="ipo-chart-card">
-              <header>
-                <h3>IPO Status Overview</h3>
-                <small>{filtered.length} total IPOs</small>
-              </header>
-              <div className="ipo-donut-wrap">
-                <ResponsiveContainer width="100%" height={140}>
-                  <PieChart>
-                    <Pie
-                      data={statusBreakdown}
-                      dataKey="value"
-                      innerRadius={42}
-                      outerRadius={58}
-                      paddingAngle={3}
-                    >
-                      {statusBreakdown.map((entry) => (
-                        <Cell key={entry.name} fill={entry.colour} />
-                      ))}
-                    </Pie>
-                    <Tooltip />
-                  </PieChart>
-                </ResponsiveContainer>
-                <div className="ipo-donut-center">
-                  <strong>{filtered.length}</strong>
-                  <small>Total IPOs</small>
-                </div>
-              </div>
-              <ul className="ipo-donut-legend">
-                {statusBreakdown.map((item) => (
-                  <li key={item.name}>
-                    <i style={{ background: item.colour }} />
-                    {item.name} ({item.value})
-                  </li>
-                ))}
-              </ul>
-            </Card>
-            <Card className="ipo-chart-card">
-              <header>
-                <h3>Profit / Loss Summary</h3>
-                <small>This period</small>
-              </header>
-              <ul className="ipo-pl-summary">
-                <li>
-                  <span>Positive ({plSummary.positive.count})</span>
-                  <b className="ipo-gain">{money(plSummary.positive.minor, currency)}</b>
-                </li>
-                <li>
-                  <span>Negative ({plSummary.negative.count})</span>
-                  <b className="ipo-loss">{money(plSummary.negative.minor, currency)}</b>
-                </li>
-                <li>
-                  <span>Break Even ({plSummary.breakEven.count})</span>
-                  <b>{money(0, currency)}</b>
-                </li>
-              </ul>
-            </Card>
+    <div className="ip36">
+      <section className="ip36-head">
+        <div className="ip36-head-left">
+          <div className="ip36-page-icon">
+            <Briefcase />
           </div>
-
-          <Card className="ipo-table-card">
-            <header>
-              <div>
-                <h2>Your IPO Applications</h2>
-                <small>Applied amount, allotment, listing price and live P/L.</small>
-              </div>
-              <div className="ipo-table-tools">
-                <div className="ipo-search">
-                  <Search size={14} />
-                  <input
-                    type="search"
-                    placeholder="Search IPO"
-                    value={search}
-                    onChange={(event) => setSearch(event.target.value)}
-                  />
-                </div>
-                <button
-                  type="button"
-                  className="ipo-icon-btn"
-                  onClick={() => {
-                    downloadIpoCsv(list, currency);
-                    toast.success("IPO report downloaded");
-                  }}
-                  aria-label="Download"
-                >
-                  <Download size={16} />
-                </button>
-                <button
-                  type="button"
-                  className={`ipo-icon-btn${tableView === "grid" ? " is-active" : ""}`}
-                  onClick={() => setTableView("grid")}
-                  aria-label="Grid view"
-                >
-                  <LayoutGrid size={16} />
-                </button>
-                <button
-                  type="button"
-                  className={`ipo-icon-btn${tableView === "table" ? " is-active" : ""}`}
-                  onClick={() => setTableView("table")}
-                  aria-label="List view"
-                >
-                  <List size={16} />
-                </button>
-              </div>
-            </header>
-            {list.length ? (
-              tableView === "table" ? (
-                <div className="ipo-table-scroll">
-                  <table className="ipo-table">
-                    <thead>
-                      <tr>
-                        <th>IPO Name</th>
-                        <th>Category</th>
-                        <th>Applied On</th>
-                        <th>Applied Amount</th>
-                        <th>Allotted</th>
-                        <th>Listing Price</th>
-                        <th>Current Price</th>
-                        <th>P/L (₹)</th>
-                        <th>P/L (%)</th>
-                        <th>Status</th>
-                        <th />
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {list.map((item) => {
-                        const stats = ipoStats(item);
-                        const market = item.marketCategory ?? "Mainboard";
-                        return (
-                          <tr key={item.id}>
-                            <td>
-                              <span className="ipo-name-cell">
-                                <span className="ipo-logo">{ipoAbbrev(item.name)}</span>
-                                {item.name}
-                              </span>
-                            </td>
-                            <td>{market}</td>
-                            <td>{displayDate(item.appliedOn)}</td>
-                            <td>{money(stats.investedMinor, currency)}</td>
-                            <td>{money(stats.allottedMinor, currency)}</td>
-                            <td>
-                              {stats.listingPriceMinor
-                                ? money(stats.listingPriceMinor, currency)
-                                : "—"}
-                            </td>
-                            <td>
-                              {stats.currentPriceMinor
-                                ? money(stats.currentPriceMinor, currency)
-                                : "—"}
-                            </td>
-                            <td className={stats.plMinor >= 0 ? "ipo-gain" : "ipo-loss"}>
-                              {stats.plMinor >= 0 ? "+" : "−"}
-                              {money(Math.abs(stats.plMinor), currency)}
-                            </td>
-                            <td className={stats.plPct >= 0 ? "ipo-gain" : "ipo-loss"}>
-                              {stats.plPct > 0 ? "+" : ""}
-                              {stats.plPct}%
-                            </td>
-                            <td>
-                              <span className={`ipo-pill is-${ipoStatusTone(item.status)}`}>
-                                {item.status}
-                              </span>
-                            </td>
-                            <td>
-                              <button
-                                type="button"
-                                aria-label="Options"
-                                onClick={() => setMenuId(menuId === item.id ? null : item.id)}
-                              >
-                                <MoreVertical size={16} />
-                              </button>
-                              {menuId === item.id ? (
-                                <div className="ipo-menu-pop">
-                                  <button type="button" onClick={() => setEditing(item)}>
-                                    Edit
-                                  </button>
-                                  <button type="button" onClick={() => remove.mutate(item.id)}>
-                                    Remove
-                                  </button>
-                                </div>
-                              ) : null}
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-              ) : (
-                <div className="ipo-grid">
-                  {list.map((item) => {
-                    const stats = ipoStats(item);
-                    return (
-                      <article key={item.id} className="ipo-grid-card">
-                        <span className="ipo-logo">{ipoAbbrev(item.name)}</span>
-                        <strong>{item.name}</strong>
-                        <small>{item.marketCategory ?? "Mainboard"}</small>
-                        <b className={stats.plMinor >= 0 ? "ipo-gain" : "ipo-loss"}>
-                          {stats.plPct > 0 ? "+" : ""}
-                          {stats.plPct}%
-                        </b>
-                        <span className={`ipo-pill is-${ipoStatusTone(item.status)}`}>
-                          {item.status}
-                        </span>
-                      </article>
-                    );
-                  })}
-                </div>
-              )
-            ) : (
-              <EmptyState
-                title="No IPO applications in this period"
-                description="Add an IPO or widen the date filter to see applications here."
-                action={
-                  <Button onClick={() => setAddOpen(true)}>
-                    <Plus size={14} />
-                    Add IPO
-                  </Button>
-                }
-              />
-            )}
-            <footer className="ipo-table-foot">
-              Showing 1 to {list.length} of {list.length} application{list.length === 1 ? "" : "s"}
-            </footer>
-          </Card>
+          <div>
+            <h1>IPO Tracker</h1>
+            <p>Track IPO applications, allotment status, listing performance and returns.</p>
+          </div>
         </div>
+        <div className="ip36-head-actions">
+          <label className="ip36-search">
+            <Search />
+            <input
+              aria-label="Search IPOs"
+              placeholder="Search IPOs, companies..."
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+            />
+          </label>
+          <button type="button" className="ip36-btn" onClick={cyclePeriod}>
+            <CalendarDays /> {monthLabel()}
+          </button>
+          <button type="button" className="ip36-btn primary" onClick={() => setAddOpen(true)}>
+            <Plus /> Add IPO
+          </button>
+        </div>
+      </section>
 
-        <aside className="ipo-dash-side">
-          <Card className="ipo-side-card">
-            <header>
-              <h3>Upcoming IPOs</h3>
-            </header>
-            <ul className="ipo-upcoming">
-              {UPCOMING_IPO_FEED.map((item) => (
-                <li key={item.id}>
-                  <span className={`ipo-logo is-${item.tone}`}>{ipoAbbrev(item.name)}</span>
-                  <div>
-                    <strong>{item.name}</strong>
-                    <small>Price band {item.priceBand}</small>
-                    <small>
-                      Open {displayDate(item.openOn)} · Close {displayDate(item.closeOn)}
-                    </small>
-                  </div>
-                  <span className="ipo-upcoming-badge">Upcoming</span>
-                </li>
-              ))}
-            </ul>
-          </Card>
-
-          <Card className="ipo-side-card">
-            <header>
-              <h3>Listing vs current price</h3>
-              <strong className="ipo-gain">{money(metrics.totalPlMinor, currency)}</strong>
-            </header>
-            <small style={{ display: "block", marginBottom: 8, color: "var(--muted-foreground)" }}>
-              Listed IPOs only — recorded listing price against the current price you entered.
+      <section className="ip36-kpis">
+        <article className="ip36-kpi green">
+          <div>
+            <span className="label">Total Invested</span>
+            <strong>{money(metrics.totalInvestedMinor, currency)}</strong>
+            <small>
+              Across {metrics.count} IPO application{metrics.count === 1 ? "" : "s"}
             </small>
-            {listingVsCurrent.length ? (
-            <ResponsiveContainer width="100%" height={100}>
-              <BarChart data={listingVsCurrent}>
-                <XAxis dataKey="label" hide />
-                <YAxis hide />
-                <Tooltip formatter={(value) => money(Number(value ?? 0), currency)} />
-                <Bar dataKey="listing" fill="color-mix(in srgb, var(--foreground) 35%, transparent)" name="Listing" />
-                <Bar dataKey="current" fill="var(--primary)" name="Current" />
-              </BarChart>
-            </ResponsiveContainer>
-            ) : (
-              <p className="ipo-filter-meta">Add listing and current prices on a listed IPO to compare them here.</p>
-            )}
-          </Card>
+          </div>
+          <div className="ip36-kpi-icon">
+            <PieChart />
+          </div>
+        </article>
+        <article className="ip36-kpi blue">
+          <div>
+            <span className="label">Current Value</span>
+            <strong>{money(metrics.currentValueMinor, currency)}</strong>
+            <small>
+              Live market value{" "}
+              <em>
+                {metrics.returnPct >= 0 ? "↑" : "↓"} {Math.abs(metrics.returnPct)}%
+              </em>
+            </small>
+          </div>
+          <div className="ip36-kpi-icon">
+            <Wallet />
+          </div>
+        </article>
+        <article className="ip36-kpi gold">
+          <div>
+            <span className="label">Total Profit / Loss</span>
+            <strong>{money(metrics.totalPlMinor, currency)}</strong>
+            <small>
+              Overall returns{" "}
+              <em>
+                {metrics.returnPct >= 0 ? "↑" : "↓"} {Math.abs(metrics.returnPct)}%
+              </em>
+            </small>
+          </div>
+          <div className="ip36-kpi-icon">
+            <TrendingUp />
+          </div>
+        </article>
+        <article className="ip36-kpi purple">
+          <div>
+            <span className="label">Allotted Shares</span>
+            <strong>
+              {metrics.allottedCount} of {metrics.count || 0}
+            </strong>
+            <small>{successRate}% success rate</small>
+          </div>
+          <div className="ip36-kpi-icon">
+            <Briefcase />
+          </div>
+        </article>
+      </section>
 
-          <Card className="ipo-side-card">
-            <h3>Quick Actions</h3>
-            <div className="ipo-quick-grid">
-              <button type="button" className="ipo-quick" onClick={() => setAddOpen(true)}>
-                <Plus size={18} />
-                <small>Add IPO</small>
-              </button>
-              <button type="button" className="ipo-quick" onClick={() => setPeriod("month")}>
-                <CalendarDays size={18} />
-                <small>IPO Calendar</small>
+      <section className="ip36-top">
+        <article className="ip36-panel ip36-hero">
+          <div className="ip36-hero-copy">
+            <div className="ip36-overline">IPO opportunities in one place</div>
+            <h2>
+              Stay ahead with <span>upcoming opportunities</span>
+            </h2>
+            <p>
+              Track IPOs, apply with confidence and monitor your allotments and listing performance —
+              all in one place.
+            </p>
+            <div className="ip36-hero-actions">
+              <button type="button" className="ip36-btn primary" onClick={() => setAddOpen(true)}>
+                <Plus /> Add IPO Application
               </button>
               <button
                 type="button"
-                className="ipo-quick"
+                className="ip36-btn"
+                onClick={() => {
+                  setStatusTab("upcoming");
+                  document.getElementById("ipo-upcoming")?.scrollIntoView({ behavior: "smooth" });
+                }}
+              >
+                <CalendarDays /> View Upcoming IPOs
+              </button>
+            </div>
+          </div>
+          <div className="ip36-hero-art" aria-hidden>
+            <div className="ip36-artbar b1" />
+            <div className="ip36-artbar b2" />
+            <div className="ip36-artbar b3" />
+            <div className="ip36-artbar b4" />
+            <div className="ip36-art-arrow" />
+            <div className="ip36-bell">
+              <Bell />
+            </div>
+            <div className="ip36-alertbubble">
+              New opportunities
+              <br />
+              New beginnings
+            </div>
+            <div className="ip36-ipo-text">IPO</div>
+          </div>
+        </article>
+
+        <aside className="ip36-panel" id="ipo-upcoming">
+          <div className="ip36-panel-head">
+            <div>
+              <h3>Upcoming IPOs</h3>
+            </div>
+            <button type="button" className="ip36-btn" style={{ height: 30, fontSize: 8 }}>
+              View all
+            </button>
+          </div>
+          <div className="ip36-upcoming">
+            {UPCOMING_IPO_FEED.map((item, index) => (
+              <button
+                key={item.id}
+                type="button"
+                className="ip36-upitem"
+                style={{ width: "100%", textAlign: "left", color: "inherit", cursor: "pointer" }}
+                onClick={() => {
+                  setAddOpen(true);
+                  toast.message(`Prefill from ${item.name}`, {
+                    description: "Add your application details to start tracking.",
+                  });
+                }}
+              >
+                <div className={`ip36-upicon ${iconTone(item.name, index)}`.trim()}>
+                  {ipoAbbrev(item.name)}
+                </div>
+                <div>
+                  <b>{item.name}</b>
+                  <small>
+                    {item.priceBand}
+                    <br />
+                    Open {formatShortDay(item.openOn)} · Close {formatShortDay(item.closeOn)}
+                  </small>
+                </div>
+                <span className="ip36-badge">UPCOMING</span>
+                <ArrowRight />
+              </button>
+            ))}
+          </div>
+        </aside>
+      </section>
+
+      <section className="ip36-tabsbar">
+        <div className="ip36-tabs">
+          {(
+            [
+              { id: "all", label: "All IPOs" },
+              { id: "upcoming", label: `Upcoming (${upcomingCount})` },
+              { id: "applied", label: `Applied (${appliedCount})` },
+              { id: "allotted", label: `Allotted (${allottedOnly})` },
+              { id: "listed", label: `Listed (${listedCount})` },
+              { id: "cancelled", label: `Cancelled (${cancelledCount})` },
+            ] as const
+          ).map((tab) => (
+            <button
+              key={tab.id}
+              type="button"
+              className={`ip36-tab${statusTab === tab.id ? " active" : ""}`}
+              onClick={() => setStatusTab(tab.id)}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+        <button type="button" className="ip36-btn" onClick={cyclePeriod}>
+          <CalendarDays /> {periodRangeLabel(period)}
+        </button>
+      </section>
+
+      <section className="ip36-summary">
+        <article className="ip36-scard">
+          <h4>Current P/L by IPO</h4>
+          <strong>
+            {money(metrics.totalPlMinor, currency)}{" "}
+            <span style={{ fontSize: 11, color: metrics.returnPct >= 0 ? "#44df94" : "#ff6570" }}>
+              {metrics.returnPct >= 0 ? "+" : ""}
+              {metrics.returnPct}%
+            </span>
+          </strong>
+          <small>Today&apos;s P/L for allotted and listed applications</small>
+        </article>
+        <article className="ip36-scard">
+          <h4>IPO Status Overview</h4>
+          <div className="ip36-statusrow">
+            <div className="ip36-mini-donut" style={{ background: donutGradient(statusCounts) }} />
+            <div className="ip36-statuslist">
+              <span>
+                <i style={{ background: "#4bbdf1" }} />
+                Upcoming
+              </span>
+              <span>
+                <i style={{ background: "#e7bd53" }} />
+                Applied
+              </span>
+              <span>
+                <i style={{ background: "#43df91" }} />
+                Allotted
+              </span>
+              <span>
+                <i style={{ background: "#7c62e7" }} />
+                Listed
+              </span>
+            </div>
+            <b style={{ fontSize: 10, lineHeight: 1.35 }}>
+              {upcomingCount}
+              <br />
+              {appliedCount}
+              <br />
+              {allottedOnly}
+              <br />
+              {listedCount}
+            </b>
+          </div>
+        </article>
+        <article className="ip36-scard">
+          <h4>Listing Performance</h4>
+          <strong style={{ color: listingGain >= 0 ? "#44df94" : "#ff6570" }}>
+            {listingGain >= 0 ? "+" : ""}
+            {listingGain}%
+          </strong>
+          <small>Avg. listing gain (listed IPOs)</small>
+        </article>
+      </section>
+
+      <section className="ip36-body">
+        <article className="ip36-panel">
+          <div className="ip36-panel-head">
+            <div>
+              <h3>Your IPO Applications</h3>
+              <p>Track your applications, allotment status, listing price and live P/L.</p>
+            </div>
+            <div className="ip36-table-tools">
+              <label className="ip36-tsearch">
+                <Search />
+                <input
+                  aria-label="Search table"
+                  placeholder="Search IPOs..."
+                  value={tableSearch}
+                  onChange={(event) => setTableSearch(event.target.value)}
+                />
+              </label>
+              <button type="button" className="ip36-iconbtn" aria-label="Filter" onClick={cyclePeriod}>
+                <Filter />
+              </button>
+              <button
+                type="button"
+                className="ip36-iconbtn"
+                aria-label="Download report"
+                onClick={() => {
+                  downloadIpoCsv(list, currency);
+                  toast.success("IPO report downloaded");
+                }}
+              >
+                <MoreVertical />
+              </button>
+            </div>
+          </div>
+          <div className="ip36-tablewrap">
+            {list.length ? (
+              <div className="ip36-table">
+                <div className="ip36-row head">
+                  <span>Company</span>
+                  <span>Issue Price</span>
+                  <span>Lot Size</span>
+                  <span>Applied Amount</span>
+                  <span>Status</span>
+                  <span>Listing Price</span>
+                  <span>Current P/L</span>
+                  <span>Action</span>
+                </div>
+                {list.map((item, index) => {
+                  const stats = ipoStats(item);
+                  const tone = iconTone(item.name, index);
+                  return (
+                    <div key={item.id} className="ip36-row">
+                      <div className="ip36-co">
+                        <div className={`ip36-coicon ${tone}`.trim()}>{ipoAbbrev(item.name)}</div>
+                        <div>
+                          <b>{item.name}</b>
+                          <small>
+                            {item.status === "Listed" && item.allotmentOn
+                              ? `Listed: ${formatShort(item.allotmentOn)}`
+                              : `Open: ${formatShort(item.appliedOn)}`}
+                          </small>
+                        </div>
+                      </div>
+                      <div className="ip36-cell">
+                        {item.lots
+                          ? money(Math.round(item.amountMinor / item.lots), currency)
+                          : "-"}
+                      </div>
+                      <div className="ip36-cell">{item.lots}</div>
+                      <div className="ip36-cell">{money(stats.investedMinor, currency)}</div>
+                      <div>
+                        <span className={`ip36-status ${statusClass(item.status)}`}>
+                          {statusLabel(item.status)}
+                        </span>
+                      </div>
+                      <div className="ip36-cell">
+                        {stats.listingPriceMinor ? money(stats.listingPriceMinor, currency) : "-"}
+                      </div>
+                      <div
+                        className={
+                          stats.plMinor === 0 && !isAllottedStatus(item.status)
+                            ? "ip36-cell"
+                            : `ip36-pl${stats.plMinor < 0 ? " neg" : ""}`
+                        }
+                      >
+                        {isAllottedStatus(item.status) ? (
+                          <>
+                            {stats.plMinor >= 0 ? "+" : "−"}
+                            {money(Math.abs(stats.plMinor), currency)}
+                            <br />
+                            <span style={{ fontSize: 7.5 }}>
+                              {stats.plPct > 0 ? "+" : ""}
+                              {stats.plPct}%
+                            </span>
+                          </>
+                        ) : (
+                          "-"
+                        )}
+                      </div>
+                      <div className="ip36-action-cell">
+                        <button type="button" className="ip36-view" onClick={() => setEditing(item)}>
+                          View
+                        </button>
+                        <button
+                          type="button"
+                          className="ip36-iconbtn"
+                          style={{ width: 24, height: 24 }}
+                          aria-label={`Options for ${item.name}`}
+                          onClick={() => setMenuId(menuId === item.id ? null : item.id)}
+                        >
+                          <MoreVertical />
+                        </button>
+                        {menuId === item.id ? (
+                          <div className="ip36-menu-pop">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setEditing(item);
+                                setMenuId(null);
+                              }}
+                            >
+                              Edit
+                            </button>
+                            <button type="button" onClick={() => remove.mutate(item.id)}>
+                              Remove
+                            </button>
+                          </div>
+                        ) : null}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="ip36-empty">
+                <h4>
+                  {statusTab === "upcoming"
+                    ? "Upcoming IPOs are listed above"
+                    : "No IPO applications in this view"}
+                </h4>
+                <p>
+                  {statusTab === "upcoming"
+                    ? "Use Add IPO to track an application when you apply."
+                    : "Add an IPO or widen the filters to see applications here."}
+                </p>
+                <button
+                  type="button"
+                  className="ip36-btn primary"
+                  style={{ marginTop: 12 }}
+                  onClick={() => setAddOpen(true)}
+                >
+                  <Plus /> Add IPO
+                </button>
+              </div>
+            )}
+            <div style={{ marginTop: 7, color: "#7f9589", fontSize: 8 }}>
+              Showing {list.length} of {periodFiltered.length} application
+              {periodFiltered.length === 1 ? "" : "s"}
+            </div>
+          </div>
+        </article>
+
+        <aside className="ip36-side">
+          <article className="ip36-panel">
+            <div className="ip36-panel-head">
+              <div>
+                <h3>IPO Insights</h3>
+              </div>
+            </div>
+            <div className="ip36-insights">
+              <div className="ip36-insight">
+                <div className="ip36-insight-icon">
+                  <Briefcase />
+                </div>
+                <div>
+                  <b>
+                    {upcomingCount} upcoming IPO{upcomingCount === 1 ? "" : "s"} this month
+                  </b>
+                  <small>More opportunities to invest.</small>
+                </div>
+                <ArrowRight />
+              </div>
+              <div className="ip36-insight">
+                <div className="ip36-insight-icon">
+                  <PieChart />
+                </div>
+                <div>
+                  <b>{successRate}% allotment rate</b>
+                  <small>
+                    {metrics.allottedCount} of {metrics.count || 0} applications allotted.
+                  </small>
+                </div>
+                <ArrowRight />
+              </div>
+              <div className="ip36-insight">
+                <div className="ip36-insight-icon">
+                  <TrendingUp />
+                </div>
+                <div>
+                  <b>
+                    {listingGain >= 0 ? "+" : ""}
+                    {listingGain}% average listing gain
+                  </b>
+                  <small>
+                    Based on {listedCount} listed IPO{listedCount === 1 ? "" : "s"}.
+                  </small>
+                </div>
+                <ArrowRight />
+              </div>
+              <div className="ip36-insight gold">
+                <div className="ip36-insight-icon">
+                  <Wallet />
+                </div>
+                <div>
+                  <b>{money(metrics.totalPlMinor, currency)} total profit</b>
+                  <small>Across allotted and listed IPOs.</small>
+                </div>
+                <ArrowRight />
+              </div>
+            </div>
+          </article>
+
+          <article className="ip36-panel">
+            <div className="ip36-panel-head">
+              <div>
+                <h3>Quick Actions</h3>
+              </div>
+            </div>
+            <div className="ip36-actions">
+              <button type="button" className="ip36-action" onClick={() => setAddOpen(true)}>
+                <div className="ip36-action-icon">
+                  <Plus />
+                </div>
+                <b>Add IPO</b>
+                <small>Track a new application</small>
+              </button>
+              <button
+                type="button"
+                className="ip36-action"
+                onClick={() => {
+                  setStatusTab("upcoming");
+                  document.getElementById("ipo-upcoming")?.scrollIntoView({ behavior: "smooth" });
+                }}
+              >
+                <div className="ip36-action-icon">
+                  <CalendarDays />
+                </div>
+                <b>IPO Calendar</b>
+                <small>View upcoming IPOs</small>
+              </button>
+              <button
+                type="button"
+                className="ip36-action"
                 onClick={() => {
                   downloadIpoCsv(all, currency);
                   toast.success("IPO report downloaded");
                 }}
               >
-                <TrendingUp size={18} />
-                <small>IPO Reports</small>
+                <div className="ip36-action-icon">
+                  <FileText />
+                </div>
+                <b>IPO Reports</b>
+                <small>Download & analyse</small>
               </button>
               <button
                 type="button"
-                className="ipo-quick"
-                onClick={() => {
-                  downloadIpoCsv(all, currency);
-                  toast.success("Report downloaded");
-                }}
+                className="ip36-action"
+                onClick={() => toast.success("Allotment alerts enabled for tracked IPOs")}
               >
-                <Download size={18} />
-                <small>Download Report</small>
+                <div className="ip36-action-icon">
+                  <Bell />
+                </div>
+                <b>Set Alerts</b>
+                <small>Get notified early</small>
               </button>
             </div>
-          </Card>
+          </article>
         </aside>
-      </div>
+      </section>
 
       <IpoFormModal
         key="add-ipo"
@@ -842,24 +1051,27 @@ function IpoFormModal({
               onChange={(event) => setMarketCategory(event.target.value as IpoMarketCategory)}
             >
               {IPO_MARKET_CATEGORIES.map((item) => (
-                <option key={item} value={item}>{item}</option>
+                <option key={item} value={item}>
+                  {item}
+                </option>
               ))}
             </Select>
           </Field>
           <Field label="Lots">
             <Select value={lots} onChange={(event) => setLots(event.target.value)}>
               {Array.from({ length: 20 }, (_, index) => index + 1).map((value) => (
-                <option key={value} value={value}>{value}</option>
+                <option key={value} value={value}>
+                  {value}
+                </option>
               ))}
             </Select>
           </Field>
           <Field label="Status">
-            <Select
-              value={status}
-              onChange={(event) => setStatus(event.target.value as IpoStatus)}
-            >
+            <Select value={status} onChange={(event) => setStatus(event.target.value as IpoStatus)}>
               {IPO_STATUSES.map((item) => (
-                <option key={item} value={item}>{item}</option>
+                <option key={item} value={item}>
+                  {item}
+                </option>
               ))}
             </Select>
           </Field>
@@ -936,7 +1148,9 @@ function IpoFormModal({
               >
                 <option value="">Select bank account</option>
                 {bankOptions.map((item) => (
-                  <option key={item.id} value={item.id}>{item.label}</option>
+                  <option key={item.id} value={item.id}>
+                    {item.label}
+                  </option>
                 ))}
               </Select>
             </Field>
@@ -953,7 +1167,9 @@ function IpoFormModal({
           </p>
         </div>
         <div className="ipo-form-actions">
-          <Button type="button" variant="ghost" onClick={onClose}>Cancel</Button>
+          <Button type="button" variant="ghost" onClick={onClose}>
+            Cancel
+          </Button>
           <Button type="submit" disabled={pending}>
             {pending ? "Saving…" : "Save IPO"}
           </Button>
