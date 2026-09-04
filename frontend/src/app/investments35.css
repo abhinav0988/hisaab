@@ -17,6 +17,10 @@
   gap:13px;
   color:#f3f7f4;
 }
+[data-app-shell][data-page="investments"]{grid-template-columns:242px minmax(0,1fr)!important;background:linear-gradient(180deg,#020c11,#031119)!important}
+[data-app-shell][data-page="investments"]>aside{width:242px!important;padding:18px 12px 16px!important;background:linear-gradient(180deg,#031018 0%,#03131b 55%,#020d13 100%)!important;border-color:#17313a!important}
+[data-app-shell][data-page="investments"] .app-header{padding-left:18px!important;padding-right:22px!important;background:rgba(2,15,20,.92)!important;border-color:#17313a!important}
+[data-app-shell][data-page="investments"] .app-main{max-width:none!important;margin:0!important;padding:12px 18px 22px!important;background:radial-gradient(circle at 75% 0,rgba(0,124,83,.08),transparent 32%),linear-gradient(180deg,#020c11,#031018 55%,#020d13)!important}
 .iv35 *{box-sizing:border-box}
 .iv35 svg{display:block}
 .iv35 button{font:inherit}
