@@ -274,6 +274,7 @@ html[data-theme="dark"] .tx16-add {
   text-align: right;
 }
 .tx16-plot {
+  position: relative;
   display: grid;
   grid-template-columns: repeat(10, minmax(0, 1fr));
   align-items: end;
@@ -289,7 +290,28 @@ html[data-theme="dark"] .tx16-add {
     transparent 34%
   );
 }
+.tx16-trend {
+  position: absolute;
+  z-index: 0;
+  inset: 14px 0 20px;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+  pointer-events: none;
+}
+.tx16-trend polyline {
+  fill: none;
+  stroke: #62d896;
+  stroke-width: 1.35;
+  stroke-dasharray: 1.4 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  vector-effect: non-scaling-stroke;
+  filter: drop-shadow(0 0 3px color-mix(in srgb, var(--success) 55%, transparent));
+}
 .tx16-bar-col {
+  position: relative;
+  z-index: 1;
   display: flex;
   flex-direction: column;
   align-items: center;

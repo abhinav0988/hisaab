@@ -232,6 +232,14 @@ export function TransactionsView() {
   const spendChange = percentChange(spend10, previous10);
   const maxSpend = Math.max(...daily.map((item) => item.minor), 1);
   const axisMax = niceAxis(maxSpend);
+  const trendPoints = daily
+    .map((item, index) => {
+      const x = daily.length > 1 ? (index / (daily.length - 1)) * 100 : 50;
+      const y = 100 - Math.min(100, (item.minor / axisMax) * 100);
+      return `${x},${y}`;
+    })
+    .join(" ");
+  const hasSpendingTrend = daily.some((item) => item.minor > 0);
   const topCategory = topExpenseCategory(lookbackItems);
   const highDay = daily.reduce((best, item) => (item.minor > best.minor ? item : best), daily[0]!);
   const avg10 = Math.round(spend10 / 10);
@@ -324,9 +332,14 @@ export function TransactionsView() {
               <span>{axisLabel(Math.round(axisMax * 0.66), currency)}</span>
               <span>{axisLabel(Math.round(axisMax * 0.33), currency)}</span>
               <span>₹0</span>
-            </div>
-            <div className="tx16-plot">
-              {daily.map((item) => (
+          </div>
+          <div className="tx16-plot">
+            {hasSpendingTrend ? (
+              <svg className="tx16-trend" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden>
+                <polyline points={trendPoints} />
+              </svg>
+            ) : null}
+            {daily.map((item) => (
                 <div key={item.key} className="tx16-bar-col" title={money(item.minor, currency)}>
                   <b>{item.minor ? money(item.minor, currency).replace(".00", "") : ""}</b>
                   <i style={{ height: `${Math.max(4, Math.round((item.minor / axisMax) * 78))}%` }} />
