@@ -1,31 +1,42 @@
 "use client";
-import type { SavingsGoal } from "@hisaab/types";
-import { Badge, Button, Card, Field, Input } from "@hisaab/ui";
+
+import type { GoalContribution, SavingsGoal } from "@hisaab/types";
+import { Button, Field, Input } from "@hisaab/ui";
 import { majorToMinor } from "@hisaab/validation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
-import { toast } from "sonner";
 import {
-  ArrowUpRight,
+  ArrowRight,
+  BarChart3,
+  CalendarDays,
+  Car,
   Check,
+  Gem,
+  Home,
+  Laptop,
   Pause,
   Pencil,
+  Plane,
   Play,
   Plus,
-  RefreshCw,
-  Sparkles,
+  Shield,
+  Target,
   Trash2,
+  TrendingUp,
+  Wallet,
 } from "lucide-react";
-import { CardHead, Insight, ProLabel, ProgressBar } from "@/components/layout/chrome";
+import { useRouter } from "next/navigation";
+import { useState, type CSSProperties } from "react";
+import { toast } from "sonner";
 import { ConfirmDialog, Modal } from "@/components/layout/modal";
-import { PageHeader } from "@/components/layout/page-header";
 import { EmptyState, ErrorState, PageSkeleton } from "@/components/layout/states";
-import { dateTime, money, signedMoney } from "@/lib/format";
 import { ApiError } from "@/lib/api-client";
+import { money, signedMoney } from "@/lib/format";
 import { goalService } from "@/services/goal.service";
 import { profileService } from "@/services/profile.service";
+import "../../app/savings-goals.css";
 
 type GoalStatus = "active" | "paused" | "completed" | "overdue";
+type GoalTone = "green" | "gold" | "blue" | "purple";
 
 function goalStatus(goal: SavingsGoal): GoalStatus {
   if (goal.savedAmountMinor >= goal.targetAmountMinor) return "completed";
@@ -37,25 +48,80 @@ function goalStatus(goal: SavingsGoal): GoalStatus {
   return "active";
 }
 
-function statusBadge(status: GoalStatus) {
-  switch (status) {
-    case "completed":
-      return { tone: "success" as const, label: "Completed" };
-    case "paused":
-      return { tone: "neutral" as const, label: "Paused" };
-    case "overdue":
-      return { tone: "danger" as const, label: "Overdue" };
-    default:
-      return { tone: "success" as const, label: "Active" };
-  }
+function monthLabel(date = new Date()) {
+  return new Intl.DateTimeFormat("en-GB", { month: "long", year: "numeric" }).format(date);
+}
+
+function formatShortDate(value: string) {
+  return new Intl.DateTimeFormat("en-GB", { day: "2-digit", month: "short", year: "numeric" }).format(
+    new Date(value),
+  );
+}
+
+function goalTone(name: string, index: number): GoalTone {
+  const lower = name.toLowerCase();
+  if (lower.includes("emergency") || lower.includes("fund") || lower.includes("safety")) return "green";
+  if (lower.includes("trip") || lower.includes("travel") || lower.includes("goa") || lower.includes("vacation"))
+    return "gold";
+  if (lower.includes("laptop") || lower.includes("gadget") || lower.includes("phone") || lower.includes("car"))
+    return "blue";
+  const tones: GoalTone[] = ["green", "gold", "blue", "purple"];
+  return tones[index % tones.length]!;
+}
+
+function goalIconNode(name: string, icon: string) {
+  const lower = name.toLowerCase();
+  if (lower.includes("emergency") || lower.includes("fund") || lower.includes("safety")) return <Shield />;
+  if (lower.includes("trip") || lower.includes("travel") || lower.includes("goa") || lower.includes("vacation"))
+    return <Plane />;
+  if (lower.includes("laptop") || lower.includes("computer") || lower.includes("gadget")) return <Laptop />;
+  if (lower.includes("car") || lower.includes("bike") || lower.includes("vehicle")) return <Car />;
+  if (lower.includes("home") || lower.includes("house") || lower.includes("rent")) return <Home />;
+  if (icon && icon !== "*" && icon.length <= 3) return <span aria-hidden>{icon}</span>;
+  return <Target />;
+}
+
+function goalDescription(goal: SavingsGoal) {
+  if (goal.notes?.trim()) return goal.notes.trim();
+  const lower = goal.name.toLowerCase();
+  if (lower.includes("emergency")) return "6 months of essential expenses";
+  if (lower.includes("trip") || lower.includes("goa")) return "Flights, stay and experiences";
+  if (lower.includes("laptop")) return "Workstation upgrade";
+  if (goal.targetDate) return `Target · ${goal.targetDate}`;
+  return "Keep contributing to reach this milestone";
+}
+
+function percentTone(pct: number, tone: GoalTone) {
+  if (pct >= 100) return "";
+  if (tone === "gold") return " gold";
+  if (tone === "blue") return " blue";
+  if (tone === "purple") return " purple";
+  return "";
+}
+
+function monthsUntil(targetDate: string | null) {
+  if (!targetDate) return null;
+  const end = targetDate.length === 7 ? `${targetDate}-28` : targetDate;
+  const target = new Date(`${end.slice(0, 10)}T12:00:00`);
+  const now = new Date();
+  const months =
+    (target.getFullYear() - now.getFullYear()) * 12 + (target.getMonth() - now.getMonth());
+  return Math.max(0, months);
+}
+
+function contributionMonthKey(iso: string) {
+  return iso.slice(0, 7);
 }
 
 export function GoalsView() {
+  const router = useRouter();
   const client = useQueryClient();
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<SavingsGoal | null>(null);
   const [contribute, setContribute] = useState<SavingsGoal | null>(null);
   const [deleting, setDeleting] = useState<SavingsGoal | null>(null);
+  const [manageOpen, setManageOpen] = useState(false);
+
   const profile = useQuery({ queryKey: ["profile"], queryFn: () => profileService.get() });
   const goals = useQuery({
     queryKey: ["goals"],
@@ -67,10 +133,12 @@ export function GoalsView() {
     queryFn: () => goalService.contributions(),
     retry: false,
   });
+
   const refresh = () => {
     void client.invalidateQueries({ queryKey: ["goals"] });
     void client.invalidateQueries({ queryKey: ["goal-contributions"] });
   };
+
   const lifecycle = useMutation({
     mutationFn: ({
       id,
@@ -89,216 +157,458 @@ export function GoalsView() {
       toast.error(cause instanceof ApiError ? cause.message : "Unable to update goal.");
     },
   });
+
   const remove = useMutation({
     mutationFn: (id: string) => goalService.remove(id),
     onSuccess: () => {
       toast.success("Goal deleted");
       setDeleting(null);
+      setManageOpen(false);
       refresh();
     },
     onError: (cause) => {
       toast.error(cause instanceof ApiError ? cause.message : "Unable to delete goal.");
     },
   });
+
   if (profile.isLoading || goals.isLoading) return <PageSkeleton />;
   if (!profile.data) return <ErrorState retry={() => void profile.refetch()} />;
+
   const missingTable = goals.isError;
   const list = goals.data ?? [];
   const rows = history.data ?? [];
   const currency = profile.data.defaultCurrency;
+
+  const activeGoals = list.filter((goal) => goalStatus(goal) !== "paused");
+  const totalTarget = list.reduce((sum, goal) => sum + goal.targetAmountMinor, 0);
+  const totalSaved = list.reduce((sum, goal) => sum + goal.savedAmountMinor, 0);
+  const remaining = Math.max(0, totalTarget - totalSaved);
+  const overallPct = totalTarget > 0 ? Math.round((totalSaved / totalTarget) * 100) : 0;
+
+  const nowMonth = new Date().toISOString().slice(0, 7);
+  const prev = new Date();
+  prev.setMonth(prev.getMonth() - 1);
+  const prevMonth = prev.toISOString().slice(0, 7);
+  const monthContrib = rows
+    .filter((item) => contributionMonthKey(item.contributedAt) === nowMonth)
+    .reduce((sum, item) => sum + item.amountMinor, 0);
+  const prevContrib = rows
+    .filter((item) => contributionMonthKey(item.contributedAt) === prevMonth)
+    .reduce((sum, item) => sum + item.amountMinor, 0);
+  const contribDelta = monthContrib - prevContrib;
+  const contribDeltaPct =
+    prevContrib > 0 ? Math.round((contribDelta / prevContrib) * 100) : monthContrib > 0 ? 100 : 0;
+
+  const onTrackCount = list.filter((goal) => {
+    const status = goalStatus(goal);
+    return status === "active" || status === "completed";
+  }).length;
+  const attentionCount = list.filter((goal) => {
+    const status = goalStatus(goal);
+    return status === "overdue" || status === "paused";
+  }).length;
+
+  const monthsForAvg = Math.max(
+    1,
+    ...list.map((goal) => monthsUntil(goal.targetDate) ?? 6).filter((value) => value > 0),
+    1,
+  );
+  const avgMonthlyNeeded = remaining > 0 ? Math.round(remaining / monthsForAvg) : 0;
+  const nextContributionHint = rows[0]
+    ? formatShortDate(rows[0].contributedAt)
+    : "Add your first deposit";
+
+  const openCreate = () => {
+    setEditing(null);
+    setOpen(true);
+  };
+  const openContribute = (goal?: SavingsGoal | null) => {
+    const target =
+      goal ??
+      list.find((item) => item.isActive && item.savedAmountMinor < item.targetAmountMinor) ??
+      list[0] ??
+      null;
+    if (!target) {
+      toast.info("Create a goal before adding a contribution.");
+      openCreate();
+      return;
+    }
+    setContribute(target);
+  };
+
   return (
-    <div>
-      <PageHeader
-        eyebrow="Build your future"
-        title="Savings goals"
-        description="Turn everyday choices into meaningful progress."
-        actions={
-          <>
-            <Button variant="secondary" onClick={() => toast.info("Auto-save is a Premium feature.")}>
-              <RefreshCw size={16} aria-hidden="true" /> Auto-save <ProLabel />
-            </Button>
-            <Button onClick={() => setOpen(true)} disabled={missingTable}>
-              <Plus size={16} aria-hidden="true" /> Create goal
-            </Button>
-          </>
-        }
-      />
+    <div className="sg31">
+      <section className="sg31-header">
+        <div className="sg31-header-left">
+          <div className="sg31-page-icon">
+            <Target />
+          </div>
+          <div>
+            <h1>Savings Goals</h1>
+            <p>Turn your plans into milestones and build them one contribution at a time.</p>
+          </div>
+        </div>
+        <div className="sg31-header-actions">
+          <button type="button" className="sg31-control">
+            <CalendarDays /> {monthLabel()}
+          </button>
+          <button type="button" className="sg31-primary" onClick={openCreate} disabled={missingTable}>
+            <Plus /> New Goal
+          </button>
+        </div>
+      </section>
+
       {missingTable ? (
         <EmptyState
           title="Goals will be ready after the next database update"
           description="The savings goals tables are in the schema. Once they are applied, you can create goals here."
         />
-      ) : list.length ? (
-        <div className="grid gap-[18px] md:grid-cols-2 xl:grid-cols-3">
-          {list.map((goal) => {
-            const pct = Math.round((goal.savedAmountMinor / goal.targetAmountMinor) * 100);
-            const status = goalStatus(goal);
-            const badge = statusBadge(status);
-            return (
-              <Card key={goal.id} className="interactive-card p-[22px]">
-                <div className="flex items-start justify-between gap-2">
-                  <span className="grid size-[43px] place-items-center rounded-[14px] bg-[var(--mint)] text-lg text-[var(--primary)]">
-                    {goal.icon}
-                  </span>
-                  <Badge tone={badge.tone}>{badge.label}</Badge>
-                </div>
-                <h3 className="mb-1 mt-[18px] text-sm font-semibold">{goal.name}</h3>
-                <div className="text-xs text-[var(--muted-foreground)]">
-                  Target · {goal.targetDate ?? "No target date"}
-                </div>
-                <div className="my-3 text-lg font-black [overflow-wrap:anywhere]" aria-live="polite">
-                  {money(goal.savedAmountMinor, goal.currency)}{" "}
-                  <span className="text-xs font-medium text-[var(--muted-foreground)]">
-                    of {money(goal.targetAmountMinor, goal.currency)}
-                  </span>
-                </div>
-                <ProgressBar value={pct} />
-                <div className="mt-1.5 flex flex-wrap justify-between gap-2 text-[11px] text-[var(--muted-foreground)]">
-                  <span>{pct}% complete</span>
-                  <span>{goal.notes ?? "Choose a target date for a plan"}</span>
-                </div>
-                <div className="mt-[18px] grid gap-2">
-                  {status !== "completed" && status !== "paused" ? (
-                    <Button className="w-full" variant="secondary" onClick={() => setContribute(goal)}>
-                      Add money
-                    </Button>
+      ) : (
+        <>
+          <section className="sg31-kpis">
+            <article className="sg31-kpi green">
+              <div>
+                <span className="eyebrow">Total Goal Value</span>
+                <strong>{totalTarget ? money(totalTarget, currency) : "—"}</strong>
+                <small>
+                  Across {activeGoals.length || list.length} active goal
+                  {(activeGoals.length || list.length) === 1 ? "" : "s"}
+                </small>
+              </div>
+              <div className="sg31-kpi-icon">
+                <Target />
+              </div>
+            </article>
+            <article className="sg31-kpi gold">
+              <div>
+                <span className="eyebrow">Total Saved</span>
+                <strong>{money(totalSaved, currency)}</strong>
+                <small>
+                  {totalTarget ? `${overallPct}% of combined targets reached` : "Create a goal to start tracking"}
+                </small>
+              </div>
+              <div className="sg31-kpi-icon">
+                <Wallet />
+              </div>
+            </article>
+            <article className="sg31-kpi purple">
+              <div>
+                <span className="eyebrow">Monthly Contribution</span>
+                <strong>
+                  {money(monthContrib, currency)}
+                  {contribDelta !== 0 ? (
+                    <span className="delta">
+                      {contribDelta >= 0 ? "↑" : "↓"} {Math.abs(contribDeltaPct)}%
+                    </span>
                   ) : null}
-                  <div className="flex flex-wrap gap-2">
-                    <Button
-                      variant="ghost"
-                      className="px-3"
-                      onClick={() => setEditing(goal)}
-                      aria-label={`Edit ${goal.name}`}
-                    >
-                      <Pencil size={16} />
-                    </Button>
-                    {goal.isActive ? (
-                      <>
-                        {status !== "completed" ? (
-                          <Button
-                            variant="ghost"
-                            className="px-3"
-                            disabled={lifecycle.isPending}
-                            onClick={() => lifecycle.mutate({ id: goal.id, body: { isActive: false } })}
-                            aria-label={`Pause ${goal.name}`}
-                          >
-                            <Pause size={16} />
-                          </Button>
-                        ) : null}
-                        <Button
-                          variant="ghost"
-                          className="px-3"
-                          disabled={lifecycle.isPending}
-                          onClick={() =>
-                            lifecycle.mutate({
-                              id: goal.id,
-                              body: {
-                                isActive: false,
-                                notes: goal.notes ?? "Completed",
-                              },
-                            })
-                          }
-                          aria-label={`Complete ${goal.name}`}
-                        >
-                          <Check size={16} />
-                        </Button>
-                      </>
-                    ) : status !== "completed" ? (
-                      <Button
-                        variant="ghost"
-                        className="px-3"
-                        disabled={lifecycle.isPending}
-                        onClick={() => lifecycle.mutate({ id: goal.id, body: { isActive: true } })}
-                        aria-label={`Resume ${goal.name}`}
-                      >
-                        <Play size={16} />
-                      </Button>
-                    ) : null}
-                    <Button
-                      variant="ghost"
-                      className="px-3 hover:text-[var(--danger)]"
-                      onClick={() => setDeleting(goal)}
-                      aria-label={`Delete ${goal.name}`}
-                    >
-                      <Trash2 size={16} />
-                    </Button>
+                </strong>
+                <small>
+                  {contribDelta === 0
+                    ? "No change vs last month"
+                    : `${money(Math.abs(contribDelta), currency)} ${contribDelta >= 0 ? "more" : "less"} than last month`}
+                </small>
+              </div>
+              <div className="sg31-kpi-icon">
+                <BarChart3 />
+              </div>
+            </article>
+            <article className="sg31-kpi blue">
+              <div>
+                <span className="eyebrow">Goals On Track</span>
+                <strong>
+                  {list.length ? `${onTrackCount} of ${list.length}` : "—"}
+                </strong>
+                <small>
+                  {list.length
+                    ? attentionCount
+                      ? `${attentionCount} goal${attentionCount === 1 ? "" : "s"} need${attentionCount === 1 ? "s" : ""} attention`
+                      : "All goals looking healthy"
+                    : "No goals yet"}
+                </small>
+              </div>
+              <div className="sg31-kpi-icon">
+                <Target />
+              </div>
+            </article>
+          </section>
+
+          <section className="sg31-topgrid">
+            <article className="sg31-panel sg31-hero">
+              <div className="sg31-hero-copy">
+                <div className="sg31-overline">Small steps. Brighter tomorrows.</div>
+                <h2>
+                  Build the future <span>you deserve</span>
+                </h2>
+                <p>
+                  Save for what matters — an emergency fund, a dream trip, a new gadget, or anything you care
+                  about.
+                </p>
+                <div className="sg31-hero-actions">
+                  <button type="button" className="sg31-primary" onClick={openCreate}>
+                    <Plus /> Create a new goal
+                  </button>
+                </div>
+              </div>
+              <div className="sg31-hero-art" aria-hidden>
+                <div className="sg31-art-pill a">
+                  <Plane />
+                  <span>Dream Trips</span>
+                </div>
+                <div className="sg31-art-pill b">
+                  <Shield />
+                  <span>Emergency Fund</span>
+                </div>
+                <div className="sg31-art-pill c">
+                  <Car />
+                  <span>New Car</span>
+                </div>
+                <div className="sg31-art-pill d">
+                  <Home />
+                  <span>Home</span>
+                </div>
+                <div className="sg31-jar">
+                  <div className="sg31-leaf l1" />
+                  <div className="sg31-leaf l2" />
+                  <div className="sg31-leaf l3" />
+                  <div className="sg31-jar-lid" />
+                  <div className="sg31-jar-body" />
+                  <div className="sg31-jar-label">
+                    Better
+                    <br />
+                    Choices
+                    <br />
+                    Brighter
+                    <br />
+                    Tomorrow
+                  </div>
+                  <div className="sg31-coin c1" />
+                  <div className="sg31-coin c2" />
+                  <div className="sg31-coin c3" />
+                </div>
+              </div>
+            </article>
+
+            <article className="sg31-panel">
+              <div className="sg31-panel-head">
+                <div>
+                  <h3>Goal Insights</h3>
+                  <p>Smart insights from your savings journey.</p>
+                </div>
+              </div>
+              <div className="sg31-insight-wrap">
+                <div
+                  className="sg31-donut"
+                  style={{ "--progress": `${Math.min(100, overallPct)}%` } as CSSProperties}
+                >
+                  <div>
+                    <strong>{totalTarget ? `${overallPct}%` : "—"}</strong>
+                    <span>Overall Progress</span>
                   </div>
                 </div>
-              </Card>
-            );
-          })}
-        </div>
-      ) : (
-        <EmptyState
-          title="No savings goals yet"
-          description="Create a goal for an emergency fund, a trip, or anything you are saving toward."
-          action={<Button onClick={() => setOpen(true)}>Create goal</Button>}
-        />
-      )}
-      <div className="mt-[18px] grid gap-[18px] xl:grid-cols-[minmax(0,1.45fr)_minmax(300px,.75fr)]">
-        <Card className="p-[22px]">
-          <CardHead
-            title="Goal contribution history"
-            description="Small deposits create momentum."
-            action={
-              <Button
-                variant="secondary"
-                disabled={!list.some((goal) => goal.isActive && goal.savedAmountMinor < goal.targetAmountMinor)}
-                onClick={() =>
-                  setContribute(
-                    list.find((goal) => goal.isActive && goal.savedAmountMinor < goal.targetAmountMinor) ?? null,
-                  )
-                }
-              >
-                Add contribution
-              </Button>
-            }
-          />
-          {rows.length ? (
-            rows.map((item) => (
-              <div
-                key={item.id}
-                className="grid grid-cols-[42px_minmax(0,1fr)_auto] items-center gap-2.5 border-b border-[var(--border)] py-3 last:border-0"
-              >
-                <span className="premium-icon-tile size-[38px] rounded-xl">
-                  <ArrowUpRight size={16} aria-hidden="true" />
-                </span>
-                <div>
-                  <b className="block text-xs">{item.goalName ?? "Goal"}</b>
-                  <small className="mt-0.5 block text-[var(--muted-foreground)]">
-                    {item.source === "MANUAL" ? "Manual contribution" : item.source} ·{" "}
-                    {dateTime(item.contributedAt)}
-                  </small>
+                <div className="sg31-insight-list">
+                  <div className="sg31-insight-line">
+                    <div className="sg31-insight-icon">
+                      <TrendingUp />
+                    </div>
+                    <div>
+                      <b>{money(remaining, currency)}</b>
+                      <small>Left to save</small>
+                    </div>
+                  </div>
+                  <div className="sg31-insight-line">
+                    <div className="sg31-insight-icon">
+                      <CalendarDays />
+                    </div>
+                    <div>
+                      <b>{nextContributionHint}</b>
+                      <small>{rows[0] ? "Latest contribution" : "Next contribution"}</small>
+                    </div>
+                  </div>
+                  <div className="sg31-insight-line">
+                    <div className="sg31-insight-icon">
+                      <BarChart3 />
+                    </div>
+                    <div>
+                      <b>{avgMonthlyNeeded ? money(avgMonthlyNeeded, currency) : "—"}</b>
+                      <small>Avg. monthly to reach goals</small>
+                    </div>
+                  </div>
                 </div>
-                <span className="text-xs font-extrabold text-[var(--primary)]">
-                  {signedMoney(item.amountMinor, currency, "INCOME")}
-                </span>
               </div>
-            ))
-          ) : (
-            <p className="py-6 text-sm text-[var(--muted-foreground)]">
-              Contributions will appear here after you add money to a goal.
-            </p>
-          )}
-        </Card>
-        <Card className="p-[22px]">
-          <CardHead title="Goal coach" description="Premium planning assistant" action={<ProLabel />} />
-          <Insight
-            gold
-            icon={<Sparkles size={17} aria-hidden="true" />}
-            title={
-              list[0]
-                ? `${list[0].name} can finish earlier`
-                : "Keep a steady monthly amount"
-            }
-            body={
-              list[0]
-                ? `Adding a little more each month could finish ${list[0].name} weeks sooner without stretching this month’s budget.`
-                : "Adding a little more each month can finish your first goal weeks sooner without stretching this month’s budget."
-            }
-          />
-        </Card>
-      </div>
+            </article>
+          </section>
+
+          <section className="sg31-panel sg31-goals">
+            <div className="sg31-panel-head" style={{ paddingLeft: 0, paddingRight: 0 }}>
+              <div>
+                <h3>Active Savings Goals</h3>
+                <p>Track every target, deadline and remaining amount.</p>
+              </div>
+              <button type="button" className="sg31-ghost" onClick={() => setManageOpen(true)}>
+                Manage goals
+              </button>
+            </div>
+            {list.length ? (
+              <div className="sg31-goalgrid">
+                {list.map((goal, index) => {
+                  const tone = goalTone(goal.name, index);
+                  const pct = Math.min(
+                    100,
+                    Math.round((goal.savedAmountMinor / Math.max(1, goal.targetAmountMinor)) * 100),
+                  );
+                  const left = Math.max(0, goal.targetAmountMinor - goal.savedAmountMinor);
+                  const status = goalStatus(goal);
+                  return (
+                    <article className={`sg31-goal ${tone}`} key={goal.id}>
+                      <div className="sg31-goal-top">
+                        <div className="sg31-goal-icon">{goalIconNode(goal.name, goal.icon)}</div>
+                        <span className={`sg31-percent${percentTone(pct, tone)}`}>{pct}%</span>
+                      </div>
+                      <h4>{goal.name}</h4>
+                      <div className="desc">{goalDescription(goal)}</div>
+                      <div className="amount">
+                        {money(goal.savedAmountMinor, goal.currency)}{" "}
+                        <span>of {money(goal.targetAmountMinor, goal.currency)}</span>
+                      </div>
+                      <div className="sg31-progress">
+                        <i style={{ width: `${pct}%` }} />
+                      </div>
+                      <div className="sg31-goal-meta">
+                        <b>
+                          {status === "completed"
+                            ? "Goal reached"
+                            : `${money(left, goal.currency)} remaining`}
+                        </b>
+                        <span>{Math.max(0, 100 - pct)}% left</span>
+                      </div>
+                      <div className="sg31-goal-actions">
+                        {status !== "completed" && status !== "paused" ? (
+                          <button type="button" className="primary" onClick={() => setContribute(goal)}>
+                            Contribute
+                          </button>
+                        ) : status === "paused" ? (
+                          <button
+                            type="button"
+                            className="primary"
+                            disabled={lifecycle.isPending}
+                            onClick={() => lifecycle.mutate({ id: goal.id, body: { isActive: true } })}
+                          >
+                            Resume
+                          </button>
+                        ) : (
+                          <button type="button" className="primary" onClick={() => setEditing(goal)}>
+                            Details
+                          </button>
+                        )}
+                        <button type="button" onClick={() => setEditing(goal)}>
+                          Details
+                        </button>
+                      </div>
+                    </article>
+                  );
+                })}
+              </div>
+            ) : (
+              <EmptyState
+                title="No savings goals yet"
+                description="Create a goal for an emergency fund, a trip, or anything you are saving toward."
+                action={
+                  <Button onClick={openCreate}>
+                    <Plus size={16} /> Create goal
+                  </Button>
+                }
+              />
+            )}
+          </section>
+
+          <section className="sg31-bottom">
+            <article className="sg31-panel">
+              <div className="sg31-panel-head">
+                <div>
+                  <h3>Recent Contributions</h3>
+                  <p>Your latest deposits across savings goals.</p>
+                </div>
+                <button type="button" className="sg31-ghost" onClick={() => openContribute()}>
+                  View all
+                </button>
+              </div>
+              <div className="sg31-history">
+                {rows.length ? (
+                  rows.slice(0, 6).map((item) => (
+                    <HistoryRow key={item.id} item={item} goals={list} currency={currency} />
+                  ))
+                ) : (
+                  <p className="sg31-empty">Contributions will appear here after you add money to a goal.</p>
+                )}
+              </div>
+            </article>
+
+            <article className="sg31-panel">
+              <div className="sg31-panel-head">
+                <div>
+                  <h3>Quick Actions</h3>
+                  <p>Common goal controls.</p>
+                </div>
+              </div>
+              <div className="sg31-actions">
+                <button type="button" className="sg31-action" onClick={openCreate}>
+                  <span className="sg31-miniicon">
+                    <Plus />
+                  </span>
+                  <span>
+                    <b>Create a new goal</b>
+                    <small>Start another savings target</small>
+                  </span>
+                  <ArrowRight />
+                </button>
+                <button type="button" className="sg31-action" onClick={() => openContribute()}>
+                  <span className="sg31-miniicon">
+                    <Wallet />
+                  </span>
+                  <span>
+                    <b>Add contribution</b>
+                    <small>Put money toward a goal</small>
+                  </span>
+                  <ArrowRight />
+                </button>
+                <button type="button" className="sg31-action" onClick={() => router.push("/reports")}>
+                  <span className="sg31-miniicon">
+                    <TrendingUp />
+                  </span>
+                  <span>
+                    <b>View savings analytics</b>
+                    <small>Explore progress and trends</small>
+                  </span>
+                  <ArrowRight />
+                </button>
+                <button type="button" className="sg31-action" onClick={() => setManageOpen(true)}>
+                  <span className="sg31-miniicon">
+                    <Target />
+                  </span>
+                  <span>
+                    <b>Manage goals</b>
+                    <small>Edit, pause or delete goals</small>
+                  </span>
+                  <ArrowRight />
+                </button>
+              </div>
+              <div className="sg31-premium-strip">
+                <div className="sg31-miniicon">
+                  <Gem />
+                </div>
+                <div>
+                  <b>Go further with Premium</b>
+                  <small>Get advanced insights, smart recommendations and more.</small>
+                </div>
+                <button type="button" className="sg31-upgrade" onClick={() => router.push("/premium")}>
+                  Upgrade Now
+                </button>
+              </div>
+            </article>
+          </section>
+        </>
+      )}
+
       <Modal open={open} onClose={() => setOpen(false)} title="Create savings goal">
         <GoalForm
           currency={currency}
@@ -309,6 +619,7 @@ export function GoalsView() {
           }}
         />
       </Modal>
+
       <Modal open={Boolean(editing)} onClose={() => setEditing(null)} title="Edit savings goal">
         {editing ? (
           <GoalForm
@@ -322,12 +633,56 @@ export function GoalsView() {
             }}
           />
         ) : null}
+        {editing ? (
+          <div className="mt-4 flex flex-wrap gap-2 border-t border-[var(--border)] pt-4">
+            {editing.isActive && goalStatus(editing) !== "completed" ? (
+              <>
+                <Button
+                  variant="secondary"
+                  disabled={lifecycle.isPending}
+                  onClick={() => lifecycle.mutate({ id: editing.id, body: { isActive: false } })}
+                >
+                  <Pause size={16} /> Pause
+                </Button>
+                <Button
+                  variant="secondary"
+                  disabled={lifecycle.isPending}
+                  onClick={() =>
+                    lifecycle.mutate({
+                      id: editing.id,
+                      body: { isActive: false, notes: editing.notes ?? "Completed" },
+                    })
+                  }
+                >
+                  <Check size={16} /> Complete
+                </Button>
+              </>
+            ) : goalStatus(editing) !== "completed" ? (
+              <Button
+                variant="secondary"
+                disabled={lifecycle.isPending}
+                onClick={() => lifecycle.mutate({ id: editing.id, body: { isActive: true } })}
+              >
+                <Play size={16} /> Resume
+              </Button>
+            ) : null}
+            <Button variant="secondary" onClick={() => setContribute(editing)}>
+              <Wallet size={16} /> Contribute
+            </Button>
+            <Button
+              variant="ghost"
+              className="hover:text-[var(--danger)]"
+              onClick={() => {
+                setDeleting(editing);
+              }}
+            >
+              <Trash2 size={16} /> Delete
+            </Button>
+          </div>
+        ) : null}
       </Modal>
-      <Modal
-        open={Boolean(contribute)}
-        onClose={() => setContribute(null)}
-        title="Add contribution"
-      >
+
+      <Modal open={Boolean(contribute)} onClose={() => setContribute(null)} title="Add contribution">
         {contribute ? (
           <ContributeForm
             goal={contribute}
@@ -350,6 +705,55 @@ export function GoalsView() {
           />
         ) : null}
       </Modal>
+
+      <Modal open={manageOpen} onClose={() => setManageOpen(false)} title="Manage goals">
+        <div className="grid gap-3">
+          {list.length ? (
+            list.map((goal) => {
+              const status = goalStatus(goal);
+              return (
+                <div
+                  key={goal.id}
+                  className="flex items-center gap-3 rounded-xl border border-[var(--border)] bg-[var(--surface-2)] px-3 py-3"
+                >
+                  <div className="min-w-0 flex-1">
+                    <div className="text-sm font-bold">{goal.name}</div>
+                    <div className="text-xs text-[var(--muted-foreground)]">
+                      {money(goal.savedAmountMinor, goal.currency)} of{" "}
+                      {money(goal.targetAmountMinor, goal.currency)} · {status}
+                    </div>
+                  </div>
+                  <Button
+                    variant="secondary"
+                    onClick={() => {
+                      setManageOpen(false);
+                      setEditing(goal);
+                    }}
+                  >
+                    <Pencil size={14} /> Edit
+                  </Button>
+                  <Button variant="secondary" onClick={() => setDeleting(goal)}>
+                    Delete
+                  </Button>
+                </div>
+              );
+            })
+          ) : (
+            <p className="text-sm text-[var(--muted-foreground)]">No goals yet.</p>
+          )}
+          <div className="flex justify-end">
+            <Button
+              onClick={() => {
+                setManageOpen(false);
+                openCreate();
+              }}
+            >
+              <Plus size={16} /> New goal
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
       <ConfirmDialog
         open={Boolean(deleting)}
         title={`Delete ${deleting?.name ?? "goal"}?`}
@@ -358,6 +762,32 @@ export function GoalsView() {
         onClose={() => setDeleting(null)}
         onConfirm={() => deleting && remove.mutate(deleting.id)}
       />
+    </div>
+  );
+}
+
+function HistoryRow({
+  item,
+  goals,
+  currency,
+}: {
+  item: GoalContribution;
+  goals: SavingsGoal[];
+  currency: string;
+}) {
+  const goal = goals.find((entry) => entry.id === item.goalId);
+  const name = item.goalName ?? goal?.name ?? "Goal";
+  return (
+    <div className="sg31-history-row">
+      <div className="sg31-miniicon">{goalIconNode(name, goal?.icon ?? "*")}</div>
+      <div>
+        <b>{name}</b>
+        <small>
+          {formatShortDate(item.contributedAt)} ·{" "}
+          {item.source === "MANUAL" ? "Manual contribution" : item.source}
+        </small>
+      </div>
+      <strong>{signedMoney(item.amountMinor, currency, "INCOME")}</strong>
     </div>
   );
 }
@@ -376,6 +806,7 @@ function GoalForm({
   const [target, setTarget] = useState(initial ? String(initial.targetAmountMinor / 100) : "");
   const [saved, setSaved] = useState(initial ? String(initial.savedAmountMinor / 100) : "0");
   const [date, setDate] = useState(initial?.targetDate?.slice(0, 7) ?? "");
+  const [notes, setNotes] = useState(initial?.notes ?? "");
   const [error, setError] = useState("");
   const mutation = useMutation({
     mutationFn: () => {
@@ -384,10 +815,9 @@ function GoalForm({
         icon: icon.trim() || "*",
         currency,
         targetAmountMinor: majorToMinor(target),
-        ...(initial
-          ? {}
-          : { savedAmountMinor: saved ? majorToMinor(saved) : 0 }),
+        ...(initial ? {} : { savedAmountMinor: saved ? majorToMinor(saved) : 0 }),
         targetDate: date || null,
+        notes: notes.trim() || null,
       };
       return initial ? goalService.update(initial.id, body) : goalService.create(body);
     },
@@ -408,12 +838,7 @@ function GoalForm({
         <Input required value={name} onChange={(event) => setName(event.target.value)} placeholder="e.g. New car" />
       </Field>
       <Field label="Icon">
-        <Input
-          value={icon}
-          maxLength={8}
-          onChange={(event) => setIcon(event.target.value)}
-          placeholder="*"
-        />
+        <Input value={icon} maxLength={8} onChange={(event) => setIcon(event.target.value)} placeholder="*" />
       </Field>
       <Field label="Target amount">
         <Input required inputMode="decimal" value={target} onChange={(event) => setTarget(event.target.value)} />
@@ -425,6 +850,9 @@ function GoalForm({
       )}
       <Field label="Target date">
         <Input type="month" value={date} onChange={(event) => setDate(event.target.value)} />
+      </Field>
+      <Field label="Notes">
+        <Input value={notes} onChange={(event) => setNotes(event.target.value)} placeholder="Optional description" />
       </Field>
       {error ? <p className="col-span-full text-sm text-[var(--danger)]">{error}</p> : null}
       <div className="col-span-full flex justify-end">
