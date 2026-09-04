@@ -1,29 +1,35 @@
 "use client";
 
 import type { Account, Transaction } from "@hisaab/types";
-import { Button, Card, Field, Input, Select } from "@hisaab/ui";
+import { Button, Field, Input, Select } from "@hisaab/ui";
 import { majorToMinor } from "@hisaab/validation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
-  AlertTriangle,
   ArrowDownRight,
   ArrowLeftRight,
-  ArrowRight,
   ArrowUpRight,
   Banknote,
+  BarChart3,
+  Building2,
+  ChevronRight,
   Download,
   Eye,
   EyeOff,
   FileText,
+  Landmark,
+  Moon,
   MoreVertical,
   Plus,
   ShieldCheck,
-  Sparkles,
+  ShoppingBag,
+  Sun,
   TrendingDown,
+  Wallet,
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useTheme } from "next-themes";
+import { useState, useSyncExternalStore, type ReactNode } from "react";
 import {
   Area,
   AreaChart,
@@ -38,7 +44,6 @@ import {
 } from "recharts";
 import { toast } from "sonner";
 import { Modal } from "@/components/layout/modal";
-import { PageHeader } from "@/components/layout/page-header";
 import { EmptyState, ErrorState, PageSkeleton } from "@/components/layout/states";
 import { ApiError } from "@/lib/api-client";
 import {
@@ -64,6 +69,7 @@ import { dashboardService } from "@/services/dashboard.service";
 import { profileService } from "@/services/profile.service";
 import { reportService } from "@/services/report.service";
 import { transactionService } from "@/services/transaction.service";
+import "../../app/bank23.css";
 
 function failMessage(error: unknown) {
   return error instanceof ApiError ? error.message : "Could not save. Try again.";
@@ -155,27 +161,6 @@ function buildBalanceTrend(totalMinor: number, transactions: Transaction[], bank
   });
 }
 
-function DeltaNote({ value, invert }: { value: number; invert?: boolean }) {
-  const positive = invert ? value < 0 : value > 0;
-  const negative = invert ? value > 0 : value < 0;
-  const Icon = positive ? ArrowUpRight : negative ? ArrowDownRight : ArrowLeftRight;
-  return (
-    <span
-      className={
-        positive
-          ? "text-[var(--primary)]"
-          : negative
-            ? "text-[var(--warning)]"
-            : "text-[var(--muted-foreground)]"
-      }
-    >
-      <Icon size={12} className="inline me-0.5" aria-hidden="true" />
-      {value > 0 ? "+" : ""}
-      {value}%
-    </span>
-  );
-}
-
 function isoToday() {
   return localDateKey(new Date());
 }
@@ -215,68 +200,6 @@ function accountLabelForTxn(txn: Transaction, accounts: Account[]) {
   return txn.accountName ?? "Bank account";
 }
 
-type BankInsight = {
-  id: string;
-  tone: "danger" | "warning" | "violet" | "info";
-  title: string;
-  body: string;
-  icon: typeof AlertTriangle;
-};
-
-function buildBankInsights(
-  data: {
-    incomeThisMonth: number;
-    spentThisMonth: number;
-    netSavings: number;
-  },
-  expenseDelta: number,
-  bankTxns: Transaction[],
-  currency: string,
-): BankInsight[] {
-  const insights: BankInsight[] = [];
-  if (expenseDelta >= 50 && data.spentThisMonth > 0) {
-    insights.push({
-      id: "spending",
-      tone: "danger",
-      title: "High spending alert",
-      body: `Expenses are ${expenseDelta}% higher than last month. Review recent outflows to stay on track.`,
-      icon: AlertTriangle,
-    });
-  }
-  if (data.incomeThisMonth === 0) {
-    insights.push({
-      id: "salary",
-      tone: "warning",
-      title: "Salary not credited",
-      body: "No salary or income was detected on linked bank accounts this month.",
-      icon: Banknote,
-    });
-  }
-  const largest = bankTxns
-    .filter((item) => item.type === "EXPENSE")
-    .sort((left, right) => right.amountMinor - left.amountMinor)[0];
-  if (largest) {
-    insights.push({
-      id: "largest",
-      tone: "violet",
-      title: "Largest expense",
-      body: `${largest.merchant || largest.categoryName || "Expense"} of ${money(largest.amountMinor, currency)} was your biggest outflow.`,
-      icon: TrendingDown,
-    });
-  }
-  insights.push({
-    id: "projected",
-    tone: "info",
-    title: "Projected balance",
-    body:
-      data.netSavings >= 0
-        ? `You are on track to save ${money(data.netSavings, currency)} this month if spending stays steady.`
-        : `You may close the month with net savings of ${money(data.netSavings, currency)} at the current pace.`,
-    icon: Sparkles,
-  });
-  return insights;
-}
-
 function balanceTrendForRange(
   range: BalanceRange,
   totalMinor: number,
@@ -291,6 +214,62 @@ function balanceTrendForRange(
   return buildMonthlyBalanceTrend(totalMinor, monthly, "all");
 }
 
+function bankLogoClass(label: string) {
+  const tone = bankBrandTone(label);
+  if (tone === "kotak" || tone === "hdfc" || tone === "axis") return "red";
+  if (tone === "sbi") return "green";
+  if (tone === "icici") return "";
+  return "green";
+}
+
+function activityTone(index: number) {
+  return (["", "gold", "purple"] as const)[index % 3] ?? "";
+}
+
+function activityIcon(name: string, index: number): ReactNode {
+  const key = name.toLowerCase();
+  if (key.includes("home") || key.includes("rent") || key.includes("housing")) {
+    return <Building2 aria-hidden />;
+  }
+  if (key.includes("shop") || key.includes("amazon") || key.includes("basket")) {
+    return <ShoppingBag aria-hidden />;
+  }
+  if (index % 3 === 1) return <Building2 aria-hidden />;
+  if (index % 3 === 2) return <ShoppingBag aria-hidden />;
+  return <Banknote aria-hidden />;
+}
+
+function DeltaText({ value, invert }: { value: number; invert?: boolean }) {
+  const positive = invert ? value < 0 : value > 0;
+  const negative = invert ? value > 0 : value < 0;
+  const arrow = positive ? "↑" : negative ? "↓" : "→";
+  return (
+    <>
+      {arrow} {Math.abs(value)}% vs last month
+    </>
+  );
+}
+
+function BankThemeButton() {
+  const { theme, setTheme } = useTheme();
+  const mounted = useSyncExternalStore(
+    () => () => undefined,
+    () => true,
+    () => false,
+  );
+  const dark = mounted && theme === "dark";
+  return (
+    <button
+      type="button"
+      className="bank23-iconbtn"
+      aria-label={dark ? "Switch to light theme" : "Switch to dark theme"}
+      onClick={() => setTheme(dark ? "light" : "dark")}
+    >
+      {dark ? <Moon /> : <Sun />}
+    </button>
+  );
+}
+
 export function BankView() {
   const router = useRouter();
   const client = useQueryClient();
@@ -300,7 +279,6 @@ export function BankView() {
   const [editing, setEditing] = useState<Account | null>(null);
   const [menuId, setMenuId] = useState<string | null>(null);
   const [balanceRange, setBalanceRange] = useState<BalanceRange>("1M");
-  const [chartsReady] = useState(true);
 
   const profile = useQuery({ queryKey: ["profile"], queryFn: () => profileService.get() });
   const banks = useQuery({ queryKey: ["bank-accounts"], queryFn: () => accountService.listBanks() });
@@ -364,6 +342,7 @@ export function BankView() {
     expense: item.expense,
     savings: item.income - item.expense,
   }));
+  const hasCashFlow = cashFlowChart.some((item) => item.income > 0 || item.expense > 0);
   const balanceTrend = balanceTrendForRange(
     balanceRange,
     totalMinor,
@@ -372,8 +351,6 @@ export function BankView() {
     bankIds,
   );
   const balanceDelta = balanceTrendPct(balanceTrend);
-  const isOverdrawn = totalMinor < 0;
-  const insights = buildBankInsights(data, expenseDelta, bankTxns, currency);
   const primaryId =
     accounts.find((item) => (item as Account & { catalogId?: string | null }).catalogId)?.id ??
     accounts[0]?.id;
@@ -396,128 +373,195 @@ export function BankView() {
   }
 
   return (
-    <div>
-      <PageHeader
-        title="Bank"
-        description="Your complete view of balances, cash flow, and activity across linked bank accounts."
-        actions={
-          <Button variant="secondary" onClick={openAddForm}>
-            <Plus size={14} />
-            Add Bank Account
-          </Button>
-        }
-      />
+    <div className="bank23">
+      <header className="bank23-top">
+        <div className="bank23-title-ico" aria-hidden>
+          <Landmark />
+        </div>
+        <div className="bank23-title">
+          <h2>Bank</h2>
+          <p>Your complete view of balances, cash flow, and activity across linked bank accounts.</p>
+        </div>
+        <div className="bank23-top-actions">
+          <button
+            type="button"
+            className="bank23-mainbtn"
+            onClick={() => router.push("/transactions?action=add")}
+          >
+            <Plus />
+            <span>Add transaction</span>
+          </button>
+          <BankThemeButton />
+        </div>
+      </header>
 
-      <div className="bank-kpi-row">
-        <Card className={`bank-kpi-total${isOverdrawn ? " is-overdrawn" : ""}`}>
-          <small>Total bank balance</small>
-          <div className="bank-kpi-total-row">
-            <strong className={isOverdrawn ? "is-negative" : undefined}>
-              {hideBalance ? "₹ ••••••" : money(totalMinor, currency)}
-            </strong>
-            <button
-              type="button"
-              className="bank-hero-eye"
-              aria-label={hideBalance ? "Show balance" : "Hide balance"}
-              onClick={() => setHideBalance((value) => !value)}
-            >
-              {hideBalance ? <EyeOff size={16} /> : <Eye size={16} />}
-            </button>
-          </div>
-          {isOverdrawn ? (
-            <div className="bank-overdrawn">
-              <AlertTriangle size={14} aria-hidden="true" />
-              <div>
-                <strong>Overdrawn</strong>
-                <p>
-                  Your account balance is below zero.{" "}
-                  <button
-                    type="button"
-                    className="bank-overdrawn-link"
-                    onClick={() =>
-                      document.getElementById("bank-accounts")?.scrollIntoView({ behavior: "smooth" })
-                    }
-                  >
-                    View details
-                    <ArrowRight size={12} aria-hidden="true" />
-                  </button>
-                </p>
-              </div>
-            </div>
-          ) : null}
-          <span className="bank-kpi-meta">
-            Across {accounts.length} linked account{accounts.length === 1 ? "" : "s"} · Last updated{" "}
-            {lastUpdatedLabel(accounts)}
-          </span>
-        </Card>
-        <Card className="bank-kpi">
-          <small>Income this month</small>
-          <strong>{money(data.incomeThisMonth, currency)}</strong>
-          <span><DeltaNote value={incomeDelta} /> vs last month</span>
-        </Card>
-        <Card className="bank-kpi is-expense">
-          <small>Expenses this month</small>
-          <strong>{money(data.spentThisMonth, currency)}</strong>
-          <span><DeltaNote value={expenseDelta} invert /> vs last month</span>
-        </Card>
-        <Card className="bank-kpi">
-          <small>Net savings</small>
-          <strong className={data.netSavings < 0 ? "is-negative" : undefined}>
-            {money(data.netSavings, currency)}
-          </strong>
-          <span><DeltaNote value={savingsDelta} /> vs last month</span>
-        </Card>
-        <Card className="bank-kpi">
-          <small>Avg. monthly balance</small>
-          <strong>{money(avgBalance, currency)}</strong>
-          <span><DeltaNote value={avgDelta} /> vs last month</span>
-        </Card>
+      <div className="bank23-subactions">
+        <button type="button" className="bank23-addbank" onClick={openAddForm}>
+          <Plus />
+          <span>Add Bank Account</span>
+        </button>
       </div>
 
-      <div className="bank-board">
-        <div className="bank-board-main">
-          <Card className="bank-accounts" id="bank-accounts">
-            <header>
+      <section className="bank23-kpis">
+        <article className="bank23-kpi green">
+          <i className="bank23-kpi-ico" aria-hidden>
+            <Wallet />
+          </i>
+          <label>Total Bank Balance</label>
+          <strong>{hideBalance ? "₹ ••••••" : money(totalMinor, currency)}</strong>
+          <small>
+            Across {accounts.length} linked account{accounts.length === 1 ? "" : "s"}
+            <br />
+            Updated {lastUpdatedLabel(accounts)}
+          </small>
+          <button
+            type="button"
+            className="bank23-eye"
+            aria-label={hideBalance ? "Show balance" : "Hide balance"}
+            onClick={() => setHideBalance((value) => !value)}
+          >
+            {hideBalance ? <EyeOff /> : <Eye />}
+          </button>
+        </article>
+        <article className="bank23-kpi">
+          <i className="bank23-kpi-ico" aria-hidden>
+            <ArrowDownRight />
+          </i>
+          <label>Income This Month</label>
+          <strong>{money(data.incomeThisMonth, currency)}</strong>
+          <small>
+            <DeltaText value={incomeDelta} />
+          </small>
+        </article>
+        <article className="bank23-kpi gold">
+          <i className="bank23-kpi-ico" aria-hidden>
+            <ArrowUpRight />
+          </i>
+          <label>Expenses This Month</label>
+          <strong>{money(data.spentThisMonth, currency)}</strong>
+          <small>
+            <DeltaText value={expenseDelta} invert />
+          </small>
+        </article>
+        <article className={`bank23-kpi${data.netSavings < 0 ? " red" : ""}`}>
+          <i className="bank23-kpi-ico" aria-hidden>
+            <TrendingDown />
+          </i>
+          <label>Net Savings</label>
+          <strong>{money(data.netSavings, currency)}</strong>
+          <small>
+            <DeltaText value={savingsDelta} />
+          </small>
+        </article>
+        <article className="bank23-kpi blue">
+          <i className="bank23-kpi-ico" aria-hidden>
+            <BarChart3 />
+          </i>
+          <label>Avg. Monthly Balance</label>
+          <strong>{money(avgBalance, currency)}</strong>
+          <small>
+            <DeltaText value={avgDelta} />
+          </small>
+        </article>
+      </section>
+
+      <section className="bank23-grid">
+        <main className="bank23-main">
+          <article className="bank23-card bank23-pad" id="bank-accounts">
+            <div className="bank23-cardhead">
               <div>
-                <h2>Your Bank Accounts</h2>
-                <small>Balances, inflow and outflow for the current month.</small>
+                <h3>Your Bank Accounts</h3>
+                <p>Balances, inflow and outflow for the current month.</p>
               </div>
-            </header>
+            </div>
             {accounts.length ? (
               <>
-                <div className="bank-account-table-head" aria-hidden="true">
+                <div className="bank23-tablehdr" aria-hidden>
                   <span>Account</span>
-                  <span>Current balance</span>
-                  <span>Monthly inflow</span>
-                  <span>Monthly outflow</span>
-                  <span>Last updated</span>
+                  <span>Current Balance</span>
+                  <span>Monthly Inflow</span>
+                  <span>Monthly Outflow</span>
+                  <span>Last Updated</span>
                   <span />
                 </div>
-                <ul>
-                  {accounts.map((account) => (
-                    <BankAccountRow
-                      key={account.id}
-                      account={account}
-                      currency={currency}
-                      primary={account.id === primaryId}
-                      flow={accountMonthFlow(account.id, bankTxns)}
-                      menuOpen={menuId === account.id}
-                      onMenu={() => setMenuId(menuId === account.id ? null : account.id)}
-                      onEdit={() => {
-                        setMenuId(null);
-                        setEditing(account);
-                      }}
-                      onAddMoney={() => {
-                        setMenuId(null);
-                        router.push(bankTransactionHref(account.id, "INCOME"));
-                      }}
-                      onRecordExpense={() => {
-                        setMenuId(null);
-                        router.push(bankTransactionHref(account.id, "EXPENSE"));
-                      }}
-                    />
-                  ))}
-                </ul>
+                {accounts.map((account) => {
+                  const label = bankLabel(account);
+                  const last4 = bankLast4(account.name);
+                  const flow = accountMonthFlow(account.id, bankTxns);
+                  const negative = account.currentBalanceMinor < 0;
+                  return (
+                    <div key={account.id} className="bank23-row">
+                      <div className="bank23-bank">
+                        <i className={`bank23-banklogo ${bankLogoClass(label)}`.trim()}>
+                          {bankAbbrev(label)}
+                        </i>
+                        <div>
+                          <b>
+                            {label}
+                            {account.id === primaryId ? (
+                              <span className="bank23-primary">Primary</span>
+                            ) : null}
+                          </b>
+                          <small>
+                            {bankSubtype(account)}
+                            {last4 ? ` •••• ${last4}` : ""}
+                          </small>
+                        </div>
+                      </div>
+                      <div className={`bank23-cell${negative ? " neg" : ""}`}>
+                        <b>{money(account.currentBalanceMinor, currency)}</b>
+                      </div>
+                      <div className="bank23-cell">
+                        <b>{money(flow.inflow, currency)}</b>
+                      </div>
+                      <div className="bank23-cell">
+                        <b>{money(flow.outflow, currency)}</b>
+                      </div>
+                      <div className="bank23-cell">
+                        <b>{formatAccountUpdated(account.updatedAt)}</b>
+                      </div>
+                      <button
+                        type="button"
+                        className="bank23-more"
+                        aria-label="Account options"
+                        onClick={() => setMenuId(menuId === account.id ? null : account.id)}
+                      >
+                        <MoreVertical />
+                      </button>
+                      {menuId === account.id ? (
+                        <div className="bank23-menu-pop">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setMenuId(null);
+                              router.push(bankTransactionHref(account.id, "INCOME"));
+                            }}
+                          >
+                            Add money
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setMenuId(null);
+                              router.push(bankTransactionHref(account.id, "EXPENSE"));
+                            }}
+                          >
+                            Record expense
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setMenuId(null);
+                              setEditing(account);
+                            }}
+                          >
+                            Edit account
+                          </button>
+                        </div>
+                      ) : null}
+                    </div>
+                  );
+                })}
               </>
             ) : (
               <EmptyState
@@ -531,261 +575,274 @@ export function BankView() {
                 }
               />
             )}
-            <button type="button" className="bank-add-link" onClick={openAddForm}>
-              <Plus size={14} />
-              Add New Bank Account
+            <button type="button" className="bank23-addrow" onClick={openAddForm}>
+              <Plus />
+              <span>Add New Bank Account</span>
             </button>
-          </Card>
+          </article>
 
-          <Card className="bank-chart">
-            <header>
+          <article className="bank23-card bank23-cash">
+            <div className="bank23-cardhead">
               <div>
-                <h2>Monthly Cash Flow</h2>
-                <small>Income, expense and net savings by month.</small>
+                <h3>Monthly Cash Flow</h3>
+                <p>Income, expense and net savings by month.</p>
               </div>
-            </header>
-            <div className="bank-chart-body">
-              {chartsReady ? (
-                <ResponsiveContainer width="100%" height={280}>
-                  <ComposedChart
-                    data={cashFlowChart}
-                    margin={{ top: 8, right: 12, left: 4, bottom: 4 }}
-                  >
-                    <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
-                    <XAxis
-                      dataKey="label"
-                      tick={{ fontSize: 11, fill: "var(--muted-foreground)" }}
-                      axisLine={false}
-                      tickLine={false}
-                      interval="preserveStartEnd"
-                      minTickGap={16}
-                    />
-                    <YAxis
-                      width={56}
-                      tick={{ fontSize: 10, fill: "var(--muted-foreground)" }}
-                      axisLine={false}
-                      tickLine={false}
-                      tickFormatter={(value) =>
-                        new Intl.NumberFormat("en", {
-                          notation: "compact",
-                          maximumFractionDigits: 1,
-                        }).format(Number(value) / 100)
-                      }
-                    />
-                    <Tooltip
-                      formatter={(value, name) => [
-                        money(Number(value ?? 0), currency),
-                        name === "income"
-                          ? "Income"
-                          : name === "expense"
-                            ? "Expense"
-                            : "Net savings",
-                      ]}
-                    />
-                    <Bar dataKey="income" fill="#2d8455" radius={[4, 4, 0, 0]} barSize={18} />
-                    <Bar dataKey="expense" fill="#e5484d" radius={[4, 4, 0, 0]} barSize={18} />
-                    <Line
-                      type="monotone"
-                      dataKey="savings"
-                      stroke="#f0f4f8"
-                      strokeWidth={2}
-                      dot={false}
-                    />
-                  </ComposedChart>
-                </ResponsiveContainer>
-              ) : (
-                <div className="bank-chart-shell" aria-hidden="true" />
-              )}
             </div>
-            <footer className="bank-chart-foot">
-              <span>
-                <small>Total income</small>
-                <strong>{money(data.incomeThisMonth, currency)}</strong>
-              </span>
-              <span>
-                <small>Total expenses</small>
-                <strong>{money(data.spentThisMonth, currency)}</strong>
-              </span>
-              <span>
-                <small>Net savings</small>
-                <strong className={data.netSavings < 0 ? "is-negative" : undefined}>
-                  {money(data.netSavings, currency)}
-                </strong>
-              </span>
-            </footer>
-          </Card>
+            <div className="bank23-cashbody">
+              <div className="bank23-art">
+                <div className="bank23-wallet" aria-hidden />
+              </div>
+              {hasCashFlow ? (
+                <div className="bank23-cash-chart">
+                  <ResponsiveContainer width="100%" height={110}>
+                    <ComposedChart data={cashFlowChart} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
+                      <XAxis
+                        dataKey="label"
+                        tick={{ fontSize: 9, fill: "var(--muted-foreground)" }}
+                        axisLine={false}
+                        tickLine={false}
+                      />
+                      <YAxis hide />
+                      <Tooltip
+                        formatter={(value, name) => [
+                          money(Number(value ?? 0), currency),
+                          name === "income"
+                            ? "Income"
+                            : name === "expense"
+                              ? "Expense"
+                              : "Net savings",
+                        ]}
+                      />
+                      <Bar dataKey="income" fill="#2d8455" radius={[4, 4, 0, 0]} barSize={12} />
+                      <Bar dataKey="expense" fill="#e5484d" radius={[4, 4, 0, 0]} barSize={12} />
+                      <Line type="monotone" dataKey="savings" stroke="#36a8ff" strokeWidth={2} dot={false} />
+                    </ComposedChart>
+                  </ResponsiveContainer>
+                </div>
+              ) : (
+                <div className="bank23-empty">
+                  <b>No cash flow data yet</b>
+                  <p>Your income and expenses will appear here once you start adding transactions.</p>
+                </div>
+              )}
+              <div className="bank23-cashstats">
+                <div className="bank23-cstat">
+                  <i aria-hidden>
+                    <Wallet />
+                  </i>
+                  <label>Total Income</label>
+                  <b>{money(data.incomeThisMonth, currency)}</b>
+                </div>
+                <div className="bank23-cstat red">
+                  <i aria-hidden>
+                    <ArrowUpRight />
+                  </i>
+                  <label>Total Expenses</label>
+                  <b>{money(data.spentThisMonth, currency)}</b>
+                </div>
+                <div className={`bank23-cstat${data.netSavings < 0 ? " red" : ""}`}>
+                  <i aria-hidden>
+                    <TrendingDown />
+                  </i>
+                  <label>Net Savings</label>
+                  <b>{money(data.netSavings, currency)}</b>
+                </div>
+              </div>
+            </div>
+          </article>
 
-          <Card className="bank-actions">
-            <h2>Quick Actions</h2>
-            <div className="bank-actions-grid">
-              <QuickAction
-                icon={Banknote}
-                label="Add money"
-                description="Credit income to a bank account"
+          <article className="bank23-card bank23-actions">
+            <h3>Quick Actions</h3>
+            <div className="bank23-actiongrid">
+              <button
+                type="button"
+                className="bank23-action"
                 onClick={() =>
                   accounts[0]
                     ? router.push(bankTransactionHref(accounts[0].id, "INCOME"))
                     : openAddForm()
                 }
-              />
-              <QuickAction
-                icon={ArrowLeftRight}
-                label="Transfer entry"
-                description="Record a bank transfer"
-                onClick={() => router.push("/transactions?action=add")}
-              />
-              <QuickAction
-                icon={Plus}
-                label="Add bank account"
-                description="Link a new bank account"
-                onClick={openAddForm}
-              />
-              <QuickAction
-                icon={Download}
-                label="Download statement"
-                description="Get account statement"
-                onClick={handleDownload}
-              />
-              <QuickAction
-                icon={FileText}
-                label="Account summary"
-                description="Detailed account report"
-                onClick={handleDownload}
-              />
-            </div>
-          </Card>
-        </div>
-
-        <div className="bank-board-side">
-          <Card className="bank-side-chart">
-            <header>
-              <div>
-                <h2>Balance trend</h2>
-                <small>{balanceRange === "1M" ? "This month" : balanceRange}</small>
-              </div>
-              <div className="bank-trend-meta">
-                <strong className={totalMinor < 0 ? "is-negative" : undefined}>
-                  {hideBalance ? "••••" : money(totalMinor, currency)}
-                </strong>
-                <span className={balanceDelta < 0 ? "is-negative" : balanceDelta > 0 ? "is-positive" : undefined}>
-                  {balanceDelta < 0 ? "↓" : balanceDelta > 0 ? "↑" : "—"} {balanceDelta}%
+              >
+                <i aria-hidden>
+                  <Wallet />
+                </i>
+                <span>
+                  <b>Add money</b>
+                  <small>Credit income to a bank account</small>
                 </span>
+                <span className="chev" aria-hidden>
+                  <ChevronRight />
+                </span>
+              </button>
+              <button
+                type="button"
+                className="bank23-action"
+                onClick={() => router.push("/transactions?action=add")}
+              >
+                <i aria-hidden>
+                  <ArrowLeftRight />
+                </i>
+                <span>
+                  <b>Transfer entry</b>
+                  <small>Record a bank transfer</small>
+                </span>
+                <span className="chev" aria-hidden>
+                  <ChevronRight />
+                </span>
+              </button>
+              <button type="button" className="bank23-action" onClick={openAddForm}>
+                <i aria-hidden>
+                  <Landmark />
+                </i>
+                <span>
+                  <b>Add bank account</b>
+                  <small>Link a new bank account</small>
+                </span>
+                <span className="chev" aria-hidden>
+                  <ChevronRight />
+                </span>
+              </button>
+              <button type="button" className="bank23-action" onClick={handleDownload}>
+                <i aria-hidden>
+                  <Download />
+                </i>
+                <span>
+                  <b>Download statement</b>
+                  <small>Get account statement</small>
+                </span>
+                <span className="chev" aria-hidden>
+                  <ChevronRight />
+                </span>
+              </button>
+              <button type="button" className="bank23-action" onClick={handleDownload}>
+                <i aria-hidden>
+                  <FileText />
+                </i>
+                <span>
+                  <b>Account summary</b>
+                  <small>Detailed account report</small>
+                </span>
+                <span className="chev" aria-hidden>
+                  <ChevronRight />
+                </span>
+              </button>
+            </div>
+          </article>
+        </main>
+
+        <aside className="bank23-side">
+          <article className="bank23-card bank23-trend">
+            <div className="bank23-cardhead">
+              <div>
+                <h3>Balance trend</h3>
+                <p>{balanceRange === "1M" ? "This month" : balanceRange}</p>
               </div>
-            </header>
-            <div className="bank-range-tabs">
+              <div className="bank23-trendval">
+                <b>{hideBalance ? "••••" : money(totalMinor, currency)}</b>
+                <em className={balanceDelta >= 0 ? "up" : undefined}>
+                  {balanceDelta < 0 ? "↓" : balanceDelta > 0 ? "↑" : "—"} {Math.abs(balanceDelta)}%
+                </em>
+              </div>
+            </div>
+            <div className="bank23-tabs">
               {BALANCE_RANGES.map((item) => (
                 <button
                   key={item}
                   type="button"
-                  className={balanceRange === item ? "is-active" : undefined}
+                  className={balanceRange === item ? "active" : undefined}
                   onClick={() => setBalanceRange(item)}
                 >
                   {item}
                 </button>
               ))}
             </div>
-            <div className="bank-trend-shell">
-              {chartsReady ? (
-                <ResponsiveContainer width="100%" height={180}>
+            <div className="bank23-chart">
+              <div className="bank23-chart-shell">
+                <ResponsiveContainer width="100%" height={160}>
                   <AreaChart data={balanceTrend} margin={{ top: 4, right: 8, left: 4, bottom: 0 }}>
-                <defs>
-                  <linearGradient id="bankBalanceFill" x1="0" y1="0" x2="0" y2="1">
-                    <stop
-                      offset="0%"
-                      stopColor={balanceDelta < 0 ? "var(--danger)" : "var(--primary)"}
-                      stopOpacity={0.35}
+                    <defs>
+                      <linearGradient id="bank23Area" x1="0" y1="0" x2="0" y2="1">
+                        <stop
+                          offset="0%"
+                          stopColor={balanceDelta < 0 ? "var(--b-red)" : "#2ce67f"}
+                          stopOpacity={0.38}
+                        />
+                        <stop
+                          offset="100%"
+                          stopColor={balanceDelta < 0 ? "var(--b-red)" : "#2ce67f"}
+                          stopOpacity={0}
+                        />
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="2 3" stroke="var(--border)" />
+                    <XAxis
+                      dataKey="label"
+                      tick={{ fontSize: 9, fill: "var(--muted-foreground)" }}
+                      axisLine={false}
+                      tickLine={false}
                     />
-                    <stop
-                      offset="100%"
-                      stopColor={balanceDelta < 0 ? "var(--danger)" : "var(--primary)"}
-                      stopOpacity={0}
+                    <YAxis hide />
+                    <Tooltip formatter={(value) => money(Number(value ?? 0), currency)} />
+                    <Area
+                      type="monotone"
+                      dataKey="balance"
+                      stroke={balanceDelta < 0 ? "var(--b-red)" : "#2be27f"}
+                      fill="url(#bank23Area)"
+                      strokeWidth={2}
                     />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
-                <XAxis
-                  dataKey={balanceRange === "1M" ? "label" : "label"}
-                  tick={{ fontSize: 10 }}
-                  axisLine={false}
-                  tickLine={false}
-                />
-                <YAxis hide />
-                <Tooltip formatter={(value) => money(Number(value ?? 0), currency)} />
-                <Area
-                  type="monotone"
-                  dataKey="balance"
-                  stroke={balanceDelta < 0 ? "var(--danger)" : "var(--primary)"}
-                  fill="url(#bankBalanceFill)"
-                  strokeWidth={2}
-                />
-                </AreaChart>
+                  </AreaChart>
                 </ResponsiveContainer>
-              ) : null}
+              </div>
             </div>
-          </Card>
+          </article>
 
-          <Card className="bank-recent">
-            <header>
+          <article className="bank23-card bank23-activity">
+            <div className="bank23-cardhead">
               <div>
-                <h2>Recent bank activity</h2>
-                <small>Latest transactions on linked accounts.</small>
+                <h3>Recent bank activity</h3>
+                <p>Latest transactions on linked accounts.</p>
               </div>
-            </header>
+            </div>
             {recent.length ? (
-              <ul>
-                {recent.map((item) => (
-                  <li key={item.id}>
-                    <span className="bank-txn-icon" data-tone={item.type === "INCOME" ? "in" : "out"}>
-                      {item.categoryIcon ?? (item.type === "INCOME" ? "+" : "−")}
-                    </span>
-                    <div>
-                      <strong>{item.merchant || item.categoryName || "Transaction"}</strong>
-                      <small>
-                        {accountLabelForTxn(item, accounts)} ·{" "}
-                        {displayDateLong(localDateKey(item.transactionAt))}
-                      </small>
-                    </div>
-                    <b className={item.type === "INCOME" ? "is-in" : "is-out"}>
-                      {signedMoney(item.amountMinor, currency, item.type)}
-                    </b>
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <p className="bank-empty-note">Add a transaction on a bank account to see activity here.</p>
-            )}
-            <Link href="/transactions" className="bank-recent-foot">
-              View all transactions
-              <ArrowRight size={14} aria-hidden="true" />
-            </Link>
-          </Card>
-
-          <Card className="bank-insights">
-            <header>
-              <div>
-                <h2>Smart insights</h2>
-                <small>Alerts and highlights for your bank accounts.</small>
+              <div className="bank23-actlist">
+                {recent.map((item, index) => {
+                  const title = item.merchant || item.categoryName || "Transaction";
+                  return (
+                    <Link key={item.id} href="/transactions" className="bank23-actrow">
+                      <i className={`bank23-actico ${activityTone(index)}`.trim()} aria-hidden>
+                        {activityIcon(title, index)}
+                      </i>
+                      <div>
+                        <b>{title}</b>
+                        <small>
+                          {accountLabelForTxn(item, accounts)}
+                          <br />
+                          {displayDateLong(localDateKey(item.transactionAt))}
+                        </small>
+                      </div>
+                      <strong className={item.type === "INCOME" ? "in" : undefined}>
+                        {signedMoney(item.amountMinor, currency, item.type)}
+                      </strong>
+                      <span className="chev" aria-hidden>
+                        <ChevronRight />
+                      </span>
+                    </Link>
+                  );
+                })}
               </div>
-            </header>
-            <ul className="bank-insight-list">
-              {insights.map((item) => {
-                const Icon = item.icon;
-                return (
-                  <li key={item.id} className={`bank-insight-item is-${item.tone}`}>
-                    <span className="bank-insight-icon" aria-hidden="true">
-                      <Icon size={16} />
-                    </span>
-                    <div>
-                      <strong>{item.title}</strong>
-                      <p>{item.body}</p>
-                    </div>
-                  </li>
-                );
-              })}
-            </ul>
-          </Card>
-        </div>
-      </div>
+            ) : (
+              <p className="bank23-empty-note">
+                Add a transaction on a bank account to see activity here.
+              </p>
+            )}
+            <Link href="/transactions" className="bank23-view">
+              View all transactions
+              <ChevronRight />
+            </Link>
+          </article>
+        </aside>
+      </section>
 
       <AddBankAccountModal
         key={addFormKey}
@@ -811,103 +868,6 @@ export function BankView() {
         }}
       />
     </div>
-  );
-}
-
-function BankAccountRow({
-  account,
-  currency,
-  primary,
-  flow,
-  menuOpen,
-  onMenu,
-  onEdit,
-  onAddMoney,
-  onRecordExpense,
-}: {
-  account: Account;
-  currency: string;
-  primary: boolean;
-  flow: { inflow: number; outflow: number };
-  menuOpen: boolean;
-  onMenu: () => void;
-  onEdit: () => void;
-  onAddMoney: () => void;
-  onRecordExpense: () => void;
-}) {
-  const label = bankLabel(account);
-  const tone = bankBrandTone(label);
-  const last4 = bankLast4(account.name);
-  const negative = account.currentBalanceMinor < 0;
-
-  return (
-    <li className="bank-account-row">
-      <div className="bank-account-ident">
-        <span className={`bank-badge is-${tone}`}>{bankAbbrev(label)}</span>
-        <div className="bank-account-copy">
-          <strong>
-            {label}
-            {primary ? <span className="bank-pill">Primary</span> : null}
-          </strong>
-          <small>
-            {bankSubtype(account)}
-            {last4 ? ` · ${bankMaskDisplay(last4)}` : ""}
-          </small>
-        </div>
-      </div>
-      <div className="bank-account-stat">
-        <small>Current balance</small>
-        <strong className={negative ? "is-negative" : undefined}>
-          {money(account.currentBalanceMinor, currency)}
-        </strong>
-      </div>
-      <div className="bank-account-stat">
-        <small>Monthly inflow</small>
-        <strong>{money(flow.inflow, currency)}</strong>
-      </div>
-      <div className="bank-account-stat">
-        <small>Monthly outflow</small>
-        <strong>{money(flow.outflow, currency)}</strong>
-      </div>
-      <div className="bank-account-stat">
-        <small>Last updated</small>
-        <strong>{formatAccountUpdated(account.updatedAt)}</strong>
-      </div>
-      <div className="bank-account-menu">
-        <button type="button" aria-label="Account options" onClick={onMenu}>
-          <MoreVertical size={16} />
-        </button>
-        {menuOpen ? (
-          <div className="bank-menu-pop">
-            <button type="button" onClick={onAddMoney}>Add money</button>
-            <button type="button" onClick={onRecordExpense}>Record expense</button>
-            <button type="button" onClick={onEdit}>Edit account</button>
-          </div>
-        ) : null}
-      </div>
-    </li>
-  );
-}
-
-function QuickAction({
-  icon: Icon,
-  label,
-  description,
-  onClick,
-}: {
-  icon: typeof Plus;
-  label: string;
-  description: string;
-  onClick: () => void;
-}) {
-  return (
-    <button type="button" className="bank-quick" onClick={onClick}>
-      <span><Icon size={18} /></span>
-      <div>
-        <strong>{label}</strong>
-        <small>{description}</small>
-      </div>
-    </button>
   );
 }
 
@@ -993,7 +953,9 @@ function AddBankAccountModal({
           <Field label="Account type">
             <Select value={accountType} onChange={(event) => setAccountType(event.target.value)}>
               {BANK_ACCOUNT_TYPES.map((item) => (
-                <option key={item} value={item}>{item}</option>
+                <option key={item} value={item}>
+                  {item}
+                </option>
               ))}
             </Select>
           </Field>
@@ -1019,14 +981,26 @@ function AddBankAccountModal({
         </div>
         <div className="bank-form-split">
           <Field label="IFSC code" error={errors.ifsc}>
-            <Input value={ifsc} onChange={(event) => setIfsc(event.target.value.toUpperCase())} placeholder="e.g. HDFC0001234" />
+            <Input
+              value={ifsc}
+              onChange={(event) => setIfsc(event.target.value.toUpperCase())}
+              placeholder="e.g. HDFC0001234"
+            />
           </Field>
           <Field label="Branch name">
-            <Input value={branch} onChange={(event) => setBranch(event.target.value)} placeholder="e.g. Koramangala" />
+            <Input
+              value={branch}
+              onChange={(event) => setBranch(event.target.value)}
+              placeholder="e.g. Koramangala"
+            />
           </Field>
         </div>
         <Field label="Nickname (optional)">
-          <Input value={nickname} onChange={(event) => setNickname(event.target.value)} placeholder="e.g. Salary account" />
+          <Input
+            value={nickname}
+            onChange={(event) => setNickname(event.target.value)}
+            placeholder="e.g. Salary account"
+          />
         </Field>
         <div className="bank-form-split">
           <Field label="Opening balance (₹)">
@@ -1038,20 +1012,31 @@ function AddBankAccountModal({
             />
           </Field>
           <Field label="Linking date">
-            <Input type="date" value={linkingDate} onChange={(event) => setLinkingDate(event.target.value)} />
+            <Input
+              type="date"
+              value={linkingDate}
+              onChange={(event) => setLinkingDate(event.target.value)}
+            />
           </Field>
         </div>
         <Field label="Start tracking date">
-          <Input type="date" value={trackingDate} onChange={(event) => setTrackingDate(event.target.value)} />
+          <Input
+            type="date"
+            value={trackingDate}
+            onChange={(event) => setTrackingDate(event.target.value)}
+          />
         </Field>
         <div className="bank-security">
           <ShieldCheck size={18} aria-hidden="true" />
           <p>
-            <strong>Your security is our priority.</strong> Bank details are encrypted and stored securely. We never share your data with third parties.
+            <strong>Your security is our priority.</strong> Bank details are encrypted and stored
+            securely. We never share your data with third parties.
           </p>
         </div>
         <div className="bank-form-actions">
-          <Button type="button" variant="ghost" onClick={onClose}>Cancel</Button>
+          <Button type="button" variant="ghost" onClick={onClose}>
+            Cancel
+          </Button>
           <Button type="submit" disabled={mutation.isPending}>
             {mutation.isPending ? "Adding…" : "Add Account"}
           </Button>
@@ -1144,7 +1129,9 @@ function EditBankAccountModal({
               <option value={bank}>{bank}</option>
             ) : null}
             {INDIAN_BANKS.map((item) => (
-              <option key={item} value={item}>{item}</option>
+              <option key={item} value={item}>
+                {item}
+              </option>
             ))}
           </Select>
         </Field>
@@ -1152,7 +1139,9 @@ function EditBankAccountModal({
           <Field label="Account type">
             <Select value={accountType} onChange={(event) => setAccountType(event.target.value)}>
               {BANK_ACCOUNT_TYPES.map((item) => (
-                <option key={item} value={item}>{item}</option>
+                <option key={item} value={item}>
+                  {item}
+                </option>
               ))}
             </Select>
           </Field>
@@ -1192,7 +1181,9 @@ function EditBankAccountModal({
           Account is active
         </label>
         <div className="bank-form-actions">
-          <Button type="button" variant="ghost" onClick={onClose}>Cancel</Button>
+          <Button type="button" variant="ghost" onClick={onClose}>
+            Cancel
+          </Button>
           <Button type="submit" disabled={mutation.isPending}>
             {mutation.isPending ? "Saving…" : "Save changes"}
           </Button>
