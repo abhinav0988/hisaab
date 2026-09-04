@@ -1,6 +1,6 @@
 BETTER_AUTH_SECRET=replace-with-at-least-32-random-characters
 RESEND_API_KEY=
-EMAIL_FROM=Hisaab <onboarding@resend.dev>
+EMAIL_FROM=Hisaab <noreply@api.hisaabservice.com>
 AUTH_DEV_EXPOSE_OTP=true
 EMAIL_WEBHOOK_URL=
 EMAIL_WEBHOOK_TOKEN=
