@@ -7,11 +7,14 @@ import {
   AlertTriangle,
   ArrowRight,
   BarChart3,
+  Bell,
   CalendarDays,
   Car,
   ChevronDown,
   HeartPulse,
   Home,
+  Moon,
+  MoreVertical,
   Pencil,
   PieChart,
   Plus,
@@ -238,6 +241,15 @@ export function BudgetsView() {
               onChange={(event) => setMonth(event.target.value)}
             />
           </label>
+          <button type="button" className="sl29-icon-btn sl29-notify" aria-label="Notifications" onClick={() => toast.info("No new spending alerts.")}>
+            <Bell /><span />
+          </button>
+          <button type="button" className="sl29-icon-btn" aria-label="Theme settings" onClick={() => toast.info("Use the appearance control in Settings to change theme.")}>
+            <Moon />
+          </button>
+          <button type="button" className="sl29-icon-btn" aria-label="More spending limit options" onClick={() => setManageOpen(true)}>
+            <MoreVertical />
+          </button>
           <button type="button" className="sl29-add" onClick={openCreate}>
             <Plus />
             <b>Add Category Limit</b>

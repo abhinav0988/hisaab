@@ -18,6 +18,10 @@
 @media(max-width:780px){.sl29-header{height:auto;min-height:76px;align-items:flex-start;padding:12px 0;flex-wrap:wrap}.sl29-head-actions{width:100%;justify-content:flex-start}.sl29-add{flex:1}.sl29-kpis,.sl29-cat-grid{grid-template-columns:1fr}.sl29-progress-layout{grid-template-columns:1fr}.sl29-track-card{height:175px}.sl29-bars{gap:5px}.sl29-day i{width:24px}.sl29-action-grid{grid-template-columns:1fr}.sl29-action-grid button{min-height:74px}}
 
 .sl29{min-height:auto;padding:4px 0 24px}
+[data-app-shell][data-page="spending-limits"]{grid-template-columns:246px minmax(0,1fr)!important;background:linear-gradient(180deg,#020c11,#031119)!important}
+[data-app-shell][data-page="spending-limits"]>aside{width:246px!important;padding:18px 16px 16px!important;background:linear-gradient(180deg,#031018 0%,#03131b 55%,#020d13 100%)!important;border-color:#17313a!important}
+[data-app-shell][data-page="spending-limits"] .app-header{display:none!important}
+[data-app-shell][data-page="spending-limits"] .app-main{max-width:none!important;margin:0!important;padding:0 20px 24px!important;background:radial-gradient(circle at 75% 0,rgba(0,124,83,.08),transparent 32%),linear-gradient(180deg,#020c11,#031018 55%,#020d13)!important}
 .sl29-date{position:relative;cursor:pointer}
 .sl29-date input[type="month"]{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%;border:0}
 .sl29-cat{cursor:pointer;transition:border-color .15s ease,transform .15s ease}
