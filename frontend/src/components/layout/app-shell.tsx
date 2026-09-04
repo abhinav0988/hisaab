@@ -80,7 +80,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     <div
       className="min-h-dvh lg:grid lg:grid-cols-[258px_minmax(0,1fr)]"
       data-app-shell
-      data-page={pathname === "/budgets" ? "spending-limits" : undefined}
+      data-page={
+        pathname === "/budgets"
+          ? "spending-limits"
+          : pathname === "/goals"
+            ? "savings-goals"
+            : undefined
+      }
     >
       <DesktopSidebar pathname={pathname} name={activeSession.user.name} />
       <div className="min-w-0 overflow-visible bg-[radial-gradient(circle_at_82%_0%,color-mix(in_srgb,var(--gold)_5%,transparent),transparent_24%)]">

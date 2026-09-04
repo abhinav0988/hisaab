@@ -19,6 +19,10 @@
   gap:14px;
   color:var(--sg-text);
 }
+[data-app-shell][data-page="savings-goals"]{grid-template-columns:246px minmax(0,1fr)!important;background:linear-gradient(180deg,#020c11,#031119)!important}
+[data-app-shell][data-page="savings-goals"]>aside{width:246px!important;padding:18px 16px 16px!important;background:linear-gradient(180deg,#031018 0%,#03131b 55%,#020d13 100%)!important;border-color:#17313a!important}
+[data-app-shell][data-page="savings-goals"] .app-header{display:none!important}
+[data-app-shell][data-page="savings-goals"] .app-main{max-width:none!important;margin:0!important;padding:0 20px 24px!important;background:radial-gradient(circle at 75% 0,rgba(0,124,83,.08),transparent 32%),linear-gradient(180deg,#020c11,#031018 55%,#020d13)!important}
 .sg31 *{box-sizing:border-box}
 .sg31 button{font:inherit}
 .sg31 svg{display:block}

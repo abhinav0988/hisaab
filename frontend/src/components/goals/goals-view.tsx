@@ -7,12 +7,15 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   ArrowRight,
   BarChart3,
+  Bell,
   CalendarDays,
   Car,
   Check,
   Gem,
   Home,
   Laptop,
+  Moon,
+  MoreVertical,
   Pause,
   Pencil,
   Plane,
@@ -251,6 +254,15 @@ export function GoalsView() {
         <div className="sg31-header-actions">
           <button type="button" className="sg31-control">
             <CalendarDays /> {monthLabel()}
+          </button>
+          <button type="button" className="sg31-ghost sg31-notify" aria-label="Notifications" onClick={() => toast.info("No new savings alerts.")}>
+            <Bell /><span />
+          </button>
+          <button type="button" className="sg31-ghost" aria-label="Theme settings" onClick={() => toast.info("Use Settings to change appearance.")}>
+            <Moon />
+          </button>
+          <button type="button" className="sg31-ghost" aria-label="More goal options" onClick={() => setManageOpen(true)}>
+            <MoreVertical />
           </button>
           <button type="button" className="sg31-primary" onClick={openCreate} disabled={missingTable}>
             <Plus /> New Goal
