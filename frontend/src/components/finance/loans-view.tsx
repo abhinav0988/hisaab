@@ -33,7 +33,7 @@ import {
   X,
   type LucideIcon,
 } from "lucide-react";
-import { forwardRef, useEffect, useMemo, useRef, useState, type InputHTMLAttributes, type ReactNode } from "react";
+import { forwardRef, useEffect, useId, useMemo, useRef, useState, type InputHTMLAttributes, type ReactNode } from "react";
 import { toast } from "sonner";
 import { Modal } from "@/components/layout/modal";
 import { PageHeader } from "@/components/layout/page-header";
@@ -43,6 +43,7 @@ import { displayDateLong, isoToday } from "@/lib/finance-modules";
 import { money } from "@/lib/format";
 import { financeService } from "@/services/finance.service";
 import { profileService } from "@/services/profile.service";
+import "../../app/loans36.css";
 
 const LOAN_TYPE_META: Array<{ name: LoanTypeName; icon: LucideIcon }> = [
   { name: "Home Loan", icon: Home },
@@ -311,7 +312,7 @@ export function LoansView() {
   }
 
   return (
-    <div>
+    <div className="loans36">
       {screen === "list" ? (
         <>
           <PageHeader
@@ -365,6 +366,37 @@ export function LoansView() {
               );
             })}
           </div>
+
+          <section className="loans-hero">
+            <div className="loans-hero-copy">
+              <h2>
+                Stay on top of your <span>EMIs and Loans</span>
+              </h2>
+              <p>
+                Track outstanding principal, due dates and payment progress — with a clearer view of what you still
+                owe this month.
+              </p>
+              <div className="loans-hero-actions">
+                <button type="button" className="btn-primary-glow" onClick={openAdd}>
+                  + Add Loan
+                </button>
+                {list.length ? (
+                  <button
+                    type="button"
+                    className="btn-ghost"
+                    onClick={() => setShowUpcoming(true)}
+                  >
+                    View Upcoming EMIs
+                  </button>
+                ) : null}
+              </div>
+            </div>
+            <div className="loans-hero-visual" aria-hidden>
+              <div className="loans-hero-glow" />
+              <img src="/images/loans-hero-emi.png" alt="" />
+            </div>
+          </section>
+
           {list.length ? (
             <div className="loans-board">
               <div className="loans-board-main">
@@ -382,6 +414,7 @@ export function LoansView() {
                 ))}
               </div>
               <aside className="loans-board-side">
+                <PaymentOverview list={list} currency={currency} monthlyEmi={emi} />
                 <UpcomingEmis
                   items={upcoming}
                   currency={currency}
@@ -1241,6 +1274,73 @@ function PreviewRow({
   );
 }
 
+function PaymentOverview({
+  list,
+  currency,
+  monthlyEmi,
+}: {
+  list: Loan[];
+  currency: string;
+  monthlyEmi: number;
+}) {
+  const palette = ["#36e18f", "#45bdf1", "#e7bd53", "#aa65f2", "#ff8a5b"];
+  const buckets = new Map<string, number>();
+  for (const loan of list) {
+    if (loan.emiMinor <= 0) continue;
+    const key = typeMeta(loan.name).name;
+    buckets.set(key, (buckets.get(key) ?? 0) + loan.emiMinor);
+  }
+  const rows = [...buckets.entries()]
+    .map(([name, value], index) => ({ name, value, colour: palette[index % palette.length]! }))
+    .sort((left, right) => right.value - left.value);
+  const total = rows.reduce((sum, row) => sum + row.value, 0) || 1;
+  let cursor = 0;
+  const stops = rows.length
+    ? rows
+        .map((row) => {
+          const start = (cursor / total) * 100;
+          cursor += row.value;
+          const end = (cursor / total) * 100;
+          return `${row.colour} ${start}% ${end}%`;
+        })
+        .join(", ")
+    : "#1b2f27 0 100%";
+
+  return (
+    <Card className="loans-pay-overview">
+      <header>
+        <h2>Payment Overview</h2>
+        <small>Monthly EMI mix</small>
+      </header>
+      <div className="loans-donut-wrap">
+        <div className="loans-donut" style={{ background: `conic-gradient(${stops})` }}>
+          <div className="loans-donut-center">
+            <strong>{money(monthlyEmi, currency)}</strong>
+            <small>Monthly EMI</small>
+          </div>
+        </div>
+        <ul className="loans-donut-legend">
+          {rows.length ? (
+            rows.map((row) => (
+              <li key={row.name}>
+                <i style={{ background: row.colour, color: row.colour }} />
+                <span>{row.name}</span>
+                <b>{money(row.value, currency)}</b>
+              </li>
+            ))
+          ) : (
+            <li>
+              <i style={{ background: "#36e18f" }} />
+              <span>No active EMI</span>
+              <b>{money(0, currency)}</b>
+            </li>
+          )}
+        </ul>
+      </div>
+    </Card>
+  );
+}
+
 function CompletionRing({
   pct,
   size,
@@ -1252,9 +1352,13 @@ function CompletionRing({
   label?: string;
   accent?: string;
 }) {
+  const uid = useId().replace(/:/g, "");
+  const gradId = `loan-ring-grad-${uid}`;
+  const glowId = `loan-ring-glow-${uid}`;
   const radius = 54;
   const circumference = 2 * Math.PI * radius;
   const filled = Math.min(100, Math.max(0, pct));
+  const stroke = accent ?? "#36e18f";
   return (
     <svg
       viewBox="0 0 120 120"
@@ -1264,18 +1368,32 @@ function CompletionRing({
       role="img"
       aria-label={label ?? formatPct(filled)}
     >
-      <circle cx="60" cy="60" r={radius} fill="none" stroke="var(--muted)" strokeWidth="10" />
+      <defs>
+        <linearGradient id={gradId} x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stopColor={stroke} stopOpacity="1" />
+          <stop offset="100%" stopColor="#7dffc0" stopOpacity="0.9" />
+        </linearGradient>
+        <filter id={glowId} x="-40%" y="-40%" width="180%" height="180%">
+          <feGaussianBlur stdDeviation="2.4" result="blur" />
+          <feMerge>
+            <feMergeNode in="blur" />
+            <feMergeNode in="SourceGraphic" />
+          </feMerge>
+        </filter>
+      </defs>
+      <circle cx="60" cy="60" r={radius} fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth="11" />
       <circle
         cx="60"
         cy="60"
         r={radius}
         fill="none"
-        stroke={accent ?? "var(--primary)"}
-        strokeWidth="10"
+        stroke={`url(#${gradId})`}
+        strokeWidth="11"
         strokeLinecap="round"
         strokeDasharray={circumference}
         strokeDashoffset={circumference * (1 - filled / 100)}
         transform="rotate(-90 60 60)"
+        filter={`url(#${glowId})`}
       />
       {label ? (
         <text x="60" y="58" textAnchor="middle" className="loan-ring-pct">
