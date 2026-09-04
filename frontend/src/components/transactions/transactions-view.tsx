@@ -3,15 +3,15 @@ import type { Category, CreditSpendImpact, Transaction } from "@hisaab/types";
 import { Button, Select } from "@hisaab/ui";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
-  Activity,
-  ArrowDownToLine,
-  ArrowUpFromLine,
+  ArrowDownLeft,
+  ArrowUpRight,
   BarChart3,
   CalendarDays,
   ChevronDown,
   ChevronLeft,
   ChevronRight,
   ChevronUp,
+  ChartNoAxesCombined,
   CircleHelp,
   Download,
   Layers,
@@ -21,6 +21,7 @@ import {
   Sparkles,
   Trash2,
   Wallet,
+  WalletCards,
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -262,7 +263,7 @@ export function TransactionsView() {
             <small>This calendar month</small>
           </div>
           <i>
-            <ArrowDownToLine size={19} />
+            <ArrowDownLeft size={20} aria-hidden />
           </i>
         </article>
         <article className="tx16-kpi out">
@@ -272,7 +273,7 @@ export function TransactionsView() {
             <small>This calendar month</small>
           </div>
           <i>
-            <ArrowUpFromLine size={19} />
+            <ArrowUpRight size={20} aria-hidden />
           </i>
         </article>
         <article className="tx16-kpi net">
@@ -285,7 +286,7 @@ export function TransactionsView() {
             <small>Income minus expenses</small>
           </div>
           <i>
-            <Activity size={19} />
+            <ChartNoAxesCombined size={20} aria-hidden />
           </i>
         </article>
         <article className="tx16-kpi bal">
@@ -295,7 +296,7 @@ export function TransactionsView() {
             <small>Across your accounts</small>
           </div>
           <i>
-            <Wallet size={19} />
+            <WalletCards size={20} aria-hidden />
           </i>
         </article>
       </section>

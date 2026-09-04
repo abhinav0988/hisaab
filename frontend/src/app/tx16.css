@@ -8,9 +8,9 @@
   --tx-blue: #2c90df;
   --tx-surface: var(--surface);
   --tx-surface-2: var(--surface-2);
-  max-width: 1260px;
+  max-width: 1300px;
   margin: 0 auto;
-  padding: 0 2px 24px;
+  padding: 4px 6px 32px;
   color: var(--foreground);
 }
 .tx16 * {
@@ -30,22 +30,22 @@
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  min-height: 72px;
-  margin: 0 0 14px;
-  padding: 0 2px 14px;
+  min-height: 78px;
+  margin: 0 0 18px;
+  padding: 0 4px 18px;
   border-bottom: 1px solid var(--tx-line-soft);
 }
 .tx16-head h2 {
-  margin: 0 0 7px;
-  font-size: 27px;
-  line-height: 1.05;
-  font-weight: 720;
-  letter-spacing: -0.045em;
+  margin: 0 0 8px;
+  font-size: clamp(25px, 2vw, 29px);
+  line-height: 1.08;
+  font-weight: 740;
+  letter-spacing: -0.04em;
 }
 .tx16-head p {
   margin: 0;
-  font-size: 11.5px;
-  line-height: 1.35;
+  font-size: 12px;
+  line-height: 1.45;
   color: var(--muted-foreground);
 }
 .tx16-head-actions {
@@ -77,14 +77,14 @@ html[data-theme="dark"] .tx16-add {
 .tx16-kpis {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 12px;
-  margin: 0 0 14px;
+  gap: 14px;
+  margin: 0 0 16px;
 }
 .tx16-kpi {
   position: relative;
   overflow: hidden;
-  min-height: 104px;
-  padding: 16px 66px 15px 17px;
+  min-height: 112px;
+  padding: 18px 72px 17px 19px;
   border: 1px solid var(--tx-line);
   border-radius: 13px;
   background: linear-gradient(145deg, var(--surface), var(--surface-2));
@@ -99,10 +99,10 @@ html[data-theme="dark"] .tx16-add {
 }
 .tx16-kpi span {
   display: block;
-  margin: 0 0 8px;
-  font-size: 11.5px;
-  font-weight: 600;
-  line-height: 1.1;
+  margin: 0 0 9px;
+  font-size: 12px;
+  font-weight: 650;
+  line-height: 1.2;
 }
 .tx16-kpi.in span {
   color: var(--tx-green);
@@ -118,29 +118,29 @@ html[data-theme="dark"] .tx16-add {
 }
 .tx16-kpi b {
   display: block;
-  font-size: 22px;
-  font-weight: 700;
-  line-height: 1;
+  font-size: clamp(21px, 1.7vw, 24px);
+  font-weight: 720;
+  line-height: 1.08;
   letter-spacing: -0.025em;
   font-variant-numeric: tabular-nums;
 }
 .tx16-kpi small {
   display: block;
-  margin-top: 9px;
-  font-size: 10px;
-  line-height: 1.2;
+  margin-top: 10px;
+  font-size: 10.5px;
+  line-height: 1.3;
   color: var(--muted-foreground);
 }
 .tx16-kpi i {
   position: absolute;
-  top: 16px;
-  right: 16px;
+  top: 18px;
+  right: 18px;
   display: grid;
-  width: 42px;
-  height: 42px;
+  width: 44px;
+  height: 44px;
   place-items: center;
   border: 1px solid color-mix(in srgb, var(--foreground) 8%, transparent);
-  border-radius: 11px;
+  border-radius: 12px;
   font-style: normal;
   box-shadow: inset 0 1px rgba(255, 255, 255, 0.055);
 }
@@ -161,16 +161,16 @@ html[data-theme="dark"] .tx16-add {
   background: color-mix(in srgb, var(--tx-blue) 20%, var(--surface));
 }
 .tx16-kpi svg {
-  width: 19px;
-  height: 19px;
-  stroke-width: 1.65;
+  width: 20px;
+  height: 20px;
+  stroke-width: 1.85;
 }
 
 .tx16-mid {
   display: grid;
   grid-template-columns: minmax(0, 1.12fr) minmax(0, 1fr);
-  gap: 13px;
-  margin: 0 0 14px;
+  gap: 14px;
+  margin: 0 0 16px;
 }
 .tx16-panel {
   border: 1px solid var(--tx-line);
@@ -180,21 +180,21 @@ html[data-theme="dark"] .tx16-add {
 }
 .tx16-spend,
 .tx16-filters {
-  min-height: 292px;
-  padding: 18px 19px;
+  min-height: 300px;
+  padding: 20px;
 }
 .tx16-panel-head {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
   gap: 12px;
-  min-height: 34px;
+  min-height: 36px;
 }
 .tx16-panel-head h3 {
   margin: 0;
-  font-size: 14px;
-  font-weight: 670;
-  line-height: 1.2;
+  font-size: 14.5px;
+  font-weight: 700;
+  line-height: 1.3;
 }
 .tx16-panel-head h3 small {
   font-size: 10.5px;
@@ -218,8 +218,8 @@ html[data-theme="dark"] .tx16-add {
 .tx21-inline-icon,
 .tx16-spark {
   display: inline-grid;
-  width: 17px;
-  height: 17px;
+  width: 18px;
+  height: 18px;
   place-items: center;
   color: var(--muted-foreground);
   vertical-align: -3px;
@@ -230,8 +230,8 @@ html[data-theme="dark"] .tx16-add {
 }
 .tx16-spark svg,
 .tx21-inline-icon svg {
-  width: 13px;
-  height: 13px;
+  width: 14px;
+  height: 14px;
 }
 .tx16-spend-total {
   margin-top: 10px;
@@ -328,29 +328,29 @@ html[data-theme="dark"] .tx16-add {
   display: flex;
   align-items: center;
   gap: 9px;
-  height: 40px;
-  margin-top: 12px;
-  padding: 0 12px;
+  height: 42px;
+  margin-top: 14px;
+  padding: 0 13px;
   border: 1px solid var(--tx-line);
-  border-radius: 9px;
+  border-radius: 10px;
   background: var(--surface-2);
   color: var(--muted-foreground);
 }
 .tx16-search svg {
-  width: 16px;
-  height: 16px;
+  width: 17px;
+  height: 17px;
   flex: none;
   stroke-width: 1.7;
 }
 .tx16-search input {
   width: 100%;
   min-height: 0;
-  height: 38px;
+  height: 40px;
   padding: 0;
   border: 0;
   background: transparent;
   box-shadow: none;
-  font-size: 11px;
+  font-size: 11.5px;
 }
 .tx16-search input:focus {
   outline: none;
@@ -359,42 +359,42 @@ html[data-theme="dark"] .tx16-add {
 .tx16-selects {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 9px;
-  margin-top: 10px;
+  gap: 10px;
+  margin-top: 12px;
 }
 .tx16-selects select {
-  height: 36px;
-  min-height: 36px;
+  height: 38px;
+  min-height: 38px;
   padding: 0 11px;
   border: 1px solid var(--tx-line);
-  border-radius: 8px;
+  border-radius: 9px;
   background: var(--surface-2);
-  font-size: 10.5px;
+  font-size: 11px;
 }
 .tx16-cats {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
-  margin-top: 10px;
+  gap: 7px;
+  margin-top: 12px;
 }
 .tx16-cats button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
-  height: 32px;
-  padding: 0 10px;
+  gap: 7px;
+  height: 34px;
+  padding: 0 11px;
   border: 1px solid var(--tx-line);
-  border-radius: 8px;
+  border-radius: 9px;
   background: var(--surface-2);
   color: var(--foreground);
-  font-size: 10px;
-  font-weight: 700;
+  font-size: 10.5px;
+  font-weight: 650;
   line-height: 1;
 }
 .tx16-cats button svg {
-  width: 13px;
-  height: 13px;
+  width: 14px;
+  height: 14px;
   flex: none;
   color: var(--muted-foreground);
 }
@@ -411,7 +411,7 @@ html[data-theme="dark"] .tx16-add {
 .tx16-bottom {
   display: grid;
   grid-template-columns: minmax(0, 2.45fr) minmax(292px, 0.92fr);
-  gap: 13px;
+  gap: 14px;
   align-items: start;
 }
 .tx16-ledger {
@@ -428,11 +428,11 @@ html[data-theme="dark"] .tx16-add {
   align-items: center;
 }
 .tx16-table-head {
-  height: 39px;
-  padding: 0 14px;
+  height: 42px;
+  padding: 0 16px;
   background: var(--surface-2);
   color: var(--muted-foreground);
-  font-size: 8.5px;
+  font-size: 9px;
   font-weight: 800;
   letter-spacing: 0.055em;
 }
@@ -440,8 +440,8 @@ html[data-theme="dark"] .tx16-add {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  height: 40px;
-  padding: 0 14px;
+  height: 44px;
+  padding: 0 16px;
   border-bottom: 1px solid var(--tx-line-soft);
   background: linear-gradient(90deg, var(--surface-2), var(--surface));
 }
@@ -496,39 +496,39 @@ html[data-theme="dark"] .tx16-add {
   color: var(--muted-foreground);
 }
 .tx16-row {
-  min-height: 62px;
-  padding: 0 14px;
+  min-height: 68px;
+  padding: 0 16px;
   border-bottom: 1px solid var(--tx-line-soft);
 }
 .tx16-row:hover {
   background: color-mix(in srgb, var(--muted) 45%, transparent);
 }
 .tx16-time {
-  font-size: 10px;
+  font-size: 10.5px;
   line-height: 1;
   color: var(--muted-foreground);
 }
 .tx16-merchant {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 11px;
   min-width: 0;
 }
 .tx16-merchant > i {
   display: grid;
-  width: 36px;
-  height: 36px;
-  min-width: 36px;
+  width: 38px;
+  height: 38px;
+  min-width: 38px;
   place-items: center;
   border: 1px solid color-mix(in srgb, var(--foreground) 8%, transparent);
-  border-radius: 10px;
+  border-radius: 11px;
   font-style: normal;
   box-shadow: inset 0 1px rgba(255, 255, 255, 0.055);
 }
 .tx16-merchant > i svg {
-  width: 17px;
-  height: 17px;
-  stroke-width: 1.65;
+  width: 18px;
+  height: 18px;
+  stroke-width: 1.8;
 }
 .tx16-merchant > i.food {
   background: #0d2b1d;
@@ -562,9 +562,9 @@ html[data-theme="dark"] .tx16-add {
 .tx16-account b {
   display: block;
   overflow: hidden;
-  font-size: 10.5px;
-  font-weight: 620;
-  line-height: 1.15;
+  font-size: 11px;
+  font-weight: 650;
+  line-height: 1.25;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -573,9 +573,9 @@ html[data-theme="dark"] .tx16-add {
 .tx16-pay small {
   display: block;
   overflow: hidden;
-  margin-top: 4px;
-  font-size: 8.7px;
-  line-height: 1.15;
+  margin-top: 5px;
+  font-size: 9.5px;
+  line-height: 1.25;
   color: var(--muted-foreground);
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -622,12 +622,12 @@ html[data-theme="dark"] .tx16-add {
 }
 .tx19-row-arrow {
   display: grid;
-  width: 22px;
-  height: 22px;
+  width: 26px;
+  height: 26px;
   flex: none;
   place-items: center;
   border: 1px solid transparent;
-  border-radius: 7px;
+  border-radius: 8px;
   background: transparent;
   color: var(--muted-foreground);
 }
