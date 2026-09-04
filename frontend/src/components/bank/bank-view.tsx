@@ -6,7 +6,7 @@ import { majorToMinor } from "@hisaab/validation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   ArrowLeftRight,
-  ArrowUpRight,
+  ArrowDownToLine,
   Banknote,
   Building2,
   ChartNoAxesCombined,
@@ -23,7 +23,6 @@ import {
   Plus,
   ShieldCheck,
   ShoppingBag,
-  TrendingDown,
   Wallet,
   WalletCards,
 } from "lucide-react";
@@ -605,14 +604,14 @@ export function BankView() {
                 </div>
                 <div className="bank23-cstat red">
                   <i aria-hidden>
-                    <ArrowUpRight />
+                    <ArrowDownToLine />
                   </i>
                   <label>Total Expenses</label>
                   <b>{money(data.spentThisMonth, currency)}</b>
                 </div>
-                <div className={`bank23-cstat${data.netSavings < 0 ? " red" : ""}`}>
+                <div className={`bank23-cstat net${data.netSavings < 0 ? " is-negative" : ""}`}>
                   <i aria-hidden>
-                    <TrendingDown />
+                    <ArrowDownToLine />
                   </i>
                   <label>Net Savings</label>
                   <b>{money(data.netSavings, currency)}</b>
