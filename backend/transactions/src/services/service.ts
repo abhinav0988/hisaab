@@ -17,6 +17,7 @@ import type {
 import type { z } from "zod";
 import { and, eq, isNull, or } from "drizzle-orm";
 import { AppError, audit, newId, notFound, now } from "@hisaab/worker-lib";
+import { buildTransactionFilterSql, TRANSACTION_LIST_FROM } from "../filters";
 import { transferDestinationError } from "../transfer";
 
 type CreateTransaction = z.infer<typeof transactionSchema>;
@@ -100,48 +101,14 @@ async function validateReferences(
 }
 
 export async function listTransactions(env: Env, userId: string, query: Query) {
-  const conditions = ["t.user_id = ?", "t.deleted_at IS NULL"];
-  const values: unknown[] = [userId];
-  if (query.from) {
-    conditions.push("t.transaction_at >= ?");
-    values.push(query.from);
-  }
-  if (query.to) {
-    conditions.push("t.transaction_at < ?");
-    values.push(query.to);
-  }
-  if (query.category_id) {
-    conditions.push("t.category_id = ?");
-    values.push(query.category_id);
-  }
-  if (query.account_id) {
-    conditions.push("(t.account_id = ? OR t.destination_account_id = ?)");
-    values.push(query.account_id, query.account_id);
-  }
-  if (query.type) {
-    conditions.push("t.type = ?");
-    values.push(query.type);
-  }
-  if (query.search) {
-    conditions.push("(t.merchant LIKE ? ESCAPE '\\' OR t.notes LIKE ? ESCAPE '\\')");
-    const term = `%${query.search.replace(/[\\%_]/g, "\\$&")}%`;
-    values.push(term, term);
-  }
-  const order = {
-    newest: "t.transaction_at DESC",
-    oldest: "t.transaction_at ASC",
-    amount_desc: "t.amount_minor DESC",
-    amount_asc: "t.amount_minor ASC",
-  }[query.sort];
-  const where = conditions.join(" AND ");
-  const offset = (query.page - 1) * query.limit;
-  const statement = `SELECT t.id, t.account_id AS accountId, t.category_id AS categoryId, t.type, t.amount_minor AS amountMinor, t.currency, t.merchant, t.notes, t.transaction_at AS transactionAt, t.destination_account_id AS destinationAccountId, a.name AS accountName, dest.name AS destinationAccountName, c.name AS categoryName, c.icon AS categoryIcon, c.colour AS categoryColour FROM transactions t JOIN accounts a ON a.id=t.account_id LEFT JOIN accounts dest ON dest.id=t.destination_account_id JOIN categories c ON c.id=t.category_id WHERE ${where} ORDER BY ${order} LIMIT ? OFFSET ?`;
+  const filter = buildTransactionFilterSql(userId, query);
+  const statement = `SELECT t.id, t.account_id AS accountId, t.category_id AS categoryId, t.type, t.amount_minor AS amountMinor, t.currency, t.merchant, t.notes, t.transaction_at AS transactionAt, t.destination_account_id AS destinationAccountId, a.name AS accountName, dest.name AS destinationAccountName, c.name AS categoryName, c.icon AS categoryIcon, c.colour AS categoryColour FROM ${TRANSACTION_LIST_FROM} WHERE ${filter.where} ORDER BY ${filter.order} LIMIT ? OFFSET ?`;
   const [rows, count] = await Promise.all([
     env.DB.prepare(statement)
-      .bind(...values, query.limit, offset)
+      .bind(...filter.values, filter.limit, filter.offset)
       .all(),
-    env.DB.prepare(`SELECT count(*) AS total FROM transactions t WHERE ${where}`)
-      .bind(...values)
+    env.DB.prepare(`SELECT count(*) AS total FROM ${TRANSACTION_LIST_FROM} WHERE ${filter.where}`)
+      .bind(...filter.values)
       .first<{ total: number }>(),
   ]);
   const total = count?.total ?? 0;

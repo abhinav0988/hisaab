@@ -109,6 +109,10 @@ function rangeQuery(from: string, to: string, extra = "") {
 function useDebouncedValue<T>(value: T, delayMs: number) {
   const [debounced, setDebounced] = useState(value);
   useEffect(() => {
+    if (value === "" || value === null || value === undefined) {
+      setDebounced(value);
+      return;
+    }
     const timer = window.setTimeout(() => setDebounced(value), delayMs);
     return () => window.clearTimeout(timer);
   }, [value, delayMs]);
@@ -270,7 +274,8 @@ export function TransactionsView() {
   const showingTo = Math.min(page * 20, total);
   const filtered = Boolean(search || type || category || account || period !== "all");
   const chartLoading = lookbackRows.isPending && !lookbackRows.data;
-  const listRefreshing = transactions.isFetching && !transactions.isPending;  return (
+  const listRefreshing = transactions.isFetching && !transactions.isPending;
+  return (
     <div className="tx16">
       <header className="tx16-head">
         <div>
@@ -395,7 +400,7 @@ export function TransactionsView() {
             <Search size={16} aria-hidden />
             <input
               placeholder="Search merchant, category, account..."
-              aria-label="Search merchant or notes"
+              aria-label="Search merchant, category, or account"
               value={search}
               onChange={(event) => {
                 setSearch(event.target.value);
@@ -414,6 +419,7 @@ export function TransactionsView() {
               <option value="">All types</option>
               <option value="EXPENSE">Expense</option>
               <option value="INCOME">Income</option>
+              <option value="TRANSFER">Transfer</option>
             </Select>
             <Select aria-label="Account" value={account} onChange={(event) => { setAccount(event.target.value); setPage(1); }}>
               <option value="">All accounts</option>
