@@ -10,7 +10,7 @@
     "ENVIRONMENT": "development",
     "APP_ORIGIN": "https://hisaab.blobforges.workers.dev",
     "BETTER_AUTH_URL": "https://hisaab-gateway.blobforges.workers.dev",
-    "EMAIL_FROM": "Hisaab <noreply@api.hisaabservice.com>",
+    "EMAIL_FROM": "Hisaab <onboarding@resend.dev>",
   },
   "d1_databases": [
     {

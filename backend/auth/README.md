@@ -30,7 +30,7 @@ Set in `.dev.vars` locally and with `wrangler secret put` when deploying:
 
 - `BETTER_AUTH_SECRET` (required, ≥ 32 characters)
 - `RESEND_API_KEY` (sends verification and password-reset mail)
-- `EMAIL_FROM` (default `Hisaab <noreply@api.hisaabservice.com>`)
+- `EMAIL_FROM` (default `Hisaab <onboarding@resend.dev>`)
 - `AUTH_DEV_EXPOSE_OTP` (logs the email link in non-production)
 - `EMAIL_WEBHOOK_URL` / `EMAIL_WEBHOOK_TOKEN` (optional fallback)
 
