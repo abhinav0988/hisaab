@@ -10,11 +10,11 @@
   --b-ink: var(--foreground);
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 16px;
   width: 100%;
   max-width: none;
   margin: 0;
-  padding: 0 0 28px;
+  padding: 4px 4px 32px;
   color: var(--b-ink);
 }
 .bank23 * {
@@ -43,42 +43,42 @@
 
 /* PAGE HEADER */
 .bank23-top {
-  height: 72px;
-  min-height: 72px;
+  height: 78px;
+  min-height: 78px;
   display: grid;
   grid-template-columns: 52px minmax(0, 1fr) auto;
   align-items: center;
-  column-gap: 14px;
+  column-gap: 16px;
   margin: 0;
-  padding: 0 0 13px;
+  padding: 0 2px 18px;
   border-bottom: 1px solid var(--b-line);
 }
 .bank23-title-ico {
-  width: 50px;
-  height: 50px;
-  border-radius: 12px;
+  width: 52px;
+  height: 52px;
+  border-radius: 14px;
   display: grid;
   place-items: center;
   background: linear-gradient(145deg, color-mix(in srgb, var(--primary) 55%, #042d1d), #042d1d);
   border: 1px solid color-mix(in srgb, var(--primary) 28%, transparent);
 }
 .bank23-title-ico svg {
-  width: 26px;
-  height: 26px;
+  width: 27px;
+  height: 27px;
   color: var(--b-green);
   stroke-width: 1.75;
 }
 .bank23-title h2 {
   margin: 0;
-  font-size: 29px;
-  line-height: 31px;
-  font-weight: 760;
+  font-size: 30px;
+  line-height: 33px;
+  font-weight: 780;
   letter-spacing: -0.035em;
 }
 .bank23-title p {
-  margin: 4px 0 0;
-  font-size: 10.8px;
-  line-height: 14px;
+  margin: 5px 0 0;
+  font-size: 11.5px;
+  line-height: 15px;
   color: var(--b-muted);
   white-space: nowrap;
 }
@@ -164,17 +164,17 @@
 .bank23-kpis {
   display: grid;
   grid-template-columns: 1.18fr 1fr 1.03fr 1.03fr 1.11fr;
-  gap: 13px;
+  gap: 14px;
   align-items: stretch;
   margin: 0;
 }
 .bank23-kpi {
-  height: 120px;
-  min-height: 120px;
+  height: 126px;
+  min-height: 126px;
   border-radius: 14px;
   border: 1px solid var(--b-line);
   background: var(--b-card);
-  padding: 18px 12px 14px 72px;
+  padding: 20px 14px 16px 76px;
   position: relative;
   overflow: hidden;
 }
@@ -196,19 +196,19 @@
 }
 .bank23-kpi-ico {
   position: absolute;
-  left: 16px;
-  top: 20px;
-  width: 44px;
-  height: 44px;
-  border-radius: 10px;
+  left: 18px;
+  top: 21px;
+  width: 46px;
+  height: 46px;
+  border-radius: 12px;
   display: grid;
   place-items: center;
   border: 1px solid color-mix(in srgb, var(--foreground) 6%, transparent);
   background: color-mix(in srgb, var(--b-green) 12%, transparent);
 }
 .bank23-kpi-ico svg {
-  width: 22px;
-  height: 22px;
+  width: 23px;
+  height: 23px;
   stroke-width: 1.85;
   color: var(--b-green);
 }
@@ -233,8 +233,8 @@
 .bank23-kpi label {
   display: block;
   margin: 0;
-  font-size: 9.2px;
-  line-height: 12px;
+  font-size: 9.5px;
+  line-height: 13px;
   font-weight: 730;
   text-transform: uppercase;
   color: var(--b-muted);
@@ -242,9 +242,9 @@
 }
 .bank23-kpi strong {
   display: block;
-  margin: 7px 0 0;
-  font-size: 22px;
-  line-height: 25px;
+  margin: 8px 0 0;
+  font-size: 23px;
+  line-height: 26px;
   font-weight: 760;
   letter-spacing: -0.025em;
   white-space: nowrap;
@@ -255,9 +255,9 @@
 }
 .bank23-kpi small {
   display: block;
-  margin: 7px 0 0;
-  font-size: 8.7px;
-  line-height: 12px;
+  margin: 8px 0 0;
+  font-size: 9px;
+  line-height: 13px;
   color: var(--b-muted);
 }
 .bank23-kpi.green small {
@@ -286,7 +286,7 @@
 .bank23-grid {
   display: grid;
   grid-template-columns: minmax(0, 2.3fr) minmax(354px, 1fr);
-  gap: 14px;
+  gap: 16px;
   align-items: start;
   margin: 0;
 }
@@ -294,7 +294,7 @@
 .bank23-side {
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 16px;
   min-width: 0;
 }
 .bank23-card {

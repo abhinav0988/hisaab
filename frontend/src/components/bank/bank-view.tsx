@@ -5,13 +5,15 @@ import { Button, Field, Input, Select } from "@hisaab/ui";
 import { majorToMinor } from "@hisaab/validation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
-  ArrowDownRight,
   ArrowLeftRight,
   ArrowUpRight,
   Banknote,
-  BarChart3,
   Building2,
+  ChartNoAxesCombined,
+  ChartSpline,
   ChevronRight,
+  CircleArrowDown,
+  CircleArrowUp,
   Download,
   Eye,
   EyeOff,
@@ -25,6 +27,7 @@ import {
   Sun,
   TrendingDown,
   Wallet,
+  WalletCards,
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -405,7 +408,7 @@ export function BankView() {
       <section className="bank23-kpis">
         <article className="bank23-kpi green">
           <i className="bank23-kpi-ico" aria-hidden>
-            <Wallet />
+            <WalletCards />
           </i>
           <label>Total Bank Balance</label>
           <strong>{hideBalance ? "₹ ••••••" : money(totalMinor, currency)}</strong>
@@ -425,7 +428,7 @@ export function BankView() {
         </article>
         <article className="bank23-kpi">
           <i className="bank23-kpi-ico" aria-hidden>
-            <ArrowDownRight />
+            <CircleArrowDown />
           </i>
           <label>Income This Month</label>
           <strong>{money(data.incomeThisMonth, currency)}</strong>
@@ -435,7 +438,7 @@ export function BankView() {
         </article>
         <article className="bank23-kpi gold">
           <i className="bank23-kpi-ico" aria-hidden>
-            <ArrowUpRight />
+            <CircleArrowUp />
           </i>
           <label>Expenses This Month</label>
           <strong>{money(data.spentThisMonth, currency)}</strong>
@@ -445,7 +448,7 @@ export function BankView() {
         </article>
         <article className={`bank23-kpi${data.netSavings < 0 ? " red" : ""}`}>
           <i className="bank23-kpi-ico" aria-hidden>
-            <TrendingDown />
+            <ChartNoAxesCombined />
           </i>
           <label>Net Savings</label>
           <strong>{money(data.netSavings, currency)}</strong>
@@ -455,7 +458,7 @@ export function BankView() {
         </article>
         <article className="bank23-kpi blue">
           <i className="bank23-kpi-ico" aria-hidden>
-            <BarChart3 />
+            <ChartSpline />
           </i>
           <label>Avg. Monthly Balance</label>
           <strong>{money(avgBalance, currency)}</strong>
@@ -781,8 +784,18 @@ export function BankView() {
                       tick={{ fontSize: 9, fill: "var(--muted-foreground)" }}
                       axisLine={false}
                       tickLine={false}
+                      minTickGap={22}
                     />
-                    <YAxis hide />
+                    <YAxis
+                      width={38}
+                      tick={{ fontSize: 9, fill: "var(--muted-foreground)" }}
+                      axisLine={false}
+                      tickLine={false}
+                      tickFormatter={(value) => {
+                        const major = Number(value) / 100;
+                        return major >= 1000 ? `₹${Math.round(major / 1000)}K` : money(Number(value), currency);
+                      }}
+                    />
                     <Tooltip formatter={(value) => money(Number(value ?? 0), currency)} />
                     <Area
                       type="monotone"
@@ -790,6 +803,13 @@ export function BankView() {
                       stroke={balanceDelta < 0 ? "var(--b-red)" : "#2be27f"}
                       fill="url(#bank23Area)"
                       strokeWidth={2}
+                      dot={{
+                        r: 3,
+                        fill: balanceDelta < 0 ? "var(--b-red)" : "#65f3a4",
+                        stroke: balanceDelta < 0 ? "#7e2632" : "#0d5734",
+                        strokeWidth: 1.5,
+                      }}
+                      activeDot={{ r: 4.5, strokeWidth: 2 }}
                     />
                   </AreaChart>
                 </ResponsiveContainer>
