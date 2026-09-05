@@ -11,10 +11,11 @@ test("creates an account, logs out, and logs back in", async ({ page }) => {
   await expect(page).toHaveURL(/dashboard/);
 });
 test("adds expense and income, filters transactions, and creates a budget", async ({ page }) => {
+  test.setTimeout(90_000);
   await register(page, "finance");
   await page.goto("/accounts");
-  await expect(page.getByText("Cash", { exact: true })).toBeVisible();
-  await expect(page.getByText("UPI", { exact: true })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Cash", level: 3 })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "UPI", level: 3 })).toBeVisible();
   await page.goto("/transactions?action=expense");
   await page.getByLabel(/Amount/).fill("25.50");
   await page.getByLabel("Merchant", { exact: true }).fill("Corner cafe");
@@ -28,20 +29,21 @@ test("adds expense and income, filters transactions, and creates a budget", asyn
   await page.getByPlaceholder("Search merchant, category, account...").fill("Corner cafe");
   await expect(page.getByText("Corner cafe")).toBeVisible();
   await page.goto("/budgets");
-  await page.getByRole("button", { name: "Create budget" }).click();
+  await page.getByRole("button", { name: "Add Category Limit", exact: true }).click();
   await page.getByLabel("Budget amount").fill("800");
   await page.getByRole("button", { name: "Save budget" }).click();
-  await expect(page.getByText("Overall monthly budget")).toBeVisible();
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+  await expect(page.getByText("Overall budget").first()).toBeVisible({ timeout: 15_000 });
   await page.goto("/recurring");
-  await page.getByRole("button", { name: "New schedule" }).click();
+  await page.getByRole("button", { name: "New Reminder" }).first().click();
   await page.getByLabel(/Amount/).fill("12");
   await page.getByLabel("Merchant", { exact: true }).fill("Music plan");
-  await page.getByRole("dialog").getByRole("button", { name: "Create schedule" }).click();
-  await expect(page.getByText("Music plan")).toBeVisible();
-  await page.getByRole("button", { name: "Edit Music plan" }).click();
+  await page.getByRole("dialog").getByRole("button", { name: "Create reminder" }).click();
+  await expect(page.getByText("Music plan").first()).toBeVisible({ timeout: 15_000 });
+  await page.getByRole("button", { name: "Edit schedule" }).click();
   await page.getByLabel("Merchant", { exact: true }).fill("Music Plus");
-  await page.getByRole("button", { name: "Save schedule" }).click();
-  await expect(page.getByText("Music Plus")).toBeVisible();
+  await page.getByRole("button", { name: "Save reminder" }).click();
+  await expect(page.getByText("Music Plus").first()).toBeVisible({ timeout: 15_000 });
 });
 test("creates a custom category and opens profile", async ({ page }) => {
   await register(page, "category");

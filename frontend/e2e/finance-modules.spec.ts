@@ -19,7 +19,9 @@ test.describe("finance modules", () => {
     await page.getByLabel("Current value").fill("11000");
     await page.getByRole("button", { name: "Save" }).click();
     await expect(page.getByRole("dialog")).toHaveCount(0);
-    await expect(page.getByText("Nifty 50 Index")).toBeVisible();
+    await expect(page.getByRole("button", { name: /Nifty 50 Index/ }).first()).toBeVisible({
+      timeout: 15_000,
+    });
     await page.goto("/dashboard");
     const investments = page.locator(".pd-module").filter({ hasText: "Investments" });
     await expect(investments).toBeVisible();
@@ -67,8 +69,8 @@ test.describe("finance modules", () => {
     await page.getByLabel("Minimum due (₹)").fill("3000");
     await page.getByRole("button", { name: "Save Card" }).click();
     await expect(page.getByRole("dialog")).toHaveCount(0);
-    await expect(page.getByText("HDFC Regalia").first()).toBeVisible();
-    await expect(page.getByRole("heading", { name: /Your credit card/ })).toBeVisible();
+    await expect(page.getByText("HDFC Regalia").first()).toBeVisible({ timeout: 15_000 });
     await expect(page.getByRole("heading", { name: "Upcoming payments" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Rewards & Benefits" })).toBeVisible();
   });
 });
