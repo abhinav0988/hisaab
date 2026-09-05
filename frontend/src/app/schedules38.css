@@ -725,11 +725,6 @@
   }
 }
 
-  50% {
-    transform: translateY(-8px);
-  }
-}
-
 /* ---------- Empty + lines ---------- */
 .s38-empty {
   min-height: 280px;
