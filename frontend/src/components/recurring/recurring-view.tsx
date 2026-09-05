@@ -1,19 +1,48 @@
 "use client";
+
 import type { Account, Category, RecurringFrequency, TransactionType } from "@hisaab/types";
-import { Badge, Button, Card, Field, Input, Select } from "@hisaab/ui";
+import { Button, Card, Field, Input, Select } from "@hisaab/ui";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { CalendarClock, Pause, Pencil, Play, Plus, Trash2 } from "lucide-react";
-import { useState } from "react";
+import {
+  ArrowLeftRight,
+  BarChart3,
+  Bell,
+  CalendarCheck2,
+  CalendarClock,
+  CalendarDays,
+  Clock3,
+  Home,
+  IndianRupee,
+  Moon,
+  Pause,
+  Pencil,
+  Play,
+  Plus,
+  Search,
+  Settings2,
+  Shield,
+  Sparkles,
+  Sun,
+  Trash2,
+  Tv,
+  Umbrella,
+  Wallet,
+  Zap,
+} from "lucide-react";
+import { useTheme } from "next-themes";
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { toast } from "sonner";
 import { ConfirmDialog, Modal } from "@/components/layout/modal";
-import { PageHeader } from "@/components/layout/page-header";
-import { EmptyState, ErrorState, PageSkeleton } from "@/components/layout/states";
+import { ErrorState, PageSkeleton } from "@/components/layout/states";
+import { accountDisplayName, isPaymentMethodType, paymentMethodAccounts, uniqueCatalogAccounts } from "@/lib/accounts";
+import { ApiError } from "@/lib/api-client";
 import { dateTime, money } from "@/lib/format";
-import { uniqueCatalogAccounts, accountDisplayName, isPaymentMethodType, paymentMethodAccounts } from "@/lib/accounts";
 import { accountService } from "@/services/account.service";
 import { categoryService } from "@/services/category.service";
 import { profileService } from "@/services/profile.service";
 import { recurringService } from "@/services/recurring.service";
+import "../../app/recurring38.css";
+
 type Recurring = {
   id: string;
   accountId: string;
@@ -29,11 +58,151 @@ type Recurring = {
   lastRunAt: string | null;
   isActive: boolean;
 };
+
+const POPULAR_CATEGORIES = [
+  { label: "Rent / Home", hint: "Housing & rent", icon: Home, tone: "green", match: /rent|home|hous/i },
+  { label: "Utilities", hint: "Electricity, water, gas", icon: Zap, tone: "blue", match: /util|electric|water|gas|bill/i },
+  { label: "Subscriptions", hint: "OTT, apps, software", icon: Tv, tone: "purple", match: /subscr|ott|netflix|spotify|stream/i },
+  { label: "Insurance", hint: "Health, life, vehicle", icon: Umbrella, tone: "gold", match: /insur/i },
+  { label: "Loans & EMIs", hint: "EMI and loan payments", icon: Wallet, tone: "orange", match: /loan|emi|credit/i },
+  { label: "Investments", hint: "SIPs and deposits", icon: BarChart3, tone: "teal", match: /invest|sip|mutual/i },
+] as const;
+
+const WHY_ITEMS = [
+  { title: "Save time", text: "Set it once, we'll remind you", icon: Clock3, tone: "green" },
+  { title: "Stay organised", text: "All your bills in one place", icon: Settings2, tone: "orange" },
+  { title: "Avoid late fees", text: "Get timely reminders", icon: Shield, tone: "blue" },
+  { title: "Better insights", text: "Track recurring spends easily", icon: BarChart3, tone: "purple" },
+] as const;
+
+function failMessage(error: unknown) {
+  return error instanceof ApiError ? error.message : "Could not save. Try again.";
+}
+
+function monthLabel(date = new Date()) {
+  return new Intl.DateTimeFormat("en-GB", { month: "long", year: "numeric" }).format(date);
+}
+
+function isSameMonth(value: string | null | undefined, now = new Date()) {
+  if (!value) return false;
+  const date = new Date(value);
+  return date.getFullYear() === now.getFullYear() && date.getMonth() === now.getMonth();
+}
+
+function monthlyEquivalent(item: Recurring) {
+  switch (item.frequency) {
+    case "DAILY":
+      return item.amountMinor * 30;
+    case "WEEKLY":
+      return item.amountMinor * 4;
+    case "YEARLY":
+      return Math.round(item.amountMinor / 12);
+    default:
+      return item.amountMinor;
+  }
+}
+
+function scheduleTitle(item: Recurring) {
+  return item.merchant || `${item.frequency.toLowerCase()} ${item.type.toLowerCase()}`;
+}
+
+function RecurringThemeButton() {
+  const { theme, setTheme } = useTheme();
+  const mounted = useSyncExternalStore(
+    () => () => undefined,
+    () => true,
+    () => false,
+  );
+  const dark = mounted && theme === "dark";
+  return (
+    <button
+      type="button"
+      className="r38-btn icon"
+      aria-label={dark ? "Switch to light theme" : "Switch to dark theme"}
+      title="Toggle theme"
+      onClick={() => setTheme(dark ? "light" : "dark")}
+    >
+      {dark ? <Moon size={15} aria-hidden="true" /> : <Sun size={15} aria-hidden="true" />}
+    </button>
+  );
+}
+
+function RecurringNotifyButton({ notices }: { notices: Array<{ title: string; body: string }> }) {
+  const [open, setOpen] = useState(false);
+  const wrapRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setOpen(false);
+    };
+    const onPointer = (event: MouseEvent) => {
+      const target = event.target as Node;
+      if (wrapRef.current?.contains(target)) return;
+      setOpen(false);
+    };
+    document.addEventListener("keydown", onKey);
+    document.addEventListener("mousedown", onPointer);
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      document.removeEventListener("mousedown", onPointer);
+    };
+  }, [open]);
+
+  return (
+    <div className="r38-notify-wrap" ref={wrapRef}>
+      <button
+        type="button"
+        className="r38-btn icon r38-notify"
+        aria-label="Notifications"
+        aria-expanded={open}
+        aria-haspopup="dialog"
+        onClick={() => setOpen((value) => !value)}
+      >
+        <Bell size={15} aria-hidden="true" />
+        {notices.length ? <span className="r38-notify-dot" aria-hidden="true" /> : null}
+      </button>
+      {open ? (
+        <div className="r38-notify-panel" role="dialog" aria-label="Recurring notifications">
+          <header>
+            <div>
+              <h2>Notifications</h2>
+              <p>{notices.length ? `${notices.length} alert${notices.length === 1 ? "" : "s"}` : "You're all caught up"}</p>
+            </div>
+            <button type="button" onClick={() => setOpen(false)}>
+              Mark read
+            </button>
+          </header>
+          {notices.length ? (
+            <ul>
+              {notices.map((item) => (
+                <li key={`${item.title}-${item.body}`}>
+                  <span />
+                  <div>
+                    <strong>{item.title}</strong>
+                    <small>{item.body}</small>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="r38-notify-empty">No bill reminders yet. Upcoming schedules will show here.</p>
+          )}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 export function RecurringView() {
   const client = useQueryClient();
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Recurring | null>(null);
   const [deleting, setDeleting] = useState<Recurring | null>(null);
+  const [search, setSearch] = useState("");
+  const [draftMerchant, setDraftMerchant] = useState("");
+  const [draftCategoryId, setDraftCategoryId] = useState<string | undefined>(undefined);
+
   const rows = useQuery({
     queryKey: ["recurring"],
     queryFn: () => recurringService.list<Recurring>(),
@@ -50,6 +219,7 @@ export function RecurringView() {
     queryKey: ["profile"],
     queryFn: () => profileService.get(),
   });
+
   const action = useMutation({
     mutationFn: ({ id, operation }: { id: string; operation: "pause" | "resume" | "delete" }) =>
       operation === "delete"
@@ -62,108 +232,413 @@ export function RecurringView() {
       if (variables.operation === "delete") setDeleting(null);
       void client.invalidateQueries({ queryKey: ["recurring"] });
     },
+    onError: (error) => toast.error(failMessage(error)),
   });
-  if (rows.isLoading || accounts.isLoading || categories.isLoading || profile.isLoading)
-    return <PageSkeleton />;
-  if (!rows.data || !accounts.data || !categories.data || !profile.data)
+
+  const list = rows.data ?? [];
+  const query = search.trim().toLowerCase();
+  const filtered = useMemo(() => {
+    if (!query) return list;
+    return list.filter((item) => {
+      const haystack = `${item.merchant ?? ""} ${item.frequency} ${item.type} ${item.notes ?? ""}`.toLowerCase();
+      return haystack.includes(query);
+    });
+  }, [list, query]);
+
+  const activeCount = useMemo(() => list.filter((item) => item.isActive).length, [list]);
+  const monthlyAmount = useMemo(
+    () => list.filter((item) => item.isActive).reduce((sum, item) => sum + monthlyEquivalent(item), 0),
+    [list],
+  );
+  const upcomingThisMonth = useMemo(
+    () => list.filter((item) => item.isActive && isSameMonth(item.nextRunAt)),
+    [list],
+  );
+  const completedThisMonth = useMemo(
+    () => list.filter((item) => isSameMonth(item.lastRunAt)).length,
+    [list],
+  );
+  const notices = useMemo(
+    () =>
+      upcomingThisMonth.slice(0, 4).map((item) => ({
+        title: `${scheduleTitle(item)} due soon`,
+        body: `Next run ${dateTime(item.nextRunAt)} · ${money(item.amountMinor, item.currency)}`,
+      })),
+    [upcomingThisMonth],
+  );
+
+  if (rows.isLoading || accounts.isLoading || categories.isLoading || profile.isLoading) return <PageSkeleton />;
+  if (rows.isError || !accounts.data || !categories.data || !profile.data) {
     return <ErrorState retry={() => void rows.refetch()} />;
+  }
+
+  const currency = profile.data.defaultCurrency ?? "INR";
+
+  function openCreate(opts?: { merchant?: string; categoryId?: string }) {
+    setDraftMerchant(opts?.merchant ?? "");
+    setDraftCategoryId(opts?.categoryId);
+    setOpen(true);
+  }
+
+  function resolveCategoryId(match: RegExp) {
+    return categories.data?.find((item) => item.type === "EXPENSE" && match.test(item.name))?.id;
+  }
+
   return (
-    <div>
-      <PageHeader
-        eyebrow="Workspace"
-        title="Recurring"
-        description="Automate predictable income and expenses without duplicate entries."
-        actions={
-          <Button onClick={() => setOpen(true)}>
-            <Plus size={17} />
-            New schedule
-          </Button>
-        }
-      />
-      <div className="mt-7">
-        {rows.data.length ? (
-          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-            {rows.data.map((item) => (
-              <Card key={item.id} className="interactive-card p-5">
-                <div className="flex items-start justify-between">
-                  <span className="grid size-11 place-items-center rounded-xl bg-[var(--mint)] text-[var(--primary)]">
-                    <CalendarClock size={21} />
-                  </span>
-                  <Badge tone={item.isActive ? "success" : "neutral"}>
-                    {item.isActive ? "Active" : "Paused"}
-                  </Badge>
-                </div>
-                <p className="mt-5 font-semibold">
-                  {item.merchant || `${item.frequency.toLowerCase()} ${item.type.toLowerCase()}`}
-                </p>
-                <p
-                  className={`mt-2 text-2xl font-bold ${item.type === "INCOME" ? "text-[var(--success)]" : ""}`}
-                >
-                  {money(item.amountMinor, item.currency)}
-                </p>
-                <p className="mt-2 text-xs text-[var(--muted-foreground)]">
-                  Runs {item.frequency.toLowerCase()} · Next {dateTime(item.nextRunAt)}
-                </p>
-                <div className="mt-5 flex gap-2">
-                  <Button
-                    variant="secondary"
-                    className="flex-1"
-                    onClick={() =>
-                      action.mutate({ id: item.id, operation: item.isActive ? "pause" : "resume" })
-                    }
-                  >
-                    {item.isActive ? <Pause size={16} /> : <Play size={16} />}{" "}
-                    {item.isActive ? "Pause" : "Resume"}
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    className="px-3"
-                    onClick={() => setEditing(item)}
-                    aria-label={`Edit ${item.merchant || "schedule"}`}
-                  >
-                    <Pencil size={16} />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    className="px-3 hover:text-[var(--danger)]"
-                    onClick={() => setDeleting(item)}
-                    aria-label={`Delete ${item.merchant || "schedule"}`}
-                  >
-                    <Trash2 size={16} />
-                  </Button>
-                </div>
-              </Card>
-            ))}
+    <div className="recurring38">
+      <section className="r38-head">
+        <div className="r38-head-left">
+          <div className="r38-page-icon" aria-hidden="true">
+            <CalendarCheck2 size={24} />
           </div>
-        ) : (
-          <EmptyState
-            title="No recurring schedules"
-            description="Automate rent, subscriptions, salary, and other predictable activity."
-            action={<Button onClick={() => setOpen(true)}>Create schedule</Button>}
-          />
-        )}
-      </div>
-      <Modal open={open} onClose={() => setOpen(false)} title="New recurring transaction">
+          <div>
+            <h1>Recurring</h1>
+            <p>Automate predictable income and expenses without duplicate entries.</p>
+          </div>
+        </div>
+        <div className="r38-head-actions">
+          <label className="r38-search">
+            <Search size={16} aria-hidden="true" />
+            <input
+              aria-label="Search bills and reminders"
+              placeholder="Search bills, reminders..."
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+            />
+          </label>
+          <button type="button" className="r38-btn" aria-label="Current month">
+            <CalendarDays size={15} aria-hidden="true" />
+            {monthLabel()}
+          </button>
+          <RecurringNotifyButton notices={notices} />
+          <RecurringThemeButton />
+          <button type="button" className="r38-btn primary" onClick={() => openCreate()}>
+            <Plus size={15} aria-hidden="true" />
+            New Schedule
+          </button>
+        </div>
+      </section>
+
+      <section className="r38-kpis" aria-label="Recurring summary">
+        <article className="r38-kpi green">
+          <div className="r38-kpi-top">
+            <span className="label">Total Recurring</span>
+            <span className="r38-kpi-icon">
+              <CalendarClock size={18} />
+            </span>
+          </div>
+          <strong>{activeCount}</strong>
+          <small>Active schedule{activeCount === 1 ? "" : "s"}</small>
+        </article>
+        <article className="r38-kpi blue">
+          <div className="r38-kpi-top">
+            <span className="label">Monthly Amount</span>
+            <span className="r38-kpi-icon">
+              <IndianRupee size={18} />
+            </span>
+          </div>
+          <strong>{money(monthlyAmount, currency)}</strong>
+          <small>Across all schedules</small>
+        </article>
+        <article className="r38-kpi gold">
+          <div className="r38-kpi-top">
+            <span className="label">Upcoming This Month</span>
+            <span className="r38-kpi-icon">
+              <Bell size={18} />
+            </span>
+          </div>
+          <strong>{upcomingThisMonth.length}</strong>
+          <small>Payment{upcomingThisMonth.length === 1 ? "" : "s"} due</small>
+        </article>
+        <article className="r38-kpi purple">
+          <div className="r38-kpi-top">
+            <span className="label">Completed Payments</span>
+            <span className="r38-kpi-icon">
+              <Sparkles size={18} />
+            </span>
+          </div>
+          <strong>{completedThisMonth}</strong>
+          <small>This month</small>
+        </article>
+      </section>
+
+      <section className="r38-board">
+        <div className="r38-board-main">
+          <section className="r38-hero">
+            <div className="r38-hero-copy">
+              <h2>
+                Never miss a payment. <span>Set it once, stay stress-free.</span>
+              </h2>
+              <p>Automate rent, subscriptions, salary and other predictable cashflow with reminders that keep you ahead.</p>
+              <div className="r38-hero-actions">
+                <button type="button" className="r38-btn primary" onClick={() => openCreate()}>
+                  <Plus size={15} aria-hidden="true" />
+                  New Schedule
+                </button>
+                <button
+                  type="button"
+                  className="r38-btn ghost"
+                  onClick={() =>
+                    toast.info("Create a schedule once — Hisaab posts it on time and reminds you before due dates.")
+                  }
+                >
+                  <Play size={14} aria-hidden="true" />
+                  Watch how it works
+                </button>
+              </div>
+            </div>
+            <div className="r38-hero-visual" aria-hidden="true">
+              <div className="r38-hero-glow" />
+              <div className="r38-cal">
+                <span className="r38-cal-bar" />
+                <strong>31</strong>
+                <small>Due</small>
+              </div>
+              <i className="r38-float is-netflix">N</i>
+              <i className="r38-float is-spotify">♪</i>
+              <i className="r38-float is-bell">
+                <Bell size={16} />
+              </i>
+            </div>
+          </section>
+
+          {filtered.length ? (
+            <div className="r38-lines">
+              {filtered.map((item) => (
+                <Card key={item.id} className="r38-line">
+                  <header>
+                    <span className="r38-line-icon" aria-hidden="true">
+                      <CalendarClock size={18} />
+                    </span>
+                    <div className="min-w-0">
+                      <h3>{scheduleTitle(item)}</h3>
+                      <small>
+                        {item.frequency.toLowerCase()} · {item.type.toLowerCase()}
+                        {item.isActive ? "" : " · paused"}
+                      </small>
+                    </div>
+                    <span className={`r38-pill ${item.isActive ? "is-active" : "is-paused"}`}>
+                      {item.isActive ? "Active" : "Paused"}
+                    </span>
+                  </header>
+                  <div className="r38-line-stats">
+                    <div>
+                      <small>Amount</small>
+                      <b className={item.type === "INCOME" ? "is-income" : undefined}>
+                        {money(item.amountMinor, item.currency)}
+                      </b>
+                    </div>
+                    <div>
+                      <small>Next run</small>
+                      <b>{dateTime(item.nextRunAt)}</b>
+                    </div>
+                    <div>
+                      <small>Last run</small>
+                      <b>{item.lastRunAt ? dateTime(item.lastRunAt) : "—"}</b>
+                    </div>
+                  </div>
+                  <div className="r38-line-actions">
+                    <button
+                      type="button"
+                      className="r38-btn"
+                      onClick={() =>
+                        action.mutate({ id: item.id, operation: item.isActive ? "pause" : "resume" })
+                      }
+                    >
+                      {item.isActive ? <Pause size={14} aria-hidden="true" /> : <Play size={14} aria-hidden="true" />}
+                      {item.isActive ? "Pause" : "Resume"}
+                    </button>
+                    <button type="button" className="r38-btn" onClick={() => setEditing(item)} aria-label="Edit schedule">
+                      <Pencil size={14} aria-hidden="true" />
+                      Edit
+                    </button>
+                    <button
+                      type="button"
+                      className="r38-btn danger"
+                      onClick={() => setDeleting(item)}
+                      aria-label="Delete schedule"
+                    >
+                      <Trash2 size={14} aria-hidden="true" />
+                      Remove
+                    </button>
+                  </div>
+                </Card>
+              ))}
+            </div>
+          ) : (
+            <Card className="r38-empty">
+              <div className="r38-empty-icon" aria-hidden="true">
+                <CalendarDays size={28} />
+                <Plus size={14} className="r38-empty-plus" />
+              </div>
+              <h2>No recurring schedules</h2>
+              <p>Automate rent, subscriptions, salary, and other predictable activity.</p>
+              <button type="button" className="r38-btn primary" onClick={() => openCreate()}>
+                <Plus size={15} aria-hidden="true" />
+                Create your first schedule
+              </button>
+            </Card>
+          )}
+
+          <section className="r38-why" aria-label="Why use recurring schedules">
+            <h2>Why use recurring schedules?</h2>
+            <ul>
+              {WHY_ITEMS.map((item) => {
+                const Icon = item.icon;
+                return (
+                  <li key={item.title} className={`is-${item.tone}`}>
+                    <span>
+                      <Icon size={16} />
+                    </span>
+                    <div>
+                      <strong>{item.title}</strong>
+                      <small>{item.text}</small>
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+          </section>
+        </div>
+
+        <aside className="r38-board-side">
+          <Card className="r38-panel">
+            <header>
+              <div>
+                <h2>Popular Categories</h2>
+                <small>Quick-add common bills</small>
+              </div>
+              <button type="button" className="r38-text-link" onClick={() => openCreate()}>
+                View all
+              </button>
+            </header>
+            <ul className="r38-cats">
+              {POPULAR_CATEGORIES.map((item) => {
+                const Icon = item.icon;
+                return (
+                  <li key={item.label}>
+                    <span className={`r38-cat-icon is-${item.tone}`}>
+                      <Icon size={15} />
+                    </span>
+                    <div>
+                      <strong>{item.label}</strong>
+                      <small>{item.hint}</small>
+                    </div>
+                    <button
+                      type="button"
+                      className="r38-plus"
+                      aria-label={`Add ${item.label}`}
+                      onClick={() =>
+                        openCreate({
+                          merchant: item.label,
+                          categoryId: resolveCategoryId(item.match),
+                        })
+                      }
+                    >
+                      <Plus size={14} />
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          </Card>
+
+          <Card className="r38-panel">
+            <header>
+              <div>
+                <h2>Upcoming Reminders</h2>
+                <small>{monthLabel()}</small>
+              </div>
+            </header>
+            {upcomingThisMonth.length ? (
+              <ul className="r38-upcoming">
+                {upcomingThisMonth.slice(0, 5).map((item) => (
+                  <li key={item.id}>
+                    <span>
+                      <CalendarDays size={14} />
+                    </span>
+                    <div>
+                      <strong>{scheduleTitle(item)}</strong>
+                      <small>
+                        {dateTime(item.nextRunAt)} · {money(item.amountMinor, item.currency)}
+                      </small>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <div className="r38-upcoming-empty">
+                <span aria-hidden="true">
+                  <CalendarDays size={18} />
+                </span>
+                <p>No upcoming payments. Your scheduled payments for this month will appear here.</p>
+              </div>
+            )}
+          </Card>
+
+          <Card className="r38-panel r38-quick">
+            <header>
+              <div>
+                <h2>Quick Actions</h2>
+                <small>Common next steps</small>
+              </div>
+            </header>
+            <button type="button" className="r38-action" onClick={() => openCreate()}>
+              <span className="r38-action-icon">
+                <CalendarCheck2 size={16} />
+              </span>
+              <div>
+                <strong>Add schedule</strong>
+                <small>Create a new recurring payment</small>
+              </div>
+            </button>
+            <button
+              type="button"
+              className="r38-action"
+              onClick={() => toast.info("Import from bank is coming soon. Add schedules manually for now.")}
+            >
+              <span className="r38-action-icon is-alt">
+                <ArrowLeftRight size={16} />
+              </span>
+              <div>
+                <strong>Import from bank</strong>
+                <small>Auto-detect recurring transactions</small>
+              </div>
+            </button>
+          </Card>
+        </aside>
+      </section>
+
+      <Modal
+        open={open}
+        onClose={() => {
+          setOpen(false);
+          setDraftMerchant("");
+          setDraftCategoryId(undefined);
+        }}
+        title="New recurring transaction"
+      >
         <RecurringForm
-          currency={profile.data.defaultCurrency}
+          key={`new-${draftMerchant}-${draftCategoryId ?? "none"}`}
+          currency={currency}
           accounts={accounts.data}
           categories={categories.data}
+          draftMerchant={draftMerchant}
+          draftCategoryId={draftCategoryId}
           onSaved={() => {
             setOpen(false);
+            setDraftMerchant("");
+            setDraftCategoryId(undefined);
             toast.success("Schedule created");
             void client.invalidateQueries({ queryKey: ["recurring"] });
           }}
         />
       </Modal>
-      <Modal
-        open={Boolean(editing)}
-        onClose={() => setEditing(null)}
-        title="Edit recurring transaction"
-      >
+      <Modal open={Boolean(editing)} onClose={() => setEditing(null)} title="Edit recurring transaction">
         {editing ? (
           <RecurringForm
             key={editing.id}
-            currency={profile.data.defaultCurrency}
+            currency={currency}
             accounts={accounts.data}
             categories={categories.data}
             initial={editing}
@@ -186,33 +661,40 @@ export function RecurringView() {
     </div>
   );
 }
+
 function RecurringForm({
   currency,
   accounts,
   categories,
   initial,
+  draftMerchant = "",
+  draftCategoryId,
   onSaved,
 }: {
   currency: string;
   accounts: Account[];
   categories: Category[];
   initial?: Recurring;
+  draftMerchant?: string;
+  draftCategoryId?: string;
   onSaved: () => void;
 }) {
   const [type, setType] = useState<TransactionType>(initial?.type ?? "EXPENSE");
   const [amount, setAmount] = useState(initial ? String(initial.amountMinor / 100) : "");
   const accountOptions = uniqueCatalogAccounts(accounts, initial?.accountId);
-  const [accountId, setAccount] = useState(
-    initial?.accountId ?? accountOptions[0]?.id ?? "",
-  );
+  const [accountId, setAccount] = useState(initial?.accountId ?? accountOptions[0]?.id ?? "");
   const [categoryId, setCategory] = useState(
-    initial?.categoryId ?? categories.find((item) => item.type === "EXPENSE")?.id ?? "",
+    initial?.categoryId ??
+      draftCategoryId ??
+      categories.find((item) => item.type === "EXPENSE")?.id ??
+      "",
   );
   const [frequency, setFrequency] = useState<RecurringFrequency>(initial?.frequency ?? "MONTHLY");
   const [startAt, setStart] = useState(
     initial ? localDateTimeValue(initial.nextRunAt) : localDateTimeValue(new Date().toISOString()),
   );
-  const [merchant, setMerchant] = useState(initial?.merchant ?? "");
+  const [merchant, setMerchant] = useState(initial?.merchant ?? draftMerchant);
+
   const mutation = useMutation({
     mutationFn: () => {
       const body = {
@@ -229,7 +711,9 @@ function RecurringForm({
       return initial ? recurringService.update(initial.id, body) : recurringService.create(body);
     },
     onSuccess: onSaved,
+    onError: (error) => toast.error(failMessage(error)),
   });
+
   return (
     <form
       className="grid gap-4"
@@ -339,9 +823,6 @@ function RecurringForm({
       <Field label={type === "EXPENSE" ? "Merchant" : "Source"}>
         <Input value={merchant} onChange={(event) => setMerchant(event.target.value)} />
       </Field>
-      {mutation.error ? (
-        <p className="text-sm text-[var(--danger)]">{mutation.error.message}</p>
-      ) : null}
       <Button disabled={mutation.isPending || !accountId || !categoryId}>
         {mutation.isPending ? "Saving…" : initial ? "Save schedule" : "Create schedule"}
       </Button>
