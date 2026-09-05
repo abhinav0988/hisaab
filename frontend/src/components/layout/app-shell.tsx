@@ -91,7 +91,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 ? "investments"
                 : pathname === "/ipo"
                   ? "ipo"
-                  : undefined
+                  : pathname === "/cards"
+                    ? "cards"
+                    : undefined
       }
     >
       <DesktopSidebar pathname={pathname} name={activeSession.user.name} />
