@@ -741,76 +741,80 @@ function FeaturedCardPanel({
           ))}
         </div>
       ) : null}
-      <div className="c38-featured-top">
+      <div className="c38-featured-body">
         <div className="c38-plastic-wrap">
           <div className="c38-plastic-glow" aria-hidden="true" />
           <div className="c38-plastic">
             <div className="c38-plastic-top">
-              <small>Credit card</small>
+              <div>
+                <small>Credit card</small>
+                <strong>{selected.name}</strong>
+              </div>
               <span className="c38-chip" aria-hidden="true" />
             </div>
-            <div>
-              <strong>{selected.name}</strong>
-              <em>{last4 ? `•••• ${last4}` : "•••• ••••"}</em>
-            </div>
+            <em>{last4 ? `•••• ${last4}` : "•••• ••••"}</em>
             <div className="c38-plastic-foot">
               <span className={`c38-status ${overdue ? "is-overdue" : "is-active"}`}>
                 {overdue ? "Overdue" : "Active"}
               </span>
-              <span className="c38-network">VISA</span>
             </div>
           </div>
         </div>
-        <div className="c38-feat-stats">
-          <div className="c38-feat-stat">
-            <small>Credit Limit</small>
-            <strong>{money(selected.limitMinor, currency)}</strong>
-          </div>
-          <div className="c38-feat-stat is-used">
-            <small>Used Amount</small>
-            <strong>
-              {money(selected.usedMinor, currency)}
-              <span>{formatPct(summary.usedPct)}</span>
-            </strong>
-            <div className="c38-meter" aria-hidden="true">
-              <i style={{ width: meterWidth(summary.usedPct) }} />
+
+        <div className="c38-feat-grid">
+          <div className="c38-feat-row is-limits">
+            <div className="c38-feat-stat">
+              <small>Credit Limit</small>
+              <strong>{money(selected.limitMinor, currency)}</strong>
+            </div>
+            <div className="c38-feat-stat is-used">
+              <small>Used Amount</small>
+              <strong>
+                {money(selected.usedMinor, currency)}
+                <span>{formatPct(summary.usedPct)}</span>
+              </strong>
+              <div className="c38-meter" aria-hidden="true">
+                <i style={{ width: meterWidth(summary.usedPct) }} />
+              </div>
+            </div>
+            <div className="c38-feat-stat is-avail">
+              <small>Available Limit</small>
+              <strong>
+                {money(summary.availableMinor, currency)}
+                <span>{formatPct(availPct)}</span>
+              </strong>
+              <div className="c38-meter" aria-hidden="true">
+                <i style={{ width: meterWidth(availPct) }} />
+              </div>
             </div>
           </div>
-          <div className="c38-feat-stat is-avail">
-            <small>Available Limit</small>
-            <strong>
-              {money(summary.availableMinor, currency)}
-              <span>{formatPct(availPct)}</span>
-            </strong>
-            <div className="c38-meter" aria-hidden="true">
-              <i style={{ width: meterWidth(availPct) }} />
+
+          <div className="c38-feat-row is-bill">
+            <div className="c38-bill-cell">
+              <small>Bill Date</small>
+              <strong>{selected.cycleStartOn ? displayDateLong(selected.cycleStartOn) : "—"}</strong>
+            </div>
+            <div className="c38-bill-cell">
+              <small>Due Date</small>
+              <strong>{selected.dueOn ? displayDateLong(selected.dueOn) : "—"}</strong>
+              {due ? (
+                <span className={`c38-days-pill${due.tone === "overdue" ? " is-overdue" : ""}`}>
+                  {due.label}
+                </span>
+              ) : null}
+            </div>
+            <div className="c38-bill-cell">
+              <small>Minimum Due</small>
+              <strong>{money(selected.minDueMinor ?? 0, currency)}</strong>
+            </div>
+            <div className="c38-bill-cell">
+              <small>Total Due</small>
+              <strong>{money(pending, currency)}</strong>
             </div>
           </div>
         </div>
       </div>
-      <div className="c38-bill-grid">
-        <div className="c38-bill-cell">
-          <small>Bill Date</small>
-          <strong>{selected.cycleStartOn ? displayDateLong(selected.cycleStartOn) : "—"}</strong>
-        </div>
-        <div className="c38-bill-cell">
-          <small>Due Date</small>
-          <strong>{selected.dueOn ? displayDateLong(selected.dueOn) : "—"}</strong>
-          {due ? (
-            <span className={`c38-days-pill${due.tone === "overdue" ? " is-overdue" : ""}`}>
-              {due.label}
-            </span>
-          ) : null}
-        </div>
-        <div className="c38-bill-cell">
-          <small>Minimum Due</small>
-          <strong>{money(selected.minDueMinor ?? 0, currency)}</strong>
-        </div>
-        <div className="c38-bill-cell">
-          <small>Total Due</small>
-          <strong>{money(pending, currency)}</strong>
-        </div>
-      </div>
+
       <div className="c38-feat-actions">
         <button type="button" className="c38-link-btn" onClick={onStatement}>
           <span className="c38-link-icon" aria-hidden="true">
