@@ -742,20 +742,23 @@ function FeaturedCardPanel({
         </div>
       ) : null}
       <div className="c38-featured-top">
-        <div className="c38-plastic">
-          <div className="c38-plastic-top">
-            <small>Credit card</small>
-            <span className="c38-chip" aria-hidden="true" />
-          </div>
-          <div>
-            <strong>{selected.name}</strong>
-            <em>{last4 ? `•••• ${last4}` : "•••• ••••"}</em>
-          </div>
-          <div className="c38-plastic-foot">
-            <span className={`c38-status ${overdue ? "is-overdue" : "is-active"}`}>
-              {overdue ? "Overdue" : "Active"}
-            </span>
-            <span className="c38-network">VISA</span>
+        <div className="c38-plastic-wrap">
+          <div className="c38-plastic-glow" aria-hidden="true" />
+          <div className="c38-plastic">
+            <div className="c38-plastic-top">
+              <small>Credit card</small>
+              <span className="c38-chip" aria-hidden="true" />
+            </div>
+            <div>
+              <strong>{selected.name}</strong>
+              <em>{last4 ? `•••• ${last4}` : "•••• ••••"}</em>
+            </div>
+            <div className="c38-plastic-foot">
+              <span className={`c38-status ${overdue ? "is-overdue" : "is-active"}`}>
+                {overdue ? "Overdue" : "Active"}
+              </span>
+              <span className="c38-network">VISA</span>
+            </div>
           </div>
         </div>
         <div className="c38-feat-stats">
@@ -873,23 +876,25 @@ function RewardsPanel({ currency, rewardsMinor }: { currency: string; rewardsMin
           <small>Estimated from this cycle&apos;s card spend.</small>
         </div>
       </header>
-      <div className="c38-donut-wrap">
-        <div className="c38-donut" style={{ background: `conic-gradient(${stops})` }}>
-          <div className="c38-donut-center">
-            <strong>{money(rewardsMinor, currency)}</strong>
-            <small>Total rewarded</small>
+      <div className="c38-rewards-body">
+        <div className="c38-donut-wrap">
+          <div className="c38-donut" style={{ background: `conic-gradient(${stops})` }}>
+            <div className="c38-donut-center">
+              <strong>{money(rewardsMinor, currency)}</strong>
+              <small>Total rewarded</small>
+            </div>
           </div>
         </div>
+        <ul className="c38-legend">
+          {legend.map((item) => (
+            <li key={item.name}>
+              <i style={{ background: item.colour }} />
+              <span>{item.name}</span>
+              <b>{money(item.value, currency)}</b>
+            </li>
+          ))}
+        </ul>
       </div>
-      <ul className="c38-legend">
-        {legend.map((item) => (
-          <li key={item.name}>
-            <i style={{ background: item.colour }} />
-            <span>{item.name}</span>
-            <b>{money(item.value, currency)}</b>
-          </li>
-        ))}
-      </ul>
       <div className="c38-offers">
         <span className="c38-offers-icon" aria-hidden="true">
           <Percent size={16} />
