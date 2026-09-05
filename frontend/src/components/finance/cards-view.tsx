@@ -23,6 +23,8 @@ import {
   Bell,
   Calendar,
   CalendarDays,
+  Check,
+  ChevronRight,
   CreditCard,
   FileText,
   Gift,
@@ -36,6 +38,7 @@ import {
   Search,
   Settings2,
   Sparkles,
+  Sun,
   TrendingUp,
   UserRound,
   Wallet,
@@ -43,7 +46,8 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import Link from "next/link";
-import { forwardRef, useEffect, useMemo, useRef, useState, type InputHTMLAttributes, type ReactNode } from "react";
+import { useTheme } from "next-themes";
+import { forwardRef, useEffect, useMemo, useRef, useState, useSyncExternalStore, type InputHTMLAttributes, type ReactNode } from "react";
 import {
   Cell,
   Pie,
@@ -78,6 +82,98 @@ type FieldErrors = Partial<Record<keyof Draft, string>>;
 
 function failMessage(error: unknown) {
   return error instanceof ApiError ? error.message : "Could not save. Try again.";
+}
+
+function monthLabel(date = new Date()) {
+  return new Intl.DateTimeFormat("en-GB", { month: "long", year: "numeric" }).format(date);
+}
+
+function CardsThemeButton() {
+  const { theme, setTheme } = useTheme();
+  const mounted = useSyncExternalStore(
+    () => () => undefined,
+    () => true,
+    () => false,
+  );
+  const dark = mounted && theme === "dark";
+  return (
+    <button
+      type="button"
+      className="c38-btn icon"
+      aria-label={dark ? "Switch to light theme" : "Switch to dark theme"}
+      title="Toggle theme"
+      onClick={() => setTheme(dark ? "light" : "dark")}
+    >
+      {dark ? <Moon size={15} aria-hidden="true" /> : <Sun size={15} aria-hidden="true" />}
+    </button>
+  );
+}
+
+function CardsNotifyButton({ notices }: { notices: Array<{ title: string; body: string }> }) {
+  const [open, setOpen] = useState(false);
+  const wrapRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setOpen(false);
+    };
+    const onPointer = (event: MouseEvent) => {
+      const target = event.target as Node;
+      if (wrapRef.current?.contains(target)) return;
+      setOpen(false);
+    };
+    document.addEventListener("keydown", onKey);
+    document.addEventListener("mousedown", onPointer);
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      document.removeEventListener("mousedown", onPointer);
+    };
+  }, [open]);
+
+  return (
+    <div className="c38-notify-wrap" ref={wrapRef}>
+      <button
+        type="button"
+        className="c38-btn icon c38-notify"
+        aria-label="Notifications"
+        aria-expanded={open}
+        aria-haspopup="dialog"
+        onClick={() => setOpen((value) => !value)}
+      >
+        <Bell size={15} aria-hidden="true" />
+        {notices.length ? <span className="c38-notify-dot" aria-hidden="true" /> : null}
+      </button>
+      {open ? (
+        <div className="c38-notify-panel" role="dialog" aria-label="Card notifications">
+          <header>
+            <div>
+              <h2>Notifications</h2>
+              <p>{notices.length ? `${notices.length} card alert${notices.length === 1 ? "" : "s"}` : "You're all caught up"}</p>
+            </div>
+            <button type="button" onClick={() => setOpen(false)}>
+              Mark read
+            </button>
+          </header>
+          {notices.length ? (
+            <ul>
+              {notices.map((item) => (
+                <li key={`${item.title}-${item.body}`}>
+                  <span />
+                  <div>
+                    <strong>{item.title}</strong>
+                    <small>{item.body}</small>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="c38-notify-empty">No card alerts yet. Due bills and high utilisation will show here.</p>
+          )}
+        </div>
+      ) : null}
+    </div>
+  );
 }
 
 function emptyDraft(): Draft {
@@ -153,10 +249,6 @@ function dueCountdown(dueOn: string | null) {
 
 function estimateCreditScore(usedPct: number) {
   return Math.max(300, Math.min(850, Math.round(900 - usedPct * 2.5 - (usedPct > 55 ? 25 : 0))));
-}
-
-function monthLabel(date = new Date()) {
-  return new Intl.DateTimeFormat("en-GB", { month: "long", year: "numeric" }).format(date);
 }
 
 function meterWidth(pct: number) {
@@ -323,6 +415,20 @@ export function CardsView() {
           (card.mask ?? "").toLowerCase().includes(query),
       )
     : upcoming;
+  const notices = upcoming.slice(0, 5).map((card) => {
+    const due = dueCountdown(card.dueOn);
+    const pending = cardPendingMinor(card);
+    return {
+      title: `${card.name}${due ? ` · ${due.label}` : ""}`,
+      body: `${money(pending, currency)} due${card.dueOn ? ` ${displayDateLong(card.dueOn)}` : ""}`,
+    };
+  });
+  if (overview.usedPct >= 70) {
+    notices.unshift({
+      title: "High utilisation",
+      body: `You're using ${formatPct(overview.usedPct)} of your total credit limit.`,
+    });
+  }
 
   function openAdd() {
     setEditing(null);
@@ -370,22 +476,8 @@ export function CardsView() {
             <CalendarDays size={15} aria-hidden="true" />
             {monthLabel()}
           </button>
-          <button
-            type="button"
-            className="c38-btn icon"
-            aria-label="Notifications"
-            onClick={() => toast.info("Notifications stay in sync from your dashboard.")}
-          >
-            <Bell size={15} />
-          </button>
-          <button
-            type="button"
-            className="c38-btn icon"
-            aria-label="Theme"
-            onClick={() => toast.info("Use the sidebar theme toggle for light or dark mode.")}
-          >
-            <Moon size={15} />
-          </button>
+          <CardsNotifyButton notices={notices.slice(0, 5)} />
+          <CardsThemeButton />
           <button type="button" className="c38-btn primary" onClick={openAdd}>
             <Plus size={15} aria-hidden="true" />
             Add Card
@@ -717,21 +809,27 @@ function FeaturedCardPanel({
         </div>
       </div>
       <div className="c38-feat-actions">
-        <button type="button" className="c38-btn" onClick={onStatement}>
-          <FileText size={15} aria-hidden="true" />
-          View Statement
+        <button type="button" className="c38-link-btn" onClick={onStatement}>
+          <span className="c38-link-icon" aria-hidden="true">
+            <FileText size={14} />
+          </span>
+          <span className="c38-link-label">View Statement</span>
+          <ChevronRight size={14} className="c38-link-chevron" aria-hidden="true" />
         </button>
-        <button type="button" className="c38-btn" onClick={() => onEdit(selected)}>
-          <Settings2 size={15} aria-hidden="true" />
-          Manage Card
+        <button type="button" className="c38-link-btn" onClick={() => onEdit(selected)}>
+          <span className="c38-link-icon" aria-hidden="true">
+            <Settings2 size={14} />
+          </span>
+          <span className="c38-link-label">Manage Card</span>
+          <ChevronRight size={14} className="c38-link-chevron" aria-hidden="true" />
         </button>
         <button
           type="button"
-          className="c38-btn primary"
+          className="c38-pay-bill"
           disabled={!canPayCard(selected)}
           onClick={() => onPay(selected)}
         >
-          <Wallet size={15} aria-hidden="true" />
+          <Check size={15} aria-hidden="true" />
           Pay Card Bill
         </button>
         <CardMenu card={selected} onEdit={() => onEdit(selected)} onPay={() => onPay(selected)} onDelete={() => onDelete(selected)} />
