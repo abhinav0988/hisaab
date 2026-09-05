@@ -46,7 +46,9 @@ function ProfileForm({ initial, onSaved }: { initial: Profile; onSaved: () => vo
       ? liveTheme
       : initial.theme === "dark"
         ? "dark"
-        : "light",
+        : initial.theme === "light"
+          ? "light"
+          : "dark",
   );
   const [smartNotifications, setSmart] = useState(initial.smartNotifications ?? true);
   const [weeklySummary, setWeekly] = useState(initial.weeklySummary ?? true);

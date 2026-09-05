@@ -14,7 +14,7 @@ export function AppProviders({ children }: { children: React.ReactNode }) {
       }),
   );
   return (
-    <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false} themes={["light", "dark"]}>
+    <ThemeProvider attribute="class" defaultTheme="dark" enableSystem={false} themes={["light", "dark"]}>
       <ThemeAttribute />
       <QueryClientProvider client={client}>
         <LocaleDir />

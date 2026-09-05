@@ -7,7 +7,7 @@ export function ThemeAttribute() {
   const { theme, setTheme } = useTheme();
   useEffect(() => {
     if (theme !== "light" && theme !== "dark") {
-      setTheme("light");
+      setTheme("dark");
       return;
     }
     document.documentElement.dataset.theme = theme;

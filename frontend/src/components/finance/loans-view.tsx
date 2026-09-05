@@ -15,8 +15,11 @@ import {
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Bike,
+  Bell,
   Calendar,
+  CalendarClock,
   Check,
+  FileText,
   CheckCircle2,
   ChevronDown,
   ChevronLeft,
@@ -25,17 +28,20 @@ import {
   Home,
   IndianRupee,
   Landmark,
+  Moon,
   MoreVertical,
   Percent,
   Plus,
   Search,
   Smartphone,
+  Sun,
   UserRound,
   Wallet,
   X,
   type LucideIcon,
 } from "lucide-react";
-import { forwardRef, useEffect, useId, useMemo, useRef, useState, type InputHTMLAttributes, type ReactNode } from "react";
+import { useTheme } from "next-themes";
+import { forwardRef, useEffect, useId, useMemo, useRef, useState, useSyncExternalStore, type InputHTMLAttributes, type ReactNode } from "react";
 import { toast } from "sonner";
 import { Modal } from "@/components/layout/modal";
 import { EmptyState, ErrorState, PageSkeleton } from "@/components/layout/states";
@@ -60,6 +66,94 @@ const FILTER_TABS: Array<{ id: LoanFilterTab; label: string }> = [
 
 function monthLabel(date = new Date()) {
   return date.toLocaleString("en-IN", { month: "long", year: "numeric" });
+}
+
+function LoansThemeButton() {
+  const { theme, setTheme } = useTheme();
+  const mounted = useSyncExternalStore(
+    () => () => undefined,
+    () => true,
+    () => false,
+  );
+  const dark = mounted && theme === "dark";
+  return (
+    <button
+      type="button"
+      className="loans-btn icon"
+      aria-label={dark ? "Switch to light theme" : "Switch to dark theme"}
+      title="Toggle theme"
+      onClick={() => setTheme(dark ? "light" : "dark")}
+    >
+      {dark ? <Moon size={15} aria-hidden="true" /> : <Sun size={15} aria-hidden="true" />}
+    </button>
+  );
+}
+
+function LoansNotifyButton({ notices }: { notices: Array<{ title: string; body: string }> }) {
+  const [open, setOpen] = useState(false);
+  const wrapRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setOpen(false);
+    };
+    const onPointer = (event: MouseEvent) => {
+      const target = event.target as Node;
+      if (wrapRef.current?.contains(target)) return;
+      setOpen(false);
+    };
+    document.addEventListener("keydown", onKey);
+    document.addEventListener("mousedown", onPointer);
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      document.removeEventListener("mousedown", onPointer);
+    };
+  }, [open]);
+
+  return (
+    <div className="loans-notify-wrap" ref={wrapRef}>
+      <button
+        type="button"
+        className="loans-btn icon loans-notify"
+        aria-label="Notifications"
+        aria-expanded={open}
+        aria-haspopup="dialog"
+        onClick={() => setOpen((value) => !value)}
+      >
+        <Bell size={15} aria-hidden="true" />
+        {notices.length ? <span className="loans-notify-dot" aria-hidden="true" /> : null}
+      </button>
+      {open ? (
+        <div className="loans-notify-panel" role="dialog" aria-label="EMI notifications">
+          <header>
+            <div>
+              <h2>Notifications</h2>
+              <p>{notices.length ? `${notices.length} EMI alert${notices.length === 1 ? "" : "s"}` : "You're all caught up"}</p>
+            </div>
+            <button type="button" onClick={() => setOpen(false)}>
+              Mark read
+            </button>
+          </header>
+          {notices.length ? (
+            <ul>
+              {notices.map((item) => (
+                <li key={`${item.title}-${item.body}`}>
+                  <span />
+                  <div>
+                    <strong>{item.title}</strong>
+                    <small>{item.body}</small>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="loans-notify-empty">No EMI alerts yet. Due and overdue payments will show here.</p>
+          )}
+        </div>
+      ) : null}
+    </div>
+  );
 }
 
 function matchesLoanFilter(loan: Loan, filter: LoanFilterTab) {
@@ -324,6 +418,13 @@ export function LoansView() {
     )
     .sort((left, right) => left.item.dueOn.localeCompare(right.item.dueOn))
     .slice(0, 4);
+  const notices = upcoming.slice(0, 5).map(({ loan, item }) => {
+    const due = emiDueCopy(item.dueOn);
+    return {
+      title: `${loan.name} · ${due.label}`,
+      body: `${money(item.amountMinor, currency)} due ${displayDateLong(item.dueOn)} · ${loan.lender}`,
+    };
+  });
   const upcomingAll = list
     .flatMap((loan) =>
       loanSchedule({
@@ -393,6 +494,8 @@ export function LoansView() {
                 <Calendar size={15} aria-hidden="true" />
                 {monthLabel()}
               </button>
+              <LoansNotifyButton notices={notices} />
+              <LoansThemeButton />
               <button type="button" className="loans-btn primary" onClick={openAdd}>
                 <Plus size={15} aria-hidden="true" />
                 Add Loan
@@ -441,16 +544,16 @@ export function LoansView() {
             ).map((item) => {
               const Icon = item.icon;
               return (
-                <Card key={item.label} className={`loans-kpi is-${item.tone}`}>
-                  <span className={`loans-kpi-icon is-${item.tone}`}>
-                    <Icon size={16} />
-                  </span>
-                  <div>
+                <article key={item.label} className={`loans-kpi is-${item.tone}`}>
+                  <div className="loans-kpi-top">
+                    <span className={`loans-kpi-icon is-${item.tone}`}>
+                      <Icon size={18} />
+                    </span>
                     <small>{item.label}</small>
-                    <strong>{item.value}</strong>
-                    {item.note ? <span>{item.note}</span> : null}
                   </div>
-                </Card>
+                  <strong>{item.value}</strong>
+                  {item.note ? <span className="loans-kpi-note">{item.note}</span> : null}
+                </article>
               );
             })}
           </div>
@@ -1035,12 +1138,12 @@ function LoanCard({
         </div>
       </header>
       <div className="loan-card-body">
-        <div className="loan-card-grid">
+        <div className="loan-card-stats">
           <LoanStat label="Total Amount" value={money(loan.principalMinor || loan.outstandingMinor, currency)} />
           <LoanStat label="Outstanding" value={money(loan.outstandingMinor, currency)} tone="warning" />
           <LoanStat label="Monthly EMI" value={money(loan.emiMinor, currency)} />
           <LoanStat label="Interest" value={rateLabel(loan.rate)} />
-          <div className="loan-stat">
+          <div className="loan-stat loan-stat-due">
             <small>Next Due</small>
             <b>{displayDateLong(loan.dueOn)}</b>
             <em className={`loan-due is-${due.tone}`}>{due.label}</em>
@@ -1049,7 +1152,7 @@ function LoanCard({
         <div className="loan-card-ring">
           <CompletionRing
             pct={summary.completionPct}
-            size={118}
+            size={112}
             accent={typeAccent(loan.name)}
             label={`${formatPct(summary.completionPct)} Completed`}
           />
@@ -1057,13 +1160,22 @@ function LoanCard({
       </div>
       <div className="loan-card-actions">
         <button type="button" className="loans-link-btn" onClick={onDetails}>
-          View Details
+          <span className="loans-link-icon" aria-hidden="true">
+            <FileText size={14} />
+          </span>
+          <span className="loans-link-label">View Details</span>
+          <ChevronRight size={14} className="loans-link-chevron" aria-hidden="true" />
         </button>
         <button type="button" className="loans-link-btn" onClick={onSchedule}>
-          Payment Schedule
+          <span className="loans-link-icon" aria-hidden="true">
+            <CalendarClock size={14} />
+          </span>
+          <span className="loans-link-label">Payment Schedule</span>
+          <ChevronRight size={14} className="loans-link-chevron" aria-hidden="true" />
         </button>
         {loan.remainingEmis > 0 ? (
           <button type="button" className="loans-pay-emi" onClick={onPay}>
+            <Check size={15} aria-hidden="true" />
             Pay EMI
           </button>
         ) : (
