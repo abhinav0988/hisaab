@@ -744,45 +744,50 @@ function FeaturedCardPanel({
       <div className="c38-featured-body">
         <div className="c38-plastic-wrap">
           <div className="c38-plastic-glow" aria-hidden="true" />
-          <div className="c38-plastic">
-            <div className="c38-plastic-top">
-              <div>
+          <article className="c38-plastic">
+            <header className="c38-plastic-top">
+              <div className="c38-plastic-copy">
                 <small>Credit card</small>
-                <strong>{selected.name}</strong>
+                <strong title={selected.name}>{selected.name}</strong>
               </div>
               <span className="c38-chip" aria-hidden="true" />
+            </header>
+            <div className="c38-plastic-mid">
+              <em>{last4 ? `•••• ${last4}` : "•••• ••••"}</em>
             </div>
-            <em>{last4 ? `•••• ${last4}` : "•••• ••••"}</em>
-            <div className="c38-plastic-foot">
+            <footer className="c38-plastic-foot">
               <span className={`c38-status ${overdue ? "is-overdue" : "is-active"}`}>
                 {overdue ? "Overdue" : "Active"}
               </span>
-            </div>
-          </div>
+              <span className="c38-network" aria-hidden="true">
+                VISA
+              </span>
+            </footer>
+          </article>
         </div>
 
         <div className="c38-feat-grid">
           <div className="c38-feat-row is-limits">
             <div className="c38-feat-stat">
               <small>Credit Limit</small>
-              <strong>{money(selected.limitMinor, currency)}</strong>
+              <b>{money(selected.limitMinor, currency)}</b>
             </div>
             <div className="c38-feat-stat is-used">
-              <small>Used Amount</small>
-              <strong>
-                {money(selected.usedMinor, currency)}
+              <div className="c38-feat-stat-head">
+                <small>Used Amount</small>
                 <span>{formatPct(summary.usedPct)}</span>
-              </strong>
+              </div>
+              <b>{money(selected.usedMinor, currency)}</b>
               <div className="c38-meter" aria-hidden="true">
                 <i style={{ width: meterWidth(summary.usedPct) }} />
               </div>
             </div>
             <div className="c38-feat-stat is-avail">
-              <small>Available Limit</small>
-              <strong>
-                {money(summary.availableMinor, currency)}
+              <div className="c38-feat-stat-head">
+                <small>Available Limit</small>
                 <span>{formatPct(availPct)}</span>
-              </strong>
+              </div>
+              <b>{money(summary.availableMinor, currency)}</b>
               <div className="c38-meter" aria-hidden="true">
                 <i style={{ width: meterWidth(availPct) }} />
               </div>
@@ -792,24 +797,28 @@ function FeaturedCardPanel({
           <div className="c38-feat-row is-bill">
             <div className="c38-bill-cell">
               <small>Bill Date</small>
-              <strong>{selected.cycleStartOn ? displayDateLong(selected.cycleStartOn) : "—"}</strong>
+              <b>{selected.cycleStartOn ? displayDateLong(selected.cycleStartOn) : "—"}</b>
             </div>
             <div className="c38-bill-cell">
               <small>Due Date</small>
-              <strong>{selected.dueOn ? displayDateLong(selected.dueOn) : "—"}</strong>
+              <b>{selected.dueOn ? displayDateLong(selected.dueOn) : "—"}</b>
               {due ? (
                 <span className={`c38-days-pill${due.tone === "overdue" ? " is-overdue" : ""}`}>
                   {due.label}
                 </span>
-              ) : null}
+              ) : (
+                <span className="c38-days-pill is-empty" aria-hidden="true">
+                  —
+                </span>
+              )}
             </div>
             <div className="c38-bill-cell">
               <small>Minimum Due</small>
-              <strong>{money(selected.minDueMinor ?? 0, currency)}</strong>
+              <b>{money(selected.minDueMinor ?? 0, currency)}</b>
             </div>
             <div className="c38-bill-cell">
               <small>Total Due</small>
-              <strong>{money(pending, currency)}</strong>
+              <b>{money(pending, currency)}</b>
             </div>
           </div>
         </div>
