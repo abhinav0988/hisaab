@@ -77,11 +77,11 @@ export function Modal({
         ref={panelRef}
         tabIndex={-1}
         className={cn(
-          "responsive-dialog relative max-h-[min(92dvh,calc(100dvh-env(safe-area-inset-top)))] w-full max-w-[100vw] overflow-y-auto rounded-b-none bg-gradient-to-b from-[var(--surface)] to-[var(--surface-2)] px-5 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-6 shadow-[0_36px_110px_rgba(0,0,0,.28)] sm:max-h-[92vh] sm:rounded-[32px] sm:p-7",
+          "responsive-dialog relative max-h-[min(92dvh,calc(100dvh-env(safe-area-inset-top)))] w-full max-w-[100vw] overflow-y-auto rounded-b-none bg-gradient-to-b from-[var(--surface)] to-[var(--surface-2)] px-5 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-3 shadow-[0_36px_110px_rgba(0,0,0,.28)] sm:max-h-[92vh] sm:rounded-[32px] sm:p-7",
           size === "xl" ? "sm:max-w-[1080px]" : size === "lg" ? "sm:max-w-[980px]" : "sm:max-w-xl",
         )}
       >
-        <div className="mb-[22px] flex items-start justify-between gap-4">
+        <div className="mb-3 flex items-start justify-between gap-4 sm:mb-[22px]">
           <div>
             <h2 id={titleId} className="m-0 text-[21px] font-bold tracking-[-0.025em]">
               {title}
