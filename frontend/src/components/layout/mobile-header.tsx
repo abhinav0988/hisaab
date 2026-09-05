@@ -20,6 +20,12 @@ function titleForPath(pathname: string) {
   return match?.label ?? "Hisaab";
 }
 
+function hideMobileTitle(pathname: string) {
+  return ["/reports", "/coach", "/categories", "/profile", "/premium"].some(
+    (route) => pathname === route || pathname.startsWith(`${route}/`),
+  );
+}
+
 function noticeCountLabel(count: number) {
   if (count === 1) return "1 item needs attention";
   return `${count} items need attention`;
@@ -68,6 +74,7 @@ export function MobileHeader({
 }) {
   const router = useRouter();
   const title = titleForPath(pathname);
+  const compactTitle = hideMobileTitle(pathname);
   const bellRef = useRef<HTMLButtonElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
 
@@ -134,7 +141,7 @@ export function MobileHeader({
     <header className="app-header sticky top-0 z-40 flex min-h-[72px] items-center gap-2.5 overflow-visible border-b border-[color-mix(in_srgb,var(--border)_78%,transparent)] px-3 sm:px-4 lg:h-[84px] lg:px-[30px]">
       <div className="flex min-w-0 flex-1 items-center gap-2.5 lg:hidden">
         <HisaabMark />
-        <span className="truncate text-sm font-semibold tracking-tight">{title}</span>
+        {compactTitle ? null : <span className="truncate text-sm font-semibold tracking-tight">{title}</span>}
       </div>
       <GlobalSearch />
       <div className="ms-auto flex shrink-0 items-center gap-2.5">

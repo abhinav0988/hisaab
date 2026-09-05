@@ -477,7 +477,7 @@ function SettingsForm({ initial, onSaved }: { initial: Profile; onSaved: () => v
                   },
                   {
                     href: "/recurring",
-                    label: "Recurring",
+                    label: "Bills & Reminders",
                     hint: `${recurringCount || "—"} active`,
                     icon: Repeat2,
                   },

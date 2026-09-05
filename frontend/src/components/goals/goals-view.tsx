@@ -7,14 +7,12 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   ArrowRight,
   BarChart3,
-  Bell,
   CalendarDays,
   Car,
   Check,
   Gem,
   Home,
   Laptop,
-  Moon,
   MoreVertical,
   Pause,
   Pencil,
@@ -30,6 +28,7 @@ import {
 import { useRouter } from "next/navigation";
 import { useState, type CSSProperties } from "react";
 import { toast } from "sonner";
+import { ImmersedNotifyButton, ImmersedThemeButton } from "@/components/layout/immersed-chrome";
 import { ConfirmDialog, Modal } from "@/components/layout/modal";
 import { EmptyState, ErrorState, PageSkeleton } from "@/components/layout/states";
 import { ApiError } from "@/lib/api-client";
@@ -255,12 +254,8 @@ export function GoalsView() {
           <button type="button" className="sg31-control">
             <CalendarDays /> {monthLabel()}
           </button>
-          <button type="button" className="sg31-ghost sg31-notify" aria-label="Notifications" onClick={() => toast.info("No new savings alerts.")}>
-            <Bell /><span />
-          </button>
-          <button type="button" className="sg31-ghost" aria-label="Theme settings" onClick={() => toast.info("Use Settings to change appearance.")}>
-            <Moon />
-          </button>
+          <ImmersedNotifyButton className="sg31-ghost" emptyText="No new savings alerts." />
+          <ImmersedThemeButton className="sg31-ghost" />
           <button type="button" className="sg31-ghost" aria-label="More goal options" onClick={() => setManageOpen(true)}>
             <MoreVertical />
           </button>

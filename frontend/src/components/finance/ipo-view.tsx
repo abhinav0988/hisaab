@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
+import { ImmersedNotifyButton, ImmersedThemeButton } from "@/components/layout/immersed-chrome";
 import { Modal } from "@/components/layout/modal";
 import { ErrorState, PageSkeleton } from "@/components/layout/states";
 import { ApiError } from "@/lib/api-client";
@@ -410,6 +411,8 @@ export function IpoView() {
           <button type="button" className="ip36-btn" onClick={cyclePeriod}>
             <CalendarDays /> {monthLabel()}
           </button>
+          <ImmersedNotifyButton className="ip36-btn" emptyText="No new IPO alerts." />
+          <ImmersedThemeButton className="ip36-btn" />
           <button type="button" className="ip36-btn primary" onClick={() => setAddOpen(true)}>
             <Plus /> Add IPO
           </button>

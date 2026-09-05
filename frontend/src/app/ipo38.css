@@ -417,4 +417,13 @@ html:not(.dark):not([data-theme="dark"]) .ip36-scard,
 html:not(.dark):not([data-theme="dark"]) .ip36-panel{background:#fff;border-color:#d7e5dd;color:#10251a}
 html:not(.dark):not([data-theme="dark"]) .ip36-search input,
 html:not(.dark):not([data-theme="dark"]) .ip36-tsearch input{color:#10251a}
-html:not(.dark):not([data-theme="dark"]) .ip36-kpi{background:linear-gradient(145deg,#fff,#f4faf6);border-color:rgba(16,55,35,.1);color:inherit}
+html:not(.dark):not([data-theme="dark"]) .ip36-empty h4{color:#10251a}
+html:not(.dark):not([data-theme="dark"]) .ip36-empty{color:#6d7f74}
+html:not(.dark):not([data-theme="dark"]) .ip36-menu-pop{background:#fff;border-color:#d7e5dd}
+html:not(.dark):not([data-theme="dark"]) .ip36-menu-pop button{color:#10251a}
+html:not(.dark):not([data-theme="dark"]) .ip36-menu-pop button:hover{background:rgba(16,55,35,.06)}
+html:not(.dark):not([data-theme="dark"]) .ip36-cell{color:#10251a}
+html:not(.dark):not([data-theme="dark"]) .ip36-scard small,
+html:not(.dark):not([data-theme="dark"]) .ip36-panel small,
+html:not(.dark):not([data-theme="dark"]) .ip36-kpi small{color:#6d7f74}
+

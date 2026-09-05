@@ -11,8 +11,8 @@ export const viewports = [
 ] as const;
 
 const appRoutes = {
-  "/dashboard": { desktop: /Overview/, mobile: "Overview", more: false },
-  "/transactions": { desktop: /Transactions/, mobile: "Transactions", more: false },
+  "/dashboard": { desktop: /Overview/, mobile: /Overview|Home/, more: false },
+  "/transactions": { desktop: /Transactions/, mobile: /Transactions|Txns/, more: false },
   "/budgets": { desktop: /Spending Limits/, mobile: "Limits", more: false },
   "/reports": { desktop: /Analytics/, mobile: /Analytics/, more: true },
   "/goals": { desktop: /Savings Goals/, mobile: /Savings Goals/, more: true },

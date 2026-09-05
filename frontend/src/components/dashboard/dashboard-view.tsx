@@ -1277,7 +1277,7 @@ function pctChange(current: number, previous: number) {
 }
 
 function trendSpan(delta: number, invertBad = false) {
-  if (!delta) return <span className="pd-trend">— same</span>;
+  if (!delta) return <span className="pd-trend">No change yet</span>;
   const worse = invertBad ? delta > 0 : delta < 0;
   return (
     <span className={`pd-trend ${worse ? "bad" : ""}`}>

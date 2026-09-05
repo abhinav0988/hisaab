@@ -21,10 +21,11 @@ export function MobileBottomNavigation({
       aria-label="Primary"
       data-mobile-nav
     >
-      <MobileItem href="/dashboard" label="Overview" icon={Home} active={isNavActive(pathname, "/dashboard")} />
+      <MobileItem href="/dashboard" label="Home" ariaLabel="Overview" icon={Home} active={isNavActive(pathname, "/dashboard")} />
       <MobileItem
         href="/transactions"
-        label="Transactions"
+        label="Txns"
+        ariaLabel="Transactions"
         icon={ArrowLeftRight}
         active={isNavActive(pathname, "/transactions")}
       />
@@ -69,21 +70,23 @@ export function MobileBottomNavigation({
 function MobileItem({
   href,
   label,
+  ariaLabel,
   icon: Icon,
   active,
 }: {
   href: string;
   label: string;
+  ariaLabel?: string;
   icon: typeof Home;
   active: boolean;
 }) {
   return (
     <Link
       href={href}
-      aria-label={label}
+      aria-label={ariaLabel ?? label}
       aria-current={active ? "page" : undefined}
       className={cn(
-        "grid min-h-11 min-w-0 justify-items-center gap-0.5 rounded-[15px] px-1 py-[7px] text-[11px] font-extrabold",
+        "grid min-h-11 min-w-0 justify-items-center gap-0.5 rounded-[15px] px-1 py-[7px] text-[10px] font-extrabold sm:text-[11px]",
         active ? "bg-[var(--mint)] text-[var(--primary)]" : "text-[var(--muted-foreground)]",
       )}
     >

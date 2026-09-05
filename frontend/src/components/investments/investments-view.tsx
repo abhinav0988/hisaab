@@ -27,6 +27,7 @@ import {
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
+import { ImmersedNotifyButton, ImmersedThemeButton } from "@/components/layout/immersed-chrome";
 import { ConfirmDialog, Modal } from "@/components/layout/modal";
 import { ErrorState, PageSkeleton } from "@/components/layout/states";
 import { ApiError } from "@/lib/api-client";
@@ -178,6 +179,8 @@ export function InvestmentsView() {
           <button type="button" className="iv35-btn">
             <CalendarDays /> {monthLabel()}
           </button>
+          <ImmersedNotifyButton className="iv35-btn" emptyText="No new investment alerts." />
+          <ImmersedThemeButton className="iv35-btn" />
           <button type="button" className="iv35-btn primary" onClick={() => openCreate("investment")}>
             <Plus /> Add Investment
           </button>

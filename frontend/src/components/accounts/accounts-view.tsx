@@ -24,6 +24,7 @@ import {
 import { useRouter } from "next/navigation";
 import { useMemo, useState, type CSSProperties, type ReactNode } from "react";
 import { toast } from "sonner";
+import { ImmersedNotifyButton, ImmersedThemeButton } from "@/components/layout/immersed-chrome";
 import { Modal } from "@/components/layout/modal";
 import { EmptyState, ErrorState, PageSkeleton } from "@/components/layout/states";
 import {
@@ -250,6 +251,8 @@ export function AccountsView() {
           </div>
         </div>
         <div className="ac33-head-actions">
+          <ImmersedNotifyButton className="ac33-btn" emptyText="No new account alerts." />
+          <ImmersedThemeButton className="ac33-btn" />
           <button type="button" className="ac33-btn" onClick={openManage}>
             <Link2 /> Manage accounts
           </button>

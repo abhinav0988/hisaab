@@ -112,7 +112,7 @@ export function Field({
       </span>
       {control}
       {hint && !error ? (
-        <span id={hintId} className="text-[11px] font-medium leading-relaxed text-[var(--muted-foreground)]">
+        <span id={hintId} className="text-[11px] font-medium leading-relaxed text-[color-mix(in_srgb,var(--foreground)_62%,var(--muted-foreground))]">
           {hint}
         </span>
       ) : null}

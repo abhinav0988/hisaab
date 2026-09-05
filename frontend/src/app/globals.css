@@ -1015,6 +1015,89 @@ html[data-theme="dark"] .tx-step {
 .app-main {
   padding-bottom: calc(76px + env(safe-area-inset-bottom));
 }
+
+/* Immersed pages override padding with !important shorthand — restore mobile nav clearance. */
+@media (max-width: 1023px) {
+  [data-app-shell][data-page] .app-main {
+    padding-bottom: calc(92px + env(safe-area-inset-bottom)) !important;
+  }
+}
+
+/* Shared light immersion shell for all data-page surfaces */
+html:not(.dark):not([data-theme="dark"]) [data-app-shell][data-page] {
+  background:
+    radial-gradient(circle at 78% -12%, rgba(25, 198, 111, 0.08), transparent 34%),
+    linear-gradient(180deg, #f4faf7 0%, #eef6f1 100%) !important;
+}
+
+html:not(.dark):not([data-theme="dark"]) [data-app-shell][data-page] > aside {
+  background:
+    radial-gradient(circle at 15% 3%, rgba(25, 198, 111, 0.1), transparent 24%),
+    linear-gradient(180deg, #ffffff 0%, #f5faf7 100%) !important;
+  border-color: #d7e5dd !important;
+  box-shadow: 10px 0 28px rgba(16, 55, 35, 0.05) !important;
+}
+
+html:not(.dark):not([data-theme="dark"]) [data-app-shell][data-page] .app-main {
+  background:
+    radial-gradient(circle at 75% 0, rgba(25, 198, 111, 0.07), transparent 32%),
+    linear-gradient(180deg, #f7fbf8, #eef6f1) !important;
+}
+
+html:not(.dark):not([data-theme="dark"]) [data-app-shell][data-page] .brand b {
+  color: #b8860b !important;
+}
+
+html:not(.dark):not([data-theme="dark"]) [data-app-shell][data-page] .nav button.active {
+  background: linear-gradient(90deg, rgba(25, 198, 111, 0.18), rgba(25, 198, 111, 0.08)) !important;
+  box-shadow: inset 2px 0 #12b76a, 0 0 14px rgba(18, 183, 106, 0.08) !important;
+  color: #0a7a48 !important;
+}
+
+html:not(.dark):not([data-theme="dark"]) [data-app-shell][data-page] .nav button svg {
+  color: #12b76a !important;
+}
+
+/* Immersed header notify popover */
+.page-chrome-notify-wrap {
+  position: relative;
+}
+
+.page-chrome-notify-panel {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 40;
+  width: min(300px, calc(100vw - 32px));
+  padding: 12px;
+  border-radius: 14px;
+  border: 1px solid color-mix(in srgb, var(--border) 80%, transparent);
+  background: var(--surface, #0a1814);
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.35);
+  color: var(--foreground);
+}
+
+.page-chrome-notify-panel header {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.page-chrome-notify-panel header button {
+  border: 0;
+  background: transparent;
+  color: var(--primary);
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.page-chrome-notify-panel p {
+  margin: 0;
+  color: var(--muted-foreground);
+  font-size: 12px;
+}
+
 .mobile-bottom-nav {
   position: fixed;
   inset-inline: 12px;

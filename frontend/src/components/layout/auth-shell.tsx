@@ -82,7 +82,7 @@ export function AuthShell({ children }: { children: React.ReactNode }) {
             {children}
           </div>
           <p
-            className="relative mt-8 max-w-lg px-4 text-center text-[11px] text-[var(--muted-foreground)]"
+            className="relative mt-8 max-w-lg px-4 text-center text-[11px] text-[color-mix(in_srgb,var(--foreground)_68%,var(--muted-foreground))]"
             data-auth-legal
           >
             By continuing, you agree to Hisaab’s{" "}

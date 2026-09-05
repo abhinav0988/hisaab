@@ -7,13 +7,11 @@ import {
   AlertTriangle,
   ArrowRight,
   BarChart3,
-  Bell,
   CalendarDays,
   Car,
   ChevronDown,
   HeartPulse,
   Home,
-  Moon,
   MoreVertical,
   Pencil,
   PieChart,
@@ -28,6 +26,7 @@ import {
 import { useRouter } from "next/navigation";
 import { useState, type CSSProperties, type ReactNode } from "react";
 import { toast } from "sonner";
+import { ImmersedNotifyButton, ImmersedThemeButton } from "@/components/layout/immersed-chrome";
 import { ConfirmDialog, Modal } from "@/components/layout/modal";
 import { EmptyState, ErrorState, PageSkeleton } from "@/components/layout/states";
 import { localDateKey, money } from "@/lib/format";
@@ -241,12 +240,8 @@ export function BudgetsView() {
               onChange={(event) => setMonth(event.target.value)}
             />
           </label>
-          <button type="button" className="sl29-icon-btn sl29-notify" aria-label="Notifications" onClick={() => toast.info("No new spending alerts.")}>
-            <Bell /><span />
-          </button>
-          <button type="button" className="sl29-icon-btn" aria-label="Theme settings" onClick={() => toast.info("Use the appearance control in Settings to change theme.")}>
-            <Moon />
-          </button>
+          <ImmersedNotifyButton className="sl29-icon-btn" emptyText="No new spending alerts." />
+          <ImmersedThemeButton className="sl29-icon-btn" />
           <button type="button" className="sl29-icon-btn" aria-label="More spending limit options" onClick={() => setManageOpen(true)}>
             <MoreVertical />
           </button>
@@ -403,9 +398,12 @@ export function BudgetsView() {
             </div>
           </div>
           <div className="sl29-insight-list">
-            {insights.map((item) => (
-              <button key={item.title} type="button" onClick={() => (item.budget ? openEdit(item.budget) : openCreate())}>
-                <i className={item.tone}>{item.icon}</i>
+            {insights.map((item, index) => (
+              <button
+                key={`${item.title}-${index}`}
+                type="button"
+                onClick={() => (item.budget ? openEdit(item.budget) : openCreate())}
+              >                <i className={item.tone}>{item.icon}</i>
                 <span>
                   <b>{item.title}</b>
                   <small>{item.text}</small>
@@ -688,10 +686,17 @@ function buildInsights(
     });
   }
 
-  while (items.length < 3) {
+  if (items.length === 0) {
     items.push({
       title: "Smart budget suggestions",
       text: "Review your category limits to improve your spending pace.",
+      tone: "gold",
+      icon: <SlidersHorizontal />,
+    });
+  } else if (items.length < 3) {
+    items.push({
+      title: "Improve spending pace",
+      text: "Add or adjust category limits so Hisaab can guide weekly spend.",
       tone: "gold",
       icon: <SlidersHorizontal />,
     });

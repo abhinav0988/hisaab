@@ -578,7 +578,11 @@
   .s38-head-actions { width: 100%; }
   .s38-search { width: 100%; min-width: 0; }
   .s38-fields { grid-template-columns: 1fr; }
-  .s38-premium-pill { display: none; }
+  .s38-premium-pill {
+    display: inline-flex;
+    margin-left: 0;
+    width: 100%;
+  }
   .s38-card-head { flex-wrap: wrap; }
   .s38-location { flex-direction: column; align-items: stretch; }
   .s38-premium .s38-btn { margin-left: 0; width: 100%; }
