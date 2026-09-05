@@ -6,9 +6,13 @@ import { majorToMinor } from "@hisaab/validation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   AlarmClock,
+  ArrowDown,
   ArrowDownLeft,
+  ArrowUp,
   ArrowUpRight,
+  BarChart3,
   Bell,
+  CalendarCheck2,
   CalendarDays,
   Clock3,
   Filter,
@@ -17,13 +21,11 @@ import {
   Play,
   Plus,
   Search,
-  Shield,
-  Sparkles,
+  ShieldCheck,
   Sun,
   Trash2,
   UserPlus,
   Users,
-  Wallet,
 } from "lucide-react";
 import { useTheme } from "next-themes";
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
@@ -46,10 +48,10 @@ import "../../app/lend38.css";
 type Tab = "all" | "lent" | "borrowed" | "settled";
 
 const WHY_ITEMS = [
-  { title: "Stay organised", text: "Track all lend and borrow records", icon: Users, tone: "green" },
-  { title: "Never miss a due date", text: "Get timely reminders", icon: Bell, tone: "gold" },
-  { title: "Better financial control", text: "Understand your cash flow", icon: Shield, tone: "blue" },
-  { title: "Manage people easily", text: "Keep friends and family in one place", icon: Sparkles, tone: "purple" },
+  { title: "Stay organised", text: "Track all lend and borrow records", icon: ShieldCheck, tone: "green" },
+  { title: "Never miss a due date", text: "Get timely reminders", icon: CalendarCheck2, tone: "gold" },
+  { title: "Better financial control", text: "Understand your cash flow", icon: BarChart3, tone: "blue" },
+  { title: "Manage people easily", text: "Keep friends and family in one place", icon: Users, tone: "purple" },
 ] as const;
 
 function failMessage(error: unknown) {
@@ -346,7 +348,7 @@ export function LendView() {
           <div className="l38-kpi-top">
             <span className="label">Due to Receive</span>
             <span className="l38-kpi-icon">
-              <Clock3 size={18} />
+              <CalendarDays size={18} />
             </span>
           </div>
           <strong>{money(lentMinor, currency)}</strong>
@@ -391,13 +393,7 @@ export function LendView() {
             </div>
             <div className="l38-hero-visual" aria-hidden="true">
               <div className="l38-hero-glow" />
-              <div className="l38-wallet">
-                <Wallet size={36} />
-                <strong>Cash</strong>
-              </div>
-              <i className="l38-float is-lend">YL</i>
-              <i className="l38-float is-borrow">YB</i>
-              <i className="l38-float is-coin">₹</i>
+              <img src="/images/lend-hero-wallet.png" alt="" />
             </div>
           </section>
 
@@ -603,7 +599,7 @@ export function LendView() {
             <ul className="l38-summary">
               <li>
                 <span className="is-green">
-                  <ArrowUpRight size={14} />
+                  <ArrowUp size={14} />
                 </span>
                 <div>
                   <strong>Total Lent</strong>
@@ -612,8 +608,8 @@ export function LendView() {
                 <b>{money(lentMinor, currency)}</b>
               </li>
               <li>
-                <span className="is-blue">
-                  <ArrowDownLeft size={14} />
+                <span className="is-red">
+                  <ArrowDown size={14} />
                 </span>
                 <div>
                   <strong>Total Borrowed</strong>
@@ -622,7 +618,7 @@ export function LendView() {
                 <b>{money(borrowedMinor, currency)}</b>
               </li>
               <li>
-                <span className="is-gold">
+                <span className="is-blue">
                   <Clock3 size={14} />
                 </span>
                 <div>
@@ -632,7 +628,7 @@ export function LendView() {
                 <b>{money(lentMinor, currency)}</b>
               </li>
               <li>
-                <span className="is-red">
+                <span className="is-gold">
                   <AlarmClock size={14} />
                 </span>
                 <div>

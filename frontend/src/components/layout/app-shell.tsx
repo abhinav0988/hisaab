@@ -107,7 +107,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                               ? "recurring"
                               : pathname === "/lend"
                                 ? "lend"
-                                : undefined
+                                : pathname === "/settings"
+                                  ? "settings"
+                                  : undefined
       }
     >
       <DesktopSidebar pathname={pathname} name={activeSession.user.name} />
