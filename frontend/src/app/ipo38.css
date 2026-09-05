@@ -2,7 +2,7 @@
 [data-app-shell][data-page="ipo"]{grid-template-columns:236px minmax(0,1fr)!important;background:radial-gradient(circle at 78% -12%,rgba(0,132,89,.09),transparent 34%),linear-gradient(180deg,#020c11 0%,#031017 100%)!important}
 [data-app-shell][data-page="ipo"]>aside{width:236px!important;padding:15px 14px 14px!important;background:radial-gradient(circle at 15% 3%,rgba(0,128,86,.13),transparent 23%),linear-gradient(180deg,#021017 0%,#03131a 58%,#020c11 100%)!important;border-color:#143039!important}
 [data-app-shell][data-page="ipo"] .app-header{display:none!important}
-[data-app-shell][data-page="ipo"] .app-main{max-width:none!important;margin:0!important;padding:17px 18px 18px!important;background:linear-gradient(180deg,#020d12 0%,#031017 100%)!important}
+[data-app-shell][data-page="ipo"] .app-main{max-width:none!important;width:100%!important;margin:0!important;padding:12px 14px 18px!important;background:linear-gradient(180deg,#020d12 0%,#031017 100%)!important}
 
 
 /* =========================================================
@@ -247,8 +247,9 @@
 /* page density */
 [data-app-shell][data-page="ipo"] .ip36{
   gap:12px!important;
-  max-width:1300px!important;
-  margin:0 auto!important;
+  max-width:none!important;
+  width:100%!important;
+  margin:0!important;
 }
 [data-app-shell][data-page="ipo"] .ip36-head{
   min-height:58px!important;
@@ -385,7 +386,7 @@
 
 /* Full-HD / 1536-ish reference */
 @media(min-width:1280px){
-  [data-app-shell][data-page="ipo"] .ip36{max-width:1282px!important}
+  [data-app-shell][data-page="ipo"] .ip36{max-width:none!important}
 }
 @media(max-width:1100px){
   [data-app-shell][data-page="ipo"]{grid-template-columns:1fr!important}

@@ -23,8 +23,9 @@
 
 [data-app-shell][data-page="loans"] .app-main {
   max-width: none !important;
+  width: 100% !important;
   margin: 0 !important;
-  padding: 10px 18px 22px !important;
+  padding: 10px 14px 22px !important;
   background:
     radial-gradient(circle at 75% 0, rgba(0, 124, 83, 0.08), transparent 32%),
     linear-gradient(180deg, #020c11, #031018 55%, #020d13) !important;
@@ -51,8 +52,9 @@
   --loan-muted: #89a094;
   display: grid;
   gap: 14px;
-  max-width: 1320px;
-  margin: 0 auto;
+  width: 100%;
+  max-width: none;
+  margin: 0;
   color: #f3fbf6;
 }
 
@@ -442,11 +444,23 @@
 
 /* ---------- Board / cards ---------- */
 .loans36 .loans-board {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(300px, 360px);
   gap: 14px;
+  width: 100%;
+  align-items: start;
 }
 
 .loans36 .loans-board-main {
+  display: grid;
   gap: 12px;
+  min-width: 0;
+}
+
+.loans36 .loans-board-side {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
 }
 
 .loans36 .loan-card,
@@ -865,6 +879,10 @@
   .loans36 .loans-search {
     width: min(100%, 280px);
     flex: 1;
+  }
+
+  .loans36 .loans-board {
+    grid-template-columns: 1fr;
   }
 }
 
