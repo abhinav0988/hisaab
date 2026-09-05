@@ -16,34 +16,59 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Bike,
   Calendar,
-  CalendarClock,
   Check,
   CheckCircle2,
+  ChevronDown,
   ChevronLeft,
   ChevronRight,
   Clock,
-  FolderOpen,
   Home,
   IndianRupee,
   Landmark,
   MoreVertical,
   Percent,
+  Plus,
+  Search,
   Smartphone,
   UserRound,
+  Wallet,
   X,
   type LucideIcon,
 } from "lucide-react";
 import { forwardRef, useEffect, useId, useMemo, useRef, useState, type InputHTMLAttributes, type ReactNode } from "react";
 import { toast } from "sonner";
 import { Modal } from "@/components/layout/modal";
-import { PageHeader } from "@/components/layout/page-header";
 import { EmptyState, ErrorState, PageSkeleton } from "@/components/layout/states";
 import { ApiError } from "@/lib/api-client";
 import { displayDateLong, isoToday } from "@/lib/finance-modules";
 import { money } from "@/lib/format";
+import { dashboardService } from "@/services/dashboard.service";
 import { financeService } from "@/services/finance.service";
 import { profileService } from "@/services/profile.service";
 import "../../app/loans36.css";
+
+type LoanFilterTab = "all" | "Home Loan" | "Two Wheeler" | "Personal Loan" | "Other";
+type LoanSortMode = "due-soonest" | "name";
+
+const FILTER_TABS: Array<{ id: LoanFilterTab; label: string }> = [
+  { id: "all", label: "All Loans" },
+  { id: "Home Loan", label: "Home Loan" },
+  { id: "Two Wheeler", label: "Car Loan / Two Wheeler" },
+  { id: "Personal Loan", label: "Personal Loan" },
+  { id: "Other", label: "Other" },
+];
+
+function monthLabel(date = new Date()) {
+  return date.toLocaleString("en-IN", { month: "long", year: "numeric" });
+}
+
+function matchesLoanFilter(loan: Loan, filter: LoanFilterTab) {
+  if (filter === "all") return true;
+  if (filter === "Other") {
+    return loan.name === "Other" || loan.name === "Gadget EMI" || !LOAN_TYPES.includes(loan.name as LoanTypeName);
+  }
+  return loan.name === filter;
+}
 
 const LOAN_TYPE_META: Array<{ name: LoanTypeName; icon: LucideIcon }> = [
   { name: "Home Loan", icon: Home },
@@ -204,6 +229,7 @@ const DateInput = forwardRef<HTMLInputElement, InputHTMLAttributes<HTMLInputElem
 export function LoansView() {
   const client = useQueryClient();
   const profile = useQuery({ queryKey: ["profile"], queryFn: () => profileService.get() });
+  const dashboard = useQuery({ queryKey: ["dashboard"], queryFn: () => dashboardService.summary(), retry: false });
   const loans = useQuery({ queryKey: ["loans"], queryFn: () => financeService.listLoans(), retry: false });
   const [screen, setScreen] = useState<"list" | "form">("list");
   const [editing, setEditing] = useState<Loan | null>(null);
@@ -213,6 +239,10 @@ export function LoansView() {
   const [scheduleLoan, setScheduleLoan] = useState<Loan | null>(null);
   const [showUpcoming, setShowUpcoming] = useState(false);
   const [paying, setPaying] = useState<Loan | null>(null);
+  const [search, setSearch] = useState("");
+  const [filterTab, setFilterTab] = useState<LoanFilterTab>("all");
+  const [sortMode, setSortMode] = useState<LoanSortMode>("due-soonest");
+  const overviewRef = useRef<HTMLDivElement>(null);
 
   const create = useMutation({
     mutationFn: (body: unknown) => financeService.createLoan(body),
@@ -253,18 +283,34 @@ export function LoansView() {
 
   const currency = profile.data?.defaultCurrency ?? "INR";
   const list = loans.data ?? [];
+  const incomeThisMonth = dashboard.data?.incomeThisMonth ?? 0;
   const figures = list.map((item) => ({ loan: item, summary: loanFigures(item) }));
   const outstanding = figures.reduce((sum, item) => sum + item.loan.outstandingMinor, 0);
   const paidMinor = figures.reduce((sum, item) => sum + item.summary.paidMinor, 0);
+  const interestMinor = figures.reduce((sum, item) => sum + item.summary.interestMinor, 0);
   const emi = figures.reduce((sum, item) => sum + item.loan.emiMinor, 0);
-  const principal = figures.reduce(
-    (sum, item) => sum + (item.loan.principalMinor || item.loan.outstandingMinor),
-    0,
-  );
-  const remainingEmis = figures.reduce((sum, item) => sum + item.loan.remainingEmis, 0);
   const active = list.filter((item) => item.remainingEmis > 0);
-  const nextDue = [...active].map((item) => item.dueOn).filter(Boolean).sort()[0];
-  const nextDueCopy = nextDue ? emiDueCopy(nextDue) : null;
+  const query = search.trim().toLowerCase();
+  const filtered = [...list]
+    .filter((loan) => matchesLoanFilter(loan, filterTab))
+    .filter((loan) => {
+      if (!query) return true;
+      const haystack = `${loan.name} ${loan.lender} ${loanCode(loan.id)}`.toLowerCase();
+      return haystack.includes(query);
+    })
+    .sort((left, right) => {
+      if (sortMode === "name") return left.name.localeCompare(right.name) || left.lender.localeCompare(right.lender);
+      const leftDue = left.dueOn || "9999-99-99";
+      const rightDue = right.dueOn || "9999-99-99";
+      return leftDue.localeCompare(rightDue) || left.name.localeCompare(right.name);
+    });
+  const filterCounts = FILTER_TABS.reduce(
+    (acc, tab) => {
+      acc[tab.id] = list.filter((loan) => matchesLoanFilter(loan, tab.id)).length;
+      return acc;
+    },
+    {} as Record<LoanFilterTab, number>,
+  );
   const upcoming = list
     .flatMap((loan) =>
       loanSchedule({
@@ -277,7 +323,7 @@ export function LoansView() {
         .map((item) => ({ loan, item })),
     )
     .sort((left, right) => left.item.dueOn.localeCompare(right.item.dueOn))
-    .slice(0, 3);
+    .slice(0, 4);
   const upcomingAll = list
     .flatMap((loan) =>
       loanSchedule({
@@ -304,6 +350,14 @@ export function LoansView() {
     setScreen("form");
   }
 
+  function viewReports() {
+    if (overviewRef.current) {
+      overviewRef.current.scrollIntoView({ behavior: "smooth", block: "start" });
+      return;
+    }
+    toast.info("Add a loan to see payment overview reports.");
+  }
+
   async function handleSaved() {
     await client.invalidateQueries({ queryKey: ["loans"] });
     toast.success(editing ? "Loan updated" : "Loan saved");
@@ -315,52 +369,86 @@ export function LoansView() {
     <div className="loans36">
       {screen === "list" ? (
         <>
-          <PageHeader
-            title="EMI & Loans"
-            description="Track outstanding principal, EMI dates and progress."
-            actions={<Button onClick={openAdd}>Add Loan</Button>}
-          />
+          <section className="loans-head">
+            <div className="loans-head-left">
+              <div className="loans-page-icon" aria-hidden="true">
+                <Wallet size={24} />
+              </div>
+              <div>
+                <h1>EMI &amp; Loans</h1>
+                <p>Track your EMIs, loans and card dues — all in one place.</p>
+              </div>
+            </div>
+            <div className="loans-head-actions">
+              <label className="loans-search">
+                <Search size={16} aria-hidden="true" />
+                <input
+                  aria-label="Search loans and EMIs"
+                  placeholder="Search loans, EMIs, cards..."
+                  value={search}
+                  onChange={(event) => setSearch(event.target.value)}
+                />
+              </label>
+              <button type="button" className="loans-btn" aria-label="Current month">
+                <Calendar size={15} aria-hidden="true" />
+                {monthLabel()}
+              </button>
+              <button type="button" className="loans-btn primary" onClick={openAdd}>
+                <Plus size={15} aria-hidden="true" />
+                Add Loan
+              </button>
+            </div>
+          </section>
+
           <div className="loans-kpis">
             {(
               [
-                { label: "Total Outstanding", value: money(outstanding, currency), icon: IndianRupee, tone: "green" },
+                {
+                  label: "Total Outstanding",
+                  value: money(outstanding, currency),
+                  note: `Across ${list.length} loan${list.length === 1 ? "" : "s"}`,
+                  icon: IndianRupee,
+                  tone: "green",
+                },
                 {
                   label: "Monthly EMI",
                   value: money(emi, currency),
-                  note: `Across ${list.length} loan${list.length === 1 ? "" : "s"}`,
+                  note: "Upcoming payments",
                   icon: Calendar,
                   tone: "blue",
                 },
                 {
-                  label: "Next Due",
-                  value: displayDateLong(nextDue),
-                  note: nextDueCopy?.label,
-                  noteTone: nextDueCopy?.tone,
-                  icon: CalendarClock,
+                  label: "Paid Amount",
+                  value: money(paidMinor, currency),
+                  note: "Total till now",
+                  icon: CheckCircle2,
+                  tone: "gold",
+                },
+                {
+                  label: "Pending Amount",
+                  value: money(outstanding, currency),
+                  note: "Remaining to pay",
+                  icon: Clock,
                   tone: "purple",
                 },
-                { label: "Active Loans", value: String(active.length), icon: FolderOpen, tone: "gold" },
-                { label: "Paid Amount", value: money(paidMinor, currency), icon: CheckCircle2, tone: "green" },
-                { label: "Pending Amount", value: money(outstanding, currency), icon: Clock, tone: "orange" },
               ] as Array<{
                 label: string;
                 value: string;
                 note?: string;
-                noteTone?: string;
                 icon: LucideIcon;
                 tone: string;
               }>
             ).map((item) => {
               const Icon = item.icon;
               return (
-                <Card key={item.label} className="loans-kpi">
+                <Card key={item.label} className={`loans-kpi is-${item.tone}`}>
                   <span className={`loans-kpi-icon is-${item.tone}`}>
                     <Icon size={16} />
                   </span>
                   <div>
                     <small>{item.label}</small>
                     <strong>{item.value}</strong>
-                    {item.note ? <span className={item.noteTone ? `is-${item.noteTone}` : undefined}>{item.note}</span> : null}
+                    {item.note ? <span>{item.note}</span> : null}
                   </div>
                 </Card>
               );
@@ -378,17 +466,11 @@ export function LoansView() {
               </p>
               <div className="loans-hero-actions">
                 <button type="button" className="btn-primary-glow" onClick={openAdd}>
-                  + Add Loan
+                  + Add Loan / EMI
                 </button>
-                {list.length ? (
-                  <button
-                    type="button"
-                    className="btn-ghost"
-                    onClick={() => setShowUpcoming(true)}
-                  >
-                    View Upcoming EMIs
-                  </button>
-                ) : null}
+                <button type="button" className="btn-ghost" onClick={viewReports}>
+                  View Reports
+                </button>
               </div>
             </div>
             <div className="loans-hero-visual" aria-hidden>
@@ -398,57 +480,87 @@ export function LoansView() {
           </section>
 
           {list.length ? (
-            <div className="loans-board">
-              <div className="loans-board-main">
-                {list.map((item) => (
-                  <LoanCard
-                    key={item.id}
-                    loan={item}
-                    currency={currency}
-                    onDetails={() => setDetails(item)}
-                    onSchedule={() => setScheduleLoan(item)}
-                    onPay={() => setPaying(item)}
-                    onEdit={() => openEdit(item)}
-                    onDelete={() => setDeleting(item)}
-                  />
-                ))}
+            <>
+              <div className="loans-toolbar">
+                <div className="loans-tabs" role="tablist" aria-label="Filter loans by type">
+                  {FILTER_TABS.map((tab) => {
+                    const count = filterCounts[tab.id];
+                    const activeTab = filterTab === tab.id;
+                    return (
+                      <button
+                        key={tab.id}
+                        type="button"
+                        role="tab"
+                        aria-selected={activeTab}
+                        className={activeTab ? "loans-tab is-active" : "loans-tab"}
+                        onClick={() => setFilterTab(tab.id)}
+                      >
+                        {tab.label}
+                        <em>({count})</em>
+                      </button>
+                    );
+                  })}
+                </div>
+                <label className="loans-sort">
+                  <span className="sr-only">Sort loans</span>
+                  <select
+                    value={sortMode}
+                    onChange={(event) => setSortMode(event.target.value as LoanSortMode)}
+                    aria-label="Sort loans"
+                  >
+                    <option value="due-soonest">Due Date (Soonest)</option>
+                    <option value="name">Name (A–Z)</option>
+                  </select>
+                  <ChevronDown size={14} aria-hidden="true" />
+                </label>
               </div>
-              <aside className="loans-board-side">
-                <PaymentOverview list={list} currency={currency} monthlyEmi={emi} />
-                <UpcomingEmis
-                  items={upcoming}
-                  currency={currency}
-                  onViewAll={() => setShowUpcoming(true)}
-                  onPay={(loan) => setPaying(loan)}
-                />
-                <EmiCalendar loans={list} />
-                <Card className="loans-totals">
-                  <h2>Summary across all loans</h2>
-                  <dl>
-                    <div>
-                      <dt>Total Loan Amount</dt>
-                      <dd>{money(principal, currency)}</dd>
-                    </div>
-                    <div>
-                      <dt>Total Paid Amount</dt>
-                      <dd className="is-paid">{money(paidMinor, currency)}</dd>
-                    </div>
-                    <div>
-                      <dt>Total Pending Amount</dt>
-                      <dd className="is-pending">{money(outstanding, currency)}</dd>
-                    </div>
-                    <div>
-                      <dt>Total Remaining EMIs</dt>
-                      <dd>{remainingEmis}</dd>
-                    </div>
-                    <div>
-                      <dt>Monthly EMI (Total)</dt>
-                      <dd>{money(emi, currency)}</dd>
-                    </div>
-                  </dl>
-                </Card>
-              </aside>
-            </div>
+
+              <div className="loans-board">
+                <div className="loans-board-main">
+                  {filtered.length ? (
+                    filtered.map((item) => (
+                      <LoanCard
+                        key={item.id}
+                        loan={item}
+                        currency={currency}
+                        onDetails={() => setDetails(item)}
+                        onSchedule={() => setScheduleLoan(item)}
+                        onPay={() => setPaying(item)}
+                        onEdit={() => openEdit(item)}
+                        onDelete={() => setDeleting(item)}
+                      />
+                    ))
+                  ) : (
+                    <EmptyState
+                      title="No matching loans"
+                      description="Try another filter, clear search, or add a new loan."
+                      action={<Button onClick={openAdd}>Add Loan</Button>}
+                    />
+                  )}
+                </div>
+                <aside className="loans-board-side">
+                  <div ref={overviewRef}>
+                    <PaymentOverview list={list} currency={currency} monthlyEmi={emi} />
+                  </div>
+                  <UpcomingEmis
+                    items={upcoming}
+                    currency={currency}
+                    onViewAll={() => setShowUpcoming(true)}
+                    onPay={(loan) => setPaying(loan)}
+                  />
+                  <EmiCalendar loans={list} />
+                  <LoanInsights
+                    list={list}
+                    currency={currency}
+                    monthlyEmi={emi}
+                    outstanding={outstanding}
+                    incomeThisMonth={incomeThisMonth}
+                    interestMinor={interestMinor}
+                    activeCount={active.length}
+                  />
+                </aside>
+              </div>
+            </>
           ) : (
             <EmptyState
               title="No loans yet"
@@ -860,7 +972,6 @@ function LoanCard({
   const Icon = typeMeta(loan.name).icon;
   const summary = loanFigures(loan);
   const due = emiDueCopy(loan.dueOn);
-  const totalEmis = loan.totalEmis || loan.remainingEmis;
   const active = loan.remainingEmis > 0;
   useEffect(() => {
     if (!menu) return;
@@ -879,7 +990,7 @@ function LoanCard({
         <div className="min-w-0">
           <div className="loan-card-title">
             <h3>{loan.name}</h3>
-            <Badge tone={active ? "success" : "neutral"}>{active ? "Active" : "Completed"}</Badge>
+            <Badge tone={active ? "success" : "neutral"}>{active ? "ACTIVE" : "COMPLETED"}</Badge>
           </div>
           <small>
             {loan.lender} · {loanCode(loan.id)}
@@ -926,16 +1037,14 @@ function LoanCard({
       <div className="loan-card-body">
         <div className="loan-card-grid">
           <LoanStat label="Total Amount" value={money(loan.principalMinor || loan.outstandingMinor, currency)} />
+          <LoanStat label="Outstanding" value={money(loan.outstandingMinor, currency)} tone="warning" />
           <LoanStat label="Monthly EMI" value={money(loan.emiMinor, currency)} />
-          <LoanStat label="Remaining EMIs" value={`${loan.remainingEmis}${totalEmis ? ` / ${totalEmis}` : ""}`} />
+          <LoanStat label="Interest" value={rateLabel(loan.rate)} />
           <div className="loan-stat">
             <small>Next Due</small>
             <b>{displayDateLong(loan.dueOn)}</b>
             <em className={`loan-due is-${due.tone}`}>{due.label}</em>
           </div>
-          <LoanStat label="Paid Amount" value={money(summary.paidMinor, currency)} tone="success" />
-          <LoanStat label="Pending Amount" value={money(loan.outstandingMinor, currency)} tone="warning" />
-          <LoanStat label="Interest Rate" value={rateLabel(loan.rate)} />
         </div>
         <div className="loan-card-ring">
           <CompletionRing
@@ -947,18 +1056,19 @@ function LoanCard({
         </div>
       </div>
       <div className="loan-card-actions">
-        <Button type="button" variant="secondary" onClick={onDetails}>
+        <button type="button" className="loans-link-btn" onClick={onDetails}>
           View Details
-        </Button>
-        <Button type="button" variant="secondary" onClick={onSchedule}>
-          EMI Schedule
-        </Button>
+        </button>
+        <button type="button" className="loans-link-btn" onClick={onSchedule}>
+          Payment Schedule
+        </button>
         {loan.remainingEmis > 0 ? (
-          <Button type="button" onClick={onPay}>
-            <Check size={16} />
-            Mark done
-          </Button>
-        ) : null}
+          <button type="button" className="loans-pay-emi" onClick={onPay}>
+            Pay EMI
+          </button>
+        ) : (
+          <span className="loans-pay-emi is-done">Completed</span>
+        )}
       </div>
     </article>
   );
@@ -980,7 +1090,7 @@ function UpcomingEmis({
       <header>
         <div>
           <h2>Upcoming EMIs</h2>
-          <small>Next 7 days</small>
+          <small>Next payments</small>
         </div>
         {onViewAll ? (
           <button type="button" className="loans-view-all" onClick={onViewAll}>
@@ -1017,8 +1127,8 @@ function UpcomingEmis({
             );
           })}
         </ul>
-      ) : (
-        <p>No EMIs due in the next 7 days.</p>
+        ) : (
+        <p>No upcoming EMIs right now.</p>
       )}
     </Card>
   );
@@ -1271,6 +1381,112 @@ function PreviewRow({
         {value}
       </dd>
     </div>
+  );
+}
+
+function LoanInsights({
+  list,
+  currency,
+  monthlyEmi,
+  outstanding,
+  incomeThisMonth,
+  interestMinor,
+  activeCount,
+}: {
+  list: Loan[];
+  currency: string;
+  monthlyEmi: number;
+  outstanding: number;
+  incomeThisMonth: number;
+  interestMinor: number;
+  activeCount: number;
+}) {
+  let paidCount = 0;
+  let overdueCount = 0;
+  for (const loan of list) {
+    for (const item of loanSchedule({
+      emiMinor: loan.emiMinor,
+      totalEmis: loan.totalEmis || loan.remainingEmis,
+      remainingEmis: loan.remainingEmis,
+      dueOn: loan.dueOn,
+    })) {
+      if (item.status === "paid") paidCount += 1;
+      if (item.status === "overdue") overdueCount += 1;
+    }
+  }
+  const settled = paidCount + overdueCount;
+  const onTimePct = settled > 0 ? Math.round((paidCount / settled) * 1000) / 10 : 100;
+
+  const hasIncome = incomeThisMonth > 0;
+  const ratioPct = hasIncome
+    ? Math.min(999, Math.round((monthlyEmi / incomeThisMonth) * 1000) / 10)
+    : outstanding > 0
+      ? Math.min(100, Math.round((monthlyEmi / outstanding) * 1000) / 10)
+      : 0;
+  const ratioHealthy = hasIncome ? ratioPct <= 40 : ratioPct <= 35;
+  const ratioBar = Math.min(100, ratioPct);
+
+  const typeCounts = FILTER_TABS.filter((tab) => tab.id !== "all").map((tab) => ({
+    label: tab.label,
+    count: list.filter((loan) => matchesLoanFilter(loan, tab.id) && loan.remainingEmis > 0).length,
+  }));
+
+  return (
+    <Card className="loans-insights">
+      <header>
+        <h2>Loan Insights</h2>
+        <small>Estimated from your EMI book</small>
+      </header>
+      <div className="loans-insight-row">
+        <div className="loans-insight-copy">
+          <strong>{hasIncome ? "EMI to income ratio" : "EMI load"}</strong>
+          <small>
+            {hasIncome
+              ? ratioHealthy
+                ? "Healthy range ≤ 40%"
+                : "Above healthy range (≤ 40%)"
+              : "EMI as share of outstanding"}
+          </small>
+        </div>
+        <b className={ratioHealthy ? "is-good" : "is-warn"}>{formatPct(ratioPct)}</b>
+      </div>
+      <div className="loans-insight-meter" aria-hidden="true">
+        <i style={{ width: `${ratioBar}%` }} />
+      </div>
+
+      <div className="loans-insight-row">
+        <div className="loans-insight-copy">
+          <strong>On-time payment rate</strong>
+          <small>
+            {overdueCount === 0 ? "Great! No missed payments" : `${overdueCount} overdue installment${overdueCount === 1 ? "" : "s"}`}
+          </small>
+        </div>
+        <b className={onTimePct >= 90 ? "is-good" : "is-warn"}>{formatPct(onTimePct)}</b>
+      </div>
+
+      {interestMinor > 0 ? (
+        <div className="loans-insight-block">
+          <small>Total interest outgo</small>
+          <strong>{money(interestMinor, currency)}</strong>
+          <em>Across all active loans</em>
+        </div>
+      ) : null}
+
+      <div className="loans-insight-block">
+        <small>Loans active</small>
+        <strong>
+          {activeCount} loan{activeCount === 1 ? "" : "s"}
+        </strong>
+        <ul className="loans-insight-types">
+          {typeCounts.map((item) => (
+            <li key={item.label}>
+              <span>{item.label}</span>
+              <b>{item.count}</b>
+            </li>
+          ))}
+        </ul>
+      </div>
+    </Card>
   );
 }
 
