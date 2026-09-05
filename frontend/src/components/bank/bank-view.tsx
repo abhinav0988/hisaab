@@ -8,6 +8,7 @@ import {
   ArrowLeftRight,
   ArrowDownToLine,
   Banknote,
+  Bell,
   Building2,
   ChartNoAxesCombined,
   ChartSpline,
@@ -19,16 +20,19 @@ import {
   EyeOff,
   FileText,
   Landmark,
+  Moon,
   MoreVertical,
   Plus,
   ShieldCheck,
   ShoppingBag,
+  Sun,
   Wallet,
   WalletCards,
 } from "lucide-react";
 import Link from "next/link";
+import { useTheme } from "next-themes";
 import { useRouter } from "next/navigation";
-import { useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import {
   Area,
   AreaChart,
@@ -72,6 +76,93 @@ import "../../app/bank23.css";
 
 function failMessage(error: unknown) {
   return error instanceof ApiError ? error.message : "Could not save. Try again.";
+}
+
+function BankThemeButton() {
+  const { theme, setTheme } = useTheme();
+  const mounted = useSyncExternalStore(
+    () => () => undefined,
+    () => true,
+    () => false,
+  );
+  const dark = mounted && theme === "dark";
+  return (
+    <button
+      type="button"
+      className="bank23-icon-btn"
+      aria-label={dark ? "Switch to light theme" : "Switch to dark theme"}
+      title="Toggle theme"
+      onClick={() => setTheme(dark ? "light" : "dark")}
+    >
+      {dark ? <Moon size={15} aria-hidden="true" /> : <Sun size={15} aria-hidden="true" />}
+    </button>
+  );
+}
+
+function BankNotifyButton({ notices }: { notices: Array<{ title: string; body: string }> }) {
+  const [open, setOpen] = useState(false);
+  const wrapRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setOpen(false);
+    };
+    const onPointer = (event: MouseEvent) => {
+      if (wrapRef.current?.contains(event.target as Node)) return;
+      setOpen(false);
+    };
+    document.addEventListener("keydown", onKey);
+    document.addEventListener("mousedown", onPointer);
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      document.removeEventListener("mousedown", onPointer);
+    };
+  }, [open]);
+
+  return (
+    <div className="bank23-notify-wrap" ref={wrapRef}>
+      <button
+        type="button"
+        className="bank23-icon-btn bank23-notify"
+        aria-label="Notifications"
+        aria-expanded={open}
+        aria-haspopup="dialog"
+        onClick={() => setOpen((value) => !value)}
+      >
+        <Bell size={15} aria-hidden="true" />
+        {notices.length ? <span className="bank23-notify-dot" aria-hidden="true" /> : null}
+      </button>
+      {open ? (
+        <div className="bank23-notify-panel" role="dialog" aria-label="Bank notifications">
+          <header>
+            <div>
+              <h2>Notifications</h2>
+              <p>{notices.length ? `${notices.length} alert${notices.length === 1 ? "" : "s"}` : "You're all caught up"}</p>
+            </div>
+            <button type="button" onClick={() => setOpen(false)}>
+              Mark read
+            </button>
+          </header>
+          {notices.length ? (
+            <ul className="m-0 grid list-none gap-1 p-0">
+              {notices.map((item) => (
+                <li
+                  key={`${item.title}-${item.body}`}
+                  className="rounded-xl px-2 py-2.5 hover:bg-[color-mix(in_srgb,var(--foreground)_4%,transparent)]"
+                >
+                  <strong className="block text-xs">{item.title}</strong>
+                  <small className="mt-1 block text-[10.5px] text-[var(--muted-foreground)]">{item.body}</small>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="bank23-notify-empty">No bank alerts yet.</p>
+          )}
+        </div>
+      ) : null}
+    </div>
+  );
 }
 
 function monthStartIso() {
@@ -358,17 +449,49 @@ export function BankView() {
           <Landmark />
         </div>
         <div className="bank23-title">
-          <h2>Bank</h2>
+          <h1>Bank</h1>
           <p>Your complete view of balances, cash flow, and activity across linked bank accounts.</p>
         </div>
+        <div className="bank23-head-right">
+          <div className="bank23-head-actions">
+            <button
+              type="button"
+              className="bank23-add"
+              onClick={() => router.push("/transactions?action=expense")}
+            >
+              <Plus size={15} aria-hidden="true" />
+              Add transaction
+            </button>
+            <BankNotifyButton
+              notices={
+                data.netSavings < 0
+                  ? [
+                      {
+                        title: "Net savings negative this month",
+                        body: `${money(data.netSavings, currency)} · expenses outpaced income`,
+                      },
+                    ]
+                  : []
+              }
+            />
+            <BankThemeButton />
+            <button
+              type="button"
+              className="bank23-icon-btn"
+              aria-label="More actions"
+              onClick={() => toast.info("Use Quick Actions below for common bank tasks.")}
+            >
+              <MoreVertical size={15} aria-hidden="true" />
+            </button>
+          </div>
+          <div className="bank23-subactions">
+            <button type="button" className="bank23-addbank" onClick={openAddForm}>
+              <Plus />
+              <span>Add Bank Account</span>
+            </button>
+          </div>
+        </div>
       </header>
-
-      <div className="bank23-subactions">
-        <button type="button" className="bank23-addbank" onClick={openAddForm}>
-          <Plus />
-          <span>Add Bank Account</span>
-        </button>
-      </div>
 
       <section className="bank23-kpis">
         <article className="bank23-kpi green">

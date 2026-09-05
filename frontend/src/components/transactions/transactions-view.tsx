@@ -6,6 +6,7 @@ import {
   ArrowDownLeft,
   ArrowUpRight,
   BarChart3,
+  Bell,
   CalendarDays,
   ChevronDown,
   ChevronLeft,
@@ -15,17 +16,21 @@ import {
   CircleHelp,
   Download,
   Layers,
+  Moon,
+  MoreVertical,
   Plus,
   Receipt,
   Search,
   Sparkles,
+  Sun,
   Trash2,
   Wallet,
   WalletCards,
 } from "lucide-react";
 import Link from "next/link";
+import { useTheme } from "next-themes";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import { toast } from "sonner";
 import { ConfirmDialog, Modal } from "@/components/layout/modal";
 import { EmptyState, ErrorState, NoResults, PageSkeleton } from "@/components/layout/states";
@@ -117,6 +122,90 @@ function useDebouncedValue<T>(value: T, delayMs: number) {
     return () => window.clearTimeout(timer);
   }, [value, delayMs]);
   return debounced;
+}
+
+function TxThemeButton() {
+  const { theme, setTheme } = useTheme();
+  const mounted = useSyncExternalStore(
+    () => () => undefined,
+    () => true,
+    () => false,
+  );
+  const dark = mounted && theme === "dark";
+  return (
+    <button
+      type="button"
+      className="tx16-icon-btn"
+      aria-label={dark ? "Switch to light theme" : "Switch to dark theme"}
+      title="Toggle theme"
+      onClick={() => setTheme(dark ? "light" : "dark")}
+    >
+      {dark ? <Moon size={15} aria-hidden="true" /> : <Sun size={15} aria-hidden="true" />}
+    </button>
+  );
+}
+
+function TxNotifyButton({ notices }: { notices: Array<{ title: string; body: string }> }) {
+  const [open, setOpen] = useState(false);
+  const wrapRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setOpen(false);
+    };
+    const onPointer = (event: MouseEvent) => {
+      if (wrapRef.current?.contains(event.target as Node)) return;
+      setOpen(false);
+    };
+    document.addEventListener("keydown", onKey);
+    document.addEventListener("mousedown", onPointer);
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      document.removeEventListener("mousedown", onPointer);
+    };
+  }, [open]);
+
+  return (
+    <div className="tx16-notify-wrap" ref={wrapRef}>
+      <button
+        type="button"
+        className="tx16-icon-btn tx16-notify"
+        aria-label="Notifications"
+        aria-expanded={open}
+        aria-haspopup="dialog"
+        onClick={() => setOpen((value) => !value)}
+      >
+        <Bell size={15} aria-hidden="true" />
+        {notices.length ? <span className="tx16-notify-dot" aria-hidden="true" /> : null}
+      </button>
+      {open ? (
+        <div className="tx16-notify-panel" role="dialog" aria-label="Transaction notifications">
+          <header>
+            <div>
+              <h2>Notifications</h2>
+              <p>{notices.length ? `${notices.length} alert${notices.length === 1 ? "" : "s"}` : "You're all caught up"}</p>
+            </div>
+            <button type="button" onClick={() => setOpen(false)}>
+              Mark read
+            </button>
+          </header>
+          {notices.length ? (
+            <ul className="m-0 grid list-none gap-1 p-0">
+              {notices.map((item) => (
+                <li key={`${item.title}-${item.body}`} className="rounded-xl px-2 py-2.5 hover:bg-[color-mix(in_srgb,var(--foreground)_4%,transparent)]">
+                  <strong className="block text-xs">{item.title}</strong>
+                  <small className="mt-1 block text-[10.5px] text-[var(--muted-foreground)]">{item.body}</small>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="tx16-notify-empty">No transaction alerts yet.</p>
+          )}
+        </div>
+      ) : null}
+    </div>
+  );
 }
 
 export function TransactionsView() {
@@ -296,17 +385,42 @@ export function TransactionsView() {
   const filtered = Boolean(debouncedSearch || type || category || account || period !== "all");
   const chartLoading = lookbackRows.isPending && !lookbackRows.data;
   const listRefreshing = transactions.isFetching;
-  const listWaiting = transactions.isFetching && !transactions.data;  return (
+  const listWaiting = transactions.isFetching && !transactions.data;
+  const notices: Array<{ title: string; body: string }> = [];
+  if (spendChange.down && spend10 > 0) {
+    notices.push({
+      title: "Spending up vs prior 10 days",
+      body: spendChange.label,
+    });
+  }
+  if (topCategory.minor > 0) {
+    notices.push({
+      title: `Top category · ${topCategory.name}`,
+      body: money(topCategory.minor, currency),
+    });
+  }
+
+  return (
     <div className="tx16">
       <header className="tx16-head">
         <div>
-          <h2>Transactions</h2>
+          <h1>Transactions</h1>
           <p>Search, filter, review and manage your transactions</p>
         </div>
         <div className="tx16-head-actions">
           <button type="button" className="tx16-add" onClick={() => setManualAdd(true)}>
             <Plus size={16} />
             Add transaction
+          </button>
+          <TxNotifyButton notices={notices.slice(0, 3)} />
+          <TxThemeButton />
+          <button
+            type="button"
+            className="tx16-icon-btn"
+            aria-label="More actions"
+            onClick={() => toast.info("Use Smart Filters below to refine your ledger.")}
+          >
+            <MoreVertical size={15} aria-hidden="true" />
           </button>
         </div>
       </header>
@@ -349,7 +463,7 @@ export function TransactionsView() {
           <div>
             <span>Total Balance</span>
             <b>{money(totalBalance, currency)}</b>
-            <small>Across your accounts</small>
+            <small>Updated just now</small>
           </div>
           <i>
             <WalletCards size={20} aria-hidden />
