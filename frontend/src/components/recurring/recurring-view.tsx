@@ -10,9 +10,10 @@ import {
   CalendarCheck2,
   CalendarClock,
   CalendarDays,
+  CheckCircle2,
   Clock3,
+  CreditCard,
   Home,
-  IndianRupee,
   Moon,
   Pause,
   Pencil,
@@ -21,12 +22,8 @@ import {
   Search,
   Settings2,
   Shield,
-  Sparkles,
   Sun,
   Trash2,
-  Tv,
-  Umbrella,
-  Wallet,
   Zap,
 } from "lucide-react";
 import { useTheme } from "next-themes";
@@ -61,10 +58,10 @@ type Recurring = {
 
 const POPULAR_CATEGORIES = [
   { label: "Rent / Home", hint: "Housing & rent", icon: Home, tone: "green", match: /rent|home|hous/i },
-  { label: "Utilities", hint: "Electricity, water, gas", icon: Zap, tone: "blue", match: /util|electric|water|gas|bill/i },
-  { label: "Subscriptions", hint: "OTT, apps, software", icon: Tv, tone: "purple", match: /subscr|ott|netflix|spotify|stream/i },
-  { label: "Insurance", hint: "Health, life, vehicle", icon: Umbrella, tone: "gold", match: /insur/i },
-  { label: "Loans & EMIs", hint: "EMI and loan payments", icon: Wallet, tone: "orange", match: /loan|emi|credit/i },
+  { label: "Utilities", hint: "Electricity, water, gas", icon: Zap, tone: "gold", match: /util|electric|water|gas|bill/i },
+  { label: "Subscriptions", hint: "OTT, apps, software", icon: Play, tone: "purple", match: /subscr|ott|netflix|spotify|stream/i },
+  { label: "Insurance", hint: "Health, life, vehicle", icon: Shield, tone: "blue", match: /insur/i },
+  { label: "Loans & EMIs", hint: "EMI and loan payments", icon: CreditCard, tone: "orange", match: /loan|emi|credit/i },
   { label: "Investments", hint: "SIPs and deposits", icon: BarChart3, tone: "teal", match: /invest|sip|mutual/i },
 ] as const;
 
@@ -324,7 +321,7 @@ export function RecurringView() {
           <div className="r38-kpi-top">
             <span className="label">Total Bills</span>
             <span className="r38-kpi-icon">
-              <CalendarClock size={18} />
+              <CalendarDays size={18} />
             </span>
           </div>
           <strong>{activeCount}</strong>
@@ -334,7 +331,7 @@ export function RecurringView() {
           <div className="r38-kpi-top">
             <span className="label">Monthly Amount</span>
             <span className="r38-kpi-icon">
-              <IndianRupee size={18} />
+              <Clock3 size={18} />
             </span>
           </div>
           <strong>{money(monthlyAmount, currency)}</strong>
@@ -344,7 +341,7 @@ export function RecurringView() {
           <div className="r38-kpi-top">
             <span className="label">Upcoming This Month</span>
             <span className="r38-kpi-icon">
-              <Bell size={18} />
+              <BarChart3 size={18} />
             </span>
           </div>
           <strong>{upcomingThisMonth.length}</strong>
@@ -354,7 +351,7 @@ export function RecurringView() {
           <div className="r38-kpi-top">
             <span className="label">Completed Payments</span>
             <span className="r38-kpi-icon">
-              <Sparkles size={18} />
+              <CheckCircle2 size={18} />
             </span>
           </div>
           <strong>{completedThisMonth}</strong>
@@ -389,16 +386,7 @@ export function RecurringView() {
             </div>
             <div className="r38-hero-visual" aria-hidden="true">
               <div className="r38-hero-glow" />
-              <div className="r38-cal">
-                <span className="r38-cal-bar" />
-                <strong>31</strong>
-                <small>Due</small>
-              </div>
-              <i className="r38-float is-netflix">N</i>
-              <i className="r38-float is-spotify">♪</i>
-              <i className="r38-float is-bell">
-                <Bell size={16} />
-              </i>
+              <img src="/images/recurring-hero-bills.png" alt="" />
             </div>
           </section>
 
