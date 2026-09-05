@@ -159,7 +159,7 @@ function ProfileForm({ initial, onSaved }: { initial: Profile; onSaved: () => vo
               {[
                 { href: "/accounts", label: "Accounts", hint: "Cash, bank, UPI", icon: WalletCards },
                 { href: "/categories", label: "Categories", hint: "Income & spend labels", icon: Tags },
-                { href: "/recurring", label: "Recurring", hint: "Bills and repeats", icon: Repeat2 },
+                { href: "/recurring", label: "Bills & Reminders", hint: "Due dates and repeats", icon: Repeat2 },
               ].map((item) => (
                 <Link
                   key={item.href}

@@ -3,7 +3,6 @@ import {
   Banknote,
   BarChart3,
   Bell,
-  CalendarClock,
   CreditCard,
   Handshake,
   Home,
@@ -46,7 +45,6 @@ export const moreHrefs = moreNavigation.map((item) => item.href);
 
 export const financeToolsNavigation = [
   { href: "/accounts", label: "Accounts", hint: "All bank balances", icon: Landmark },
-  { href: "/schedules", label: "Recurring", hint: "Automate income & expenses", icon: CalendarClock },
   { href: "/investments", label: "Investments", hint: "MF, stocks & gold", icon: LineChart },
   { href: "/ipo", label: "IPO Tracker", hint: "Applied & allotment", icon: Banknote },
   { href: "/loans", label: "EMI & Loans", hint: "Due dates & payments", icon: Timer },

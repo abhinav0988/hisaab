@@ -228,7 +228,7 @@ export function RecurringView() {
           ? recurringService.pause(id)
           : recurringService.resume(id),
     onSuccess: (_, variables) => {
-      toast.success(variables.operation === "delete" ? "Schedule deleted" : "Schedule updated");
+      toast.success(variables.operation === "delete" ? "Reminder deleted" : "Reminder updated");
       if (variables.operation === "delete") setDeleting(null);
       void client.invalidateQueries({ queryKey: ["recurring"] });
     },
@@ -292,8 +292,8 @@ export function RecurringView() {
             <CalendarCheck2 size={24} />
           </div>
           <div>
-            <h1>Recurring</h1>
-            <p>Automate predictable income and expenses without duplicate entries.</p>
+            <h1>Bills & Reminders</h1>
+            <p>Track due dates and automate predictable payments without duplicate entries.</p>
           </div>
         </div>
         <div className="r38-head-actions">
@@ -314,21 +314,21 @@ export function RecurringView() {
           <RecurringThemeButton />
           <button type="button" className="r38-btn primary" onClick={() => openCreate()}>
             <Plus size={15} aria-hidden="true" />
-            New Schedule
+            New Reminder
           </button>
         </div>
       </section>
 
-      <section className="r38-kpis" aria-label="Recurring summary">
+      <section className="r38-kpis" aria-label="Bills and reminders summary">
         <article className="r38-kpi green">
           <div className="r38-kpi-top">
-            <span className="label">Total Recurring</span>
+            <span className="label">Total Bills</span>
             <span className="r38-kpi-icon">
               <CalendarClock size={18} />
             </span>
           </div>
           <strong>{activeCount}</strong>
-          <small>Active schedule{activeCount === 1 ? "" : "s"}</small>
+          <small>Active bill{activeCount === 1 ? "" : "s"}</small>
         </article>
         <article className="r38-kpi blue">
           <div className="r38-kpi-top">
@@ -338,7 +338,7 @@ export function RecurringView() {
             </span>
           </div>
           <strong>{money(monthlyAmount, currency)}</strong>
-          <small>Across all schedules</small>
+          <small>Across all bills</small>
         </article>
         <article className="r38-kpi gold">
           <div className="r38-kpi-top">
@@ -373,13 +373,13 @@ export function RecurringView() {
               <div className="r38-hero-actions">
                 <button type="button" className="r38-btn primary" onClick={() => openCreate()}>
                   <Plus size={15} aria-hidden="true" />
-                  New Schedule
+                  New Reminder
                 </button>
                 <button
                   type="button"
                   className="r38-btn ghost"
                   onClick={() =>
-                    toast.info("Create a schedule once — Hisaab posts it on time and reminds you before due dates.")
+                    toast.info("Add a bill once — Hisaab reminds you before due dates so nothing slips.")
                   }
                 >
                   <Play size={14} aria-hidden="true" />
@@ -471,17 +471,17 @@ export function RecurringView() {
                 <CalendarDays size={28} />
                 <Plus size={14} className="r38-empty-plus" />
               </div>
-              <h2>No recurring schedules</h2>
-              <p>Automate rent, subscriptions, salary, and other predictable activity.</p>
+              <h2>No bills or reminders yet</h2>
+              <p>Track rent, subscriptions, salary, and other predictable due dates.</p>
               <button type="button" className="r38-btn primary" onClick={() => openCreate()}>
                 <Plus size={15} aria-hidden="true" />
-                Create your first schedule
+                Add your first bill
               </button>
             </Card>
           )}
 
-          <section className="r38-why" aria-label="Why use recurring schedules">
-            <h2>Why use recurring schedules?</h2>
+          <section className="r38-why" aria-label="Why use bills and reminders">
+            <h2>Why use Bills & Reminders?</h2>
             <ul>
               {WHY_ITEMS.map((item) => {
                 const Icon = item.icon;
@@ -588,14 +588,14 @@ export function RecurringView() {
                 <CalendarCheck2 size={16} />
               </span>
               <div>
-                <strong>Add schedule</strong>
-                <small>Create a new recurring payment</small>
+                <strong>Add bill</strong>
+                <small>Create a new reminder</small>
               </div>
             </button>
             <button
               type="button"
               className="r38-action"
-              onClick={() => toast.info("Import from bank is coming soon. Add schedules manually for now.")}
+              onClick={() => toast.info("Import from bank is coming soon. Add bills manually for now.")}
             >
               <span className="r38-action-icon is-alt">
                 <ArrowLeftRight size={16} />
@@ -629,7 +629,7 @@ export function RecurringView() {
             setOpen(false);
             setDraftMerchant("");
             setDraftCategoryId(undefined);
-            toast.success("Schedule created");
+            toast.success("Reminder created");
             void client.invalidateQueries({ queryKey: ["recurring"] });
           }}
         />
@@ -644,7 +644,7 @@ export function RecurringView() {
             initial={editing}
             onSaved={() => {
               setEditing(null);
-              toast.success("Schedule updated");
+              toast.success("Reminder updated");
               void client.invalidateQueries({ queryKey: ["recurring"] });
             }}
           />
@@ -652,8 +652,8 @@ export function RecurringView() {
       </Modal>
       <ConfirmDialog
         open={Boolean(deleting)}
-        title="Delete recurring schedule?"
-        description="Future automatic entries will stop. Transactions already created by this schedule will remain in your history."
+        title="Delete this bill reminder?"
+        description="Future reminders will stop. Transactions already created will remain in your history."
         busy={action.isPending}
         onClose={() => setDeleting(null)}
         onConfirm={() => deleting && action.mutate({ id: deleting.id, operation: "delete" })}
@@ -824,7 +824,7 @@ function RecurringForm({
         <Input value={merchant} onChange={(event) => setMerchant(event.target.value)} />
       </Field>
       <Button disabled={mutation.isPending || !accountId || !categoryId}>
-        {mutation.isPending ? "Saving…" : initial ? "Save schedule" : "Create schedule"}
+        {mutation.isPending ? "Saving…" : initial ? "Save reminder" : "Create reminder"}
       </Button>
     </form>
   );

@@ -81,7 +81,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       className="min-h-dvh lg:grid lg:grid-cols-[258px_minmax(0,1fr)]"
       data-app-shell
       data-page={
-        pathname === "/budgets"
+        pathname === "/dashboard"
+          ? "overview"
+          : pathname === "/budgets"
           ? "spending-limits"
           : pathname === "/goals"
             ? "savings-goals"
@@ -103,11 +105,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                             ? "bank"
                             : pathname === "/recurring"
                               ? "recurring"
-                              : pathname === "/schedules"
-                                ? "schedules"
-                                : pathname === "/lend"
-                                  ? "lend"
-                                  : undefined
+                              : pathname === "/lend"
+                                ? "lend"
+                                : undefined
       }
     >
       <DesktopSidebar pathname={pathname} name={activeSession.user.name} />

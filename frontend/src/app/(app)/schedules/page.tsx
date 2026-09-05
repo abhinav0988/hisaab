@@ -1,8 +1,6 @@
-import type { Metadata } from "next";
-import { SchedulesView } from "@/components/recurring/schedules-view";
+import { redirect } from "next/navigation";
 
-export const metadata: Metadata = { title: "Recurring" };
-
-export default function SchedulesPage() {
-  return <SchedulesView />;
+/** Legacy route — Recurring merged into Bills & Reminders. */
+export default function SchedulesRedirectPage() {
+  redirect("/recurring");
 }

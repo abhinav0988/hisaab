@@ -17,7 +17,6 @@ function titleForPath(pathname: string) {
   if (pathname.startsWith("/bank")) return "Bank";
   if (pathname.startsWith("/categories")) return "Categories";
   if (pathname.startsWith("/recurring")) return "Bills & Reminders";
-  if (pathname.startsWith("/schedules")) return "Recurring";
   return match?.label ?? "Hisaab";
 }
 

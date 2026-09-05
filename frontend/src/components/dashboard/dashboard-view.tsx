@@ -10,11 +10,13 @@ import {
   CreditCard,
   Landmark,
   LineChart,
+  Moon,
   PiggyBank,
   Plus,
   Search,
   Settings,
   Sparkles,
+  Sun,
   TrendingUp,
   Wallet,
 } from "lucide-react";
@@ -47,7 +49,8 @@ import { authService } from "@/services/auth.service";
 import { dashboardService } from "@/services/dashboard.service";
 import { recurringService } from "@/services/recurring.service";
 import Link from "next/link";
-import { useState } from "react";
+import { useTheme } from "next-themes";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 
 type Recurring = {
   id: string;
@@ -59,6 +62,93 @@ type Recurring = {
 };
 
 type ActivityFilter = "all" | "income" | "expense" | "card";
+
+function OverviewThemeButton() {
+  const { theme, setTheme } = useTheme();
+  const mounted = useSyncExternalStore(
+    () => () => undefined,
+    () => true,
+    () => false,
+  );
+  const dark = mounted && theme === "dark";
+  return (
+    <button
+      type="button"
+      className="pd-icon-btn"
+      aria-label={dark ? "Switch to light theme" : "Switch to dark theme"}
+      title="Toggle theme"
+      onClick={() => setTheme(dark ? "light" : "dark")}
+    >
+      {dark ? <Moon size={15} aria-hidden="true" /> : <Sun size={15} aria-hidden="true" />}
+    </button>
+  );
+}
+
+function OverviewNotifyButton({ notices }: { notices: Array<{ title: string; body: string }> }) {
+  const [open, setOpen] = useState(false);
+  const wrapRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setOpen(false);
+    };
+    const onPointer = (event: MouseEvent) => {
+      if (wrapRef.current?.contains(event.target as Node)) return;
+      setOpen(false);
+    };
+    document.addEventListener("keydown", onKey);
+    document.addEventListener("mousedown", onPointer);
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      document.removeEventListener("mousedown", onPointer);
+    };
+  }, [open]);
+
+  return (
+    <div className="pd-notify-wrap" ref={wrapRef}>
+      <button
+        type="button"
+        className="pd-icon-btn"
+        aria-label="Notifications"
+        aria-expanded={open}
+        aria-haspopup="dialog"
+        onClick={() => setOpen((value) => !value)}
+      >
+        <Bell size={15} aria-hidden="true" />
+        {notices.length ? <span className="pd-notify-dot" aria-hidden="true" /> : null}
+      </button>
+      {open ? (
+        <div className="pd-notify-panel" role="dialog" aria-label="Overview notifications">
+          <header>
+            <div>
+              <h2>Notifications</h2>
+              <p>{notices.length ? `${notices.length} alert${notices.length === 1 ? "" : "s"}` : "You're all caught up"}</p>
+            </div>
+            <button type="button" onClick={() => setOpen(false)}>
+              Mark read
+            </button>
+          </header>
+          {notices.length ? (
+            <ul className="m-0 grid list-none gap-1 p-0">
+              {notices.map((item) => (
+                <li
+                  key={`${item.title}-${item.body}`}
+                  className="rounded-xl px-2 py-2.5 hover:bg-[color-mix(in_srgb,var(--foreground)_4%,transparent)]"
+                >
+                  <strong className="block text-xs">{item.title}</strong>
+                  <small className="mt-1 block text-[10.5px] text-[var(--muted-foreground)]">{item.body}</small>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="pd-notify-empty">No alerts yet. Upcoming bills and credit tips will show here.</p>
+          )}
+        </div>
+      ) : null}
+    </div>
+  );
+}
 
 export function DashboardView() {
   const { data: session } = authService.useSession();
@@ -210,17 +300,13 @@ export function DashboardView() {
     <div className="premium-dash">
       <section className="pd-greeting">
         <div>
-          <h2>
+          <h1>
             {greetingForHour()}
             {firstName ? `, ${firstName}` : ""} 👋
-          </h2>
-          <p>Your money command center — balances, spending, bills, credit and wealth in one view.</p>
+          </h1>
+          <p>Track, plan and grow your money smarter.</p>
         </div>
         <div className="pd-greeting-actions">
-          <div className="pd-status-pill">
-            <i />
-            {catalog.length ? `${catalog.length} accounts live` : "Add accounts to sync"}
-          </div>
           <label className="pd-search">
             <Search size={14} aria-hidden="true" />
             <input
@@ -231,6 +317,31 @@ export function DashboardView() {
             />
             <span className="key">Ctrl /</span>
           </label>
+          <OverviewNotifyButton
+            notices={[
+              ...(upcoming[0]
+                ? [
+                    {
+                      title: `${upcoming[0].merchant || "Bill"} due soon`,
+                      body: money(upcoming[0].amountMinor, upcoming[0].currency || currency),
+                    },
+                  ]
+                : []),
+              ...(cardOverdue
+                ? [
+                    {
+                      title: "Credit card overdue",
+                      body: `${money(cardOverdue, currency)} needs attention`,
+                    },
+                  ]
+                : []),
+            ].slice(0, 3)}
+          />
+          <OverviewThemeButton />
+          <Link href="/transactions?action=add" className="pd-add">
+            <Plus size={15} aria-hidden="true" />
+            Add Transaction
+          </Link>
         </div>
       </section>
 
