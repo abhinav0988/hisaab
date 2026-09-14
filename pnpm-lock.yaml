@@ -485,20 +485,22 @@ importers:
         specifier: 4.33.1
         version: 4.33.1(@cloudflare/workers-types@4.20250828.0)
 
-  frontend:
+  frontend/app: {}
+
+  frontend/web:
     dependencies:
       '@fontsource-variable/inter':
         specifier: 5.2.6
         version: 5.2.6
       '@hisaab/types':
         specifier: workspace:*
-        version: link:../packages/types
+        version: link:../../packages/types
       '@hisaab/ui':
         specifier: workspace:*
-        version: link:../packages/ui
+        version: link:../../packages/ui
       '@hisaab/validation':
         specifier: workspace:*
-        version: link:../packages/validation
+        version: link:../../packages/validation
       '@hookform/resolvers':
         specifier: 5.2.1
         version: 5.2.1(react-hook-form@7.86.0(react@19.2.8))
@@ -538,10 +540,10 @@ importers:
     devDependencies:
       '@hisaab/eslint-config':
         specifier: workspace:*
-        version: link:../packages/eslint-config
+        version: link:../../packages/eslint-config
       '@hisaab/typescript-config':
         specifier: workspace:*
-        version: link:../packages/typescript-config
+        version: link:../../packages/typescript-config
       '@playwright/test':
         specifier: 1.55.0
         version: 1.55.0

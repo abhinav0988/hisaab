@@ -1,12 +1,12 @@
 # Architecture
 
-Hisaab is a pnpm/Turborepo workspace in the same shape as a Micron stack: **all Cloudflare Workers under `backend/`**, **the Next.js app under `frontend/`**, shared code under `packages/`.
+Hisaab is a pnpm/Turborepo workspace in the same shape as a Micron stack: **all Cloudflare Workers under `backend/`**, **frontend clients under `frontend/web` and `frontend/app`**, shared code under `packages/`.
 
 The browser talks to one public Worker (the gateway). Domain logic runs in internal Workers reached only through service bindings.
 
 ## Request flow
 
-1. Next.js in `frontend/` renders the application shell and domain views.
+1. Next.js in `frontend/web` renders the application shell and domain views.
 2. The Better Auth browser client and TanStack Query call `NEXT_PUBLIC_API_URL` (the gateway origin). Session cookies never leave that host.
 3. `backend/gateway` applies correlation IDs, security headers, strict CORS, CSRF origin checks, and D1-backed rate limits.
 4. `/api/auth/*` is service-bound to `backend/auth` with the original request (cookies pass through).
@@ -35,10 +35,10 @@ Shared packages: `packages/database`, `packages/validation`, `packages/types`, `
 
 ## Frontend
 
-`frontend/` is the Next.js app. Domain UI lives in `src/components/<domain>/`, HTTP calls in `src/services/*.service.ts`, providers in `src/providers/`, and the fetch client in `src/lib/api-client.ts`.
+`frontend/web` is the Next.js app (`@hisaab/web`). Domain UI lives in `src/components/<domain>/`, HTTP calls in `src/services/*.service.ts`, providers in `src/providers/`, and the fetch client in `src/lib/api-client.ts`. `frontend/app` is reserved for the mobile/native client (`@hisaab/app`).
 
 The UI is responsive from 320px. Desktop uses a persistent sidebar; mobile uses a compact header, bottom navigation, and floating transaction action. The CSS token system provides WCAG-conscious light and dark themes. Every server-driven feature implements loading, empty, error, and success feedback.
 
 ## Deployment boundaries
 
-`backend/gateway` is the only Worker with `workers_dev: true`. Internal Workers stay unpublished. `BETTER_AUTH_URL` and `NEXT_PUBLIC_API_URL` must be the gateway origin. `frontend/` may be deployed as a Next.js host or a Cloudflare Workers static export.
+`backend/gateway` is the only Worker with `workers_dev: true`. Internal Workers stay unpublished. `BETTER_AUTH_URL` and `NEXT_PUBLIC_API_URL` must be the gateway origin. `frontend/web` may be deployed as a Next.js host or a Cloudflare Workers static export.
