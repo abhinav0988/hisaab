@@ -1,10 +1,12 @@
 import { created, fromZod, noContent, ok } from "@hisaab/worker-lib";
 import { ipoPatchSchema, ipoSchema } from "@hisaab/validation";
 import { Hono } from "hono";
+import { getUpcomingIpoFeed } from "../nse-ipos";
 import { createIpo, deleteIpo, getIpo, listIpos, updateIpo } from "../services/service";
 
 export const ipoRoutes = new Hono<{ Bindings: Env; Variables: { userId: string } }>();
 ipoRoutes.get("/", async (c) => ok(c, await listIpos(c.env, c.get("userId"))));
+ipoRoutes.get("/upcoming", async (c) => ok(c, await getUpcomingIpoFeed()));
 ipoRoutes.post("/", async (c) => {
   const parsed = ipoSchema.safeParse(await c.req.json());
   if (!parsed.success) throw fromZod(parsed.error);

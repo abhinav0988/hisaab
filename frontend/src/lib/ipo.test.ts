@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { IpoApplication } from "@hisaab/types";
-import { ipoCurrentPlBars, ipoListingVsCurrent } from "./ipo";
+import { isoToday } from "./finance-modules";
+import { filterIposByPeriod, ipoCurrentPlBars, ipoListingVsCurrent, periodBounds } from "./ipo";
 
 function ipo(partial: Partial<IpoApplication> & Pick<IpoApplication, "id" | "name" | "status">): IpoApplication {
   return {
@@ -40,5 +41,22 @@ describe("ipoListingVsCurrent", () => {
       ipo({ id: "b", name: "Beta", status: "Allotted", listingPriceMinor: 10000, currentPriceMinor: 12000 }),
     ]);
     expect(rows).toEqual([{ label: "Alpha", listing: 10000, current: 12000 }]);
+  });
+});
+
+describe("filterIposByPeriod", () => {
+  it("keeps applications dated today in the current month", () => {
+    const today = isoToday();
+    const { start, end } = periodBounds("month");
+    expect(start).toBeTruthy();
+    expect(end).toBe(today);
+    const rows = filterIposByPeriod(
+      [
+        ipo({ id: "today", name: "Today IPO", status: "Applied", appliedOn: today }),
+        ipo({ id: "old", name: "Old IPO", status: "Applied", appliedOn: "2020-01-01" }),
+      ],
+      "month",
+    );
+    expect(rows.map((item) => item.id)).toEqual(["today"]);
   });
 });

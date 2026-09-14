@@ -52,7 +52,7 @@
 .ip36-btn{
   height:38px;padding:0 13px;border-radius:10px;border:1px solid rgba(255,255,255,.09);
   background:#091610;color:#edf5f0;display:inline-flex;align-items:center;justify-content:center;gap:7px;
-  font-size:10.5px;font-weight:780;cursor:pointer
+  font-size:10.5px;font-weight:780;cursor:pointer;text-decoration:none
 }
 .ip36-btn svg{width:15px;height:15px;fill:none;stroke:currentColor;stroke-width:1.85;stroke-linecap:round;stroke-linejoin:round}
 .ip36-btn.primary{
@@ -123,6 +123,7 @@
 .ip36-upicon.purple{background:#2b1937;color:#c17bf7}.ip36-upicon.gold{background:#34290e;color:#e9c158}
 .ip36-upitem b{display:block;font-size:10.5px}.ip36-upitem small{display:block;margin-top:2px;color:#80958a;font-size:8.4px;line-height:1.35}
 .ip36-badge{padding:4px 6px;border-radius:999px;background:#0c3a27;color:#4ae095;font-size:7.8px;font-weight:850}
+.ip36-badge.is-open{background:#3b2d0d;color:#eac157}
 .ip36-upitem>svg{width:13px;height:13px;fill:none;stroke:#748a7e;stroke-width:1.8}
 
 /* tabs */
@@ -144,13 +145,13 @@
 
 /* body grid */
 .ip36-body{display:grid;grid-template-columns:minmax(0,1.75fr) minmax(300px,.72fr);gap:13px}
-.ip36-tablewrap{padding:9px 13px 13px}
+.ip36-tablewrap{padding:9px 13px 13px;overflow-x:auto}
 .ip36-table-tools{display:flex;gap:7px;align-items:center}
 .ip36-tsearch{height:32px;width:180px;border:1px solid rgba(255,255,255,.07);border-radius:9px;background:#091710;display:flex;align-items:center;gap:7px;padding:0 9px;color:#7f9589}
 .ip36-tsearch svg{width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.8}.ip36-tsearch span{font-size:8.6px}
 .ip36-iconbtn{width:32px;height:32px;border-radius:9px;border:1px solid rgba(255,255,255,.07);background:#091710;color:#84998d;display:grid;place-items:center}
 .ip36-iconbtn svg{width:15px;height:15px;fill:none;stroke:currentColor;stroke-width:1.8}
-.ip36-table{margin-top:10px;border:1px solid rgba(255,255,255,.07);border-radius:12px;overflow:hidden}
+.ip36-table{margin-top:10px;border:1px solid rgba(255,255,255,.07);border-radius:12px;overflow:visible;min-width:760px}
 .ip36-row{
   display:grid;grid-template-columns:1.55fr .95fr .55fr .85fr .8fr .8fr .85fr .55fr;
   align-items:center;gap:8px;min-height:43px;padding:0 10px;border-bottom:1px solid rgba(255,255,255,.055)
@@ -189,7 +190,6 @@
   .ip36-head-actions{width:100%;flex-wrap:wrap}.ip36-search{width:100%}.ip36-head-actions .ip36-btn{flex:1}
   .ip36-hero{min-height:390px}.ip36-hero-copy{max-width:100%}.ip36-hero-art{top:190px;right:10%;width:70%}
   .ip36-summary{grid-template-columns:1fr}
-  .ip36-row{grid-template-columns:1.4fr .8fr .7fr .8fr}.ip36-row>*:nth-child(n+5){display:none}
 }
 @media(max-width:560px){
   .ip36-kpis{grid-template-columns:1fr}
@@ -352,7 +352,7 @@
   grid-template-columns:minmax(0,2.05fr) minmax(286px,.73fr)!important;
   gap:12px!important
 }
-[data-app-shell][data-page="ipo"] .ip36-tablewrap{padding:8px 11px 10px!important}
+[data-app-shell][data-page="ipo"] .ip36-tablewrap{padding:8px 11px 10px!important;overflow-x:auto!important}
 [data-app-shell][data-page="ipo"] .ip36-tsearch{width:165px!important;height:30px!important}
 [data-app-shell][data-page="ipo"] .ip36-iconbtn{width:30px!important;height:30px!important}
 [data-app-shell][data-page="ipo"] .ip36-table{margin-top:8px!important;border-radius:10px!important}

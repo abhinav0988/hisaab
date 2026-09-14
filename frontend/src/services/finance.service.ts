@@ -7,6 +7,7 @@ import type {
   LendRecord,
   Loan,
   LoanSchedule,
+  UpcomingIpoFeed,
 } from "@hisaab/types";
 import { api } from "@/lib/api-client";
 
@@ -23,6 +24,7 @@ export const financeService = {
   updateInvestment: (id: string, body: unknown) => patch<Investment>(`/api/v1/investments/${id}`, body),
   deleteInvestment: (id: string) => api(`/api/v1/investments/${id}`, { method: "DELETE" }),
   listIpos: () => api<IpoApplication[]>("/api/v1/ipos"),
+  listUpcomingIpos: () => api<UpcomingIpoFeed>("/api/v1/ipos/upcoming"),
   createIpo: (body: unknown) => post<IpoApplication>("/api/v1/ipos", body),
   updateIpo: (id: string, body: unknown) => patch<IpoApplication>(`/api/v1/ipos/${id}`, body),
   deleteIpo: (id: string) => api(`/api/v1/ipos/${id}`, { method: "DELETE" }),

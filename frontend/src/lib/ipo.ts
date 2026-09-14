@@ -25,33 +25,6 @@ export const IPO_MARKET_CATEGORIES: IpoMarketCategory[] = ["Mainboard", "SME"];
 
 export type IpoPeriod = "today" | "week" | "month" | "quarter" | "year" | "all";
 
-export const UPCOMING_IPO_FEED = [
-  {
-    id: "up-tata",
-    name: "Tata Electronics IPO",
-    priceBand: "₹480 - ₹520",
-    openOn: "2026-09-08",
-    closeOn: "2026-09-10",
-    tone: "tata",
-  },
-  {
-    id: "up-lg",
-    name: "LG Electronics IPO",
-    priceBand: "₹1,080 - ₹1,140",
-    openOn: "2026-09-12",
-    closeOn: "2026-09-14",
-    tone: "lg",
-  },
-  {
-    id: "up-ola",
-    name: "Ola Electric IPO",
-    priceBand: "₹72 - ₹76",
-    openOn: "2026-09-18",
-    closeOn: "2026-09-20",
-    tone: "ola",
-  },
-] as const;
-
 export function activeIpoCount(list: IpoApplication[]) {
   return list.filter((item) => item.status === "Applied" || item.status === "In progress").length;
 }
@@ -105,27 +78,38 @@ export function ipoAbbrev(name: string) {
     .toUpperCase();
 }
 
+function padDatePart(value: number) {
+  return String(value).padStart(2, "0");
+}
+
+function localIsoDate(date: Date) {
+  return `${date.getFullYear()}-${padDatePart(date.getMonth() + 1)}-${padDatePart(date.getDate())}`;
+}
+
+function parseLocalIsoDate(value: string) {
+  return new Date(`${value}T12:00:00`);
+}
+
 export function periodBounds(period: IpoPeriod) {
   const now = new Date();
-  const end = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const start = new Date(end);
-  if (period === "today") return { start, end };
+  const end = localIsoDate(now);
+  if (period === "all") return { start: null, end: null };
+  if (period === "today") return { start: end, end };
   if (period === "week") {
-    start.setDate(start.getDate() - 6);
-    return { start, end };
+    return {
+      start: localIsoDate(new Date(now.getFullYear(), now.getMonth(), now.getDate() - 6)),
+      end,
+    };
   }
   if (period === "month") {
-    start.setDate(1);
-    return { start, end };
+    return { start: localIsoDate(new Date(now.getFullYear(), now.getMonth(), 1)), end };
   }
   if (period === "quarter") {
     const quarter = Math.floor(now.getMonth() / 3);
-    start.setMonth(quarter * 3, 1);
-    return { start, end };
+    return { start: localIsoDate(new Date(now.getFullYear(), quarter * 3, 1)), end };
   }
   if (period === "year") {
-    start.setMonth(0, 1);
-    return { start, end };
+    return { start: localIsoDate(new Date(now.getFullYear(), 0, 1)), end };
   }
   return { start: null, end: null };
 }
@@ -134,16 +118,14 @@ export function filterIposByPeriod(list: IpoApplication[], period: IpoPeriod) {
   if (period === "all") return list;
   const { start, end } = periodBounds(period);
   if (!start || !end) return list;
-  const from = start.toISOString().slice(0, 10);
-  const to = end.toISOString().slice(0, 10);
-  return list.filter((item) => item.appliedOn >= from && item.appliedOn <= to);
+  return list.filter((item) => item.appliedOn >= start && item.appliedOn <= end);
 }
 
 export function periodRangeLabel(period: IpoPeriod) {
   const { start, end } = periodBounds(period);
   if (!start || !end || period === "all") return "All time";
   const fmt = new Intl.DateTimeFormat("en-GB", { day: "2-digit", month: "short", year: "numeric" });
-  return `${fmt.format(start)} - ${fmt.format(end)}`;
+  return `${fmt.format(parseLocalIsoDate(start))} - ${fmt.format(parseLocalIsoDate(end))}`;
 }
 
 export function ipoAllottedMinor(item: IpoApplication) {

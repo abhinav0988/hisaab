@@ -168,6 +168,26 @@ export interface IpoApplication {
   updatedAt: string;
 }
 
+export type UpcomingIpoStatus = "Open" | "Upcoming";
+
+export interface UpcomingIpo {
+  id: string;
+  symbol: string;
+  name: string;
+  priceBand: string;
+  openOn: string | null;
+  closeOn: string | null;
+  status: UpcomingIpoStatus;
+  marketCategory: IpoMarketCategory;
+}
+
+export interface UpcomingIpoFeed {
+  source: "NSE";
+  fetchedAt: string;
+  unavailable?: boolean;
+  items: UpcomingIpo[];
+}
+
 export interface Loan {
   id: string;
   name: string;

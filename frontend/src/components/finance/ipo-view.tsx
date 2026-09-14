@@ -1,6 +1,6 @@
 "use client";
 
-import type { IpoApplication, IpoMarketCategory, IpoStatus } from "@hisaab/types";
+import type { IpoApplication, IpoMarketCategory, IpoStatus, UpcomingIpo } from "@hisaab/types";
 import { Button, Field, Input, Select } from "@hisaab/ui";
 import { majorToMinor } from "@hisaab/validation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -38,7 +38,6 @@ import {
   ipoDashboardMetrics,
   ipoStats,
   periodRangeLabel,
-  UPCOMING_IPO_FEED,
   type IpoPeriod,
 } from "@/lib/ipo";
 import { accountService } from "@/services/account.service";
@@ -128,23 +127,20 @@ async function releaseBankForIpo(
   });
 }
 
-function monthLabel(date = new Date()) {
-  return new Intl.DateTimeFormat("en-GB", { month: "long", year: "numeric" }).format(date);
-}
-
 function formatShort(iso: string) {
   return new Intl.DateTimeFormat("en-GB", {
     day: "2-digit",
     month: "short",
     year: "numeric",
-  }).format(new Date(iso));
+  }).format(new Date(/^\d{4}-\d{2}-\d{2}$/.test(iso) ? `${iso}T12:00:00` : iso));
 }
 
-function formatShortDay(iso: string) {
+function formatShortDay(iso: string | null | undefined) {
+  if (!iso) return "TBA";
   return new Intl.DateTimeFormat("en-GB", {
     day: "2-digit",
     month: "short",
-  }).format(new Date(iso));
+  }).format(new Date(`${iso}T12:00:00`));
 }
 
 function statusClass(status: IpoStatus) {
@@ -214,16 +210,26 @@ function donutGradient(counts: {
 
 export function IpoView() {
   const client = useQueryClient();
-  const [period, setPeriod] = useState<IpoPeriod>("month");
+  const [period, setPeriod] = useState<IpoPeriod>("all");
   const [statusTab, setStatusTab] = useState<StatusTab>("all");
   const [search, setSearch] = useState("");
   const [tableSearch, setTableSearch] = useState("");
   const [addOpen, setAddOpen] = useState(false);
+  const [draft, setDraft] = useState<{
+    name: string;
+    marketCategory?: IpoMarketCategory;
+    appliedOn?: string;
+  } | null>(null);
   const [editing, setEditing] = useState<IpoApplication | null>(null);
   const [menuId, setMenuId] = useState<string | null>(null);
 
   const profile = useQuery({ queryKey: ["profile"], queryFn: () => profileService.get() });
   const ipos = useQuery({ queryKey: ["ipos"], queryFn: () => financeService.listIpos(), retry: false });
+  const upcomingIpos = useQuery({
+    queryKey: ["ipos-upcoming"],
+    queryFn: () => financeService.listUpcomingIpos(),
+    retry: 1,
+  });
   const banks = useQuery({ queryKey: ["bank-accounts"], queryFn: () => accountService.listBanks() });
   const accounts = useQuery({ queryKey: ["accounts"], queryFn: () => accountService.list() });
   const categories = useQuery({ queryKey: ["categories"], queryFn: () => categoryService.list() });
@@ -371,7 +377,8 @@ export function IpoView() {
   const allottedOnly = periodFiltered.filter((item) => item.status === "Allotted").length;
   const listedCount = periodFiltered.filter((item) => item.status === "Listed").length;
   const cancelledCount = periodFiltered.filter((item) => item.status === "Not Allotted").length;
-  const upcomingCount = UPCOMING_IPO_FEED.length as number;
+  const upcomingItems = upcomingIpos.data?.items ?? [];
+  const upcomingCount = upcomingItems.length;
   const successRate =
     metrics.count > 0 ? Math.round((metrics.allottedCount / metrics.count) * 100) : 0;
   const statusCounts = {
@@ -385,6 +392,15 @@ export function IpoView() {
     const index = PERIOD_CYCLE.indexOf(period);
     setPeriod(PERIOD_CYCLE[(index + 1) % PERIOD_CYCLE.length] ?? "month");
   };
+
+  function openFromFeed(item: UpcomingIpo) {
+    setDraft({
+      name: item.name,
+      marketCategory: item.marketCategory,
+      appliedOn: item.openOn ?? isoToday(),
+    });
+    setAddOpen(true);
+  }
 
   return (
     <div className="ip36">
@@ -409,7 +425,7 @@ export function IpoView() {
             />
           </label>
           <button type="button" className="ip36-btn" onClick={cyclePeriod}>
-            <CalendarDays /> {monthLabel()}
+            <CalendarDays /> {periodRangeLabel(period)}
           </button>
           <ImmersedNotifyButton className="ip36-btn" emptyText="No new IPO alerts." />
           <ImmersedThemeButton className="ip36-btn" />
@@ -525,40 +541,61 @@ export function IpoView() {
           <div className="ip36-panel-head">
             <div>
               <h3>Upcoming IPOs</h3>
+              <p>Live from NSE India{upcomingIpos.data?.fetchedAt ? ` · ${formatShort(upcomingIpos.data.fetchedAt.slice(0, 10))}` : ""}</p>
             </div>
-            <button type="button" className="ip36-btn" style={{ height: 30, fontSize: 8 }}>
+            <a
+              className="ip36-btn"
+              href="https://www.nseindia.com/market-data/all-upcoming-issues-ipo"
+              target="_blank"
+              rel="noreferrer"
+              style={{ height: 30, fontSize: 8 }}
+            >
               View all
-            </button>
+            </a>
           </div>
           <div className="ip36-upcoming">
-            {UPCOMING_IPO_FEED.map((item, index) => (
-              <button
-                key={item.id}
-                type="button"
-                className="ip36-upitem"
-                style={{ width: "100%", textAlign: "left", color: "inherit", cursor: "pointer" }}
-                onClick={() => {
-                  setAddOpen(true);
-                  toast.message(`Prefill from ${item.name}`, {
-                    description: "Add your application details to start tracking.",
-                  });
-                }}
-              >
-                <div className={`ip36-upicon ${iconTone(item.name, index)}`.trim()}>
-                  {ipoAbbrev(item.name)}
-                </div>
-                <div>
-                  <b>{item.name}</b>
-                  <small>
-                    {item.priceBand}
-                    <br />
-                    Open {formatShortDay(item.openOn)} · Close {formatShortDay(item.closeOn)}
-                  </small>
-                </div>
-                <span className="ip36-badge">UPCOMING</span>
-                <ArrowRight />
-              </button>
-            ))}
+            {upcomingIpos.isLoading ? (
+              <p className="ip36-empty" style={{ padding: 16 }}>Loading live IPOs from NSE…</p>
+            ) : upcomingIpos.isError || upcomingIpos.data?.unavailable ? (
+              <div className="ip36-empty">
+                <h4>Could not load NSE IPOs</h4>
+                <p>Check your connection and try again.</p>
+                <button type="button" className="ip36-btn" style={{ marginTop: 12 }} onClick={() => void upcomingIpos.refetch()}>
+                  Retry
+                </button>
+              </div>
+            ) : upcomingItems.length ? (
+              upcomingItems.map((item, index) => (
+                <button
+                  key={item.id}
+                  type="button"
+                  className="ip36-upitem"
+                  style={{ width: "100%", textAlign: "left", color: "inherit", cursor: "pointer" }}
+                  onClick={() => openFromFeed(item)}
+                >
+                  <div className={`ip36-upicon ${iconTone(item.name, index)}`.trim()}>
+                    {ipoAbbrev(item.name)}
+                  </div>
+                  <div>
+                    <b>{item.name}</b>
+                    <small>
+                      {item.priceBand}
+                      <br />
+                      Open {formatShortDay(item.openOn)} · Close {formatShortDay(item.closeOn)}
+                    </small>
+                  </div>
+                  <span className={`ip36-badge${item.status === "Open" ? " is-open" : ""}`}>
+                    {item.status === "Open" ? "OPEN" : "UPCOMING"}
+                  </span>
+                  <ArrowRight />
+                </button>
+              ))
+            ) : (
+              <div className="ip36-empty">
+                <h4>No live IPOs on NSE right now</h4>
+                <p>Open and forthcoming issues will appear here when NSE publishes them.</p>
+              </div>
+            )}
           </div>
         </aside>
       </section>
@@ -820,9 +857,9 @@ export function IpoView() {
                 </div>
                 <div>
                   <b>
-                    {upcomingCount} upcoming IPO{upcomingCount === 1 ? "" : "s"} this month
+                    {upcomingCount} live IPO{upcomingCount === 1 ? "" : "s"} on NSE
                   </b>
-                  <small>More opportunities to invest.</small>
+                  <small>Open and forthcoming issues from the exchange.</small>
                 </div>
                 <ArrowRight />
               </div>
@@ -925,13 +962,19 @@ export function IpoView() {
       </section>
 
       <IpoFormModal
-        key="add-ipo"
+        key={addOpen ? `add-ipo-${draft?.name ?? "new"}` : "add-ipo"}
         open={addOpen}
         title="Add IPO application"
         currency={currency}
         bankOptions={bankOptions}
+        draftName={draft?.name ?? ""}
+        draftCategory={draft?.marketCategory}
+        draftAppliedOn={draft?.appliedOn}
         pending={create.isPending}
-        onClose={() => setAddOpen(false)}
+        onClose={() => {
+          setAddOpen(false);
+          setDraft(null);
+        }}
         onSave={(body, bankAccountId) => create.mutate({ body, bankAccountId })}
       />
       <IpoFormModal
@@ -957,6 +1000,9 @@ function IpoFormModal({
   currency,
   bankOptions,
   initial,
+  draftName = "",
+  draftCategory,
+  draftAppliedOn,
   pending,
   onClose,
   onSave,
@@ -966,11 +1012,14 @@ function IpoFormModal({
   currency: string;
   bankOptions: Array<{ id: string; label: string }>;
   initial?: IpoApplication;
+  draftName?: string;
+  draftCategory?: IpoMarketCategory;
+  draftAppliedOn?: string;
   pending: boolean;
   onClose: () => void;
   onSave: (body: unknown, bankAccountId?: string) => void;
 }) {
-  const [name, setName] = useState(initial?.name ?? "");
+  const [name, setName] = useState(initial?.name ?? draftName);
   const [lots, setLots] = useState(String(initial?.lots ?? 1));
   const [amount, setAmount] = useState(initial ? String(initial.amountMinor / 100) : "");
   const [allotted, setAllotted] = useState(
@@ -983,10 +1032,10 @@ function IpoFormModal({
     initial?.currentPriceMinor != null ? String(initial.currentPriceMinor / 100) : "",
   );
   const [marketCategory, setMarketCategory] = useState<IpoMarketCategory>(
-    initial?.marketCategory ?? "Mainboard",
+    initial?.marketCategory ?? draftCategory ?? "Mainboard",
   );
   const [status, setStatus] = useState<IpoStatus>(initial?.status ?? "Applied");
-  const [appliedOn, setAppliedOn] = useState(initial?.appliedOn ?? isoToday());
+  const [appliedOn, setAppliedOn] = useState(initial?.appliedOn ?? draftAppliedOn ?? isoToday());
   const [bankAccountId, setBankAccountId] = useState(
     initial?.paymentSource && bankOptions.some((item) => item.id === initial.paymentSource)
       ? initial.paymentSource
@@ -997,37 +1046,44 @@ function IpoFormModal({
   const allottedView = isAllottedStatus(status);
   const selectedBankLabel = bankOptions.find((item) => item.id === bankAccountId)?.label;
 
-  function parseOptionalMinor(raw: string) {
+  function parseOptionalMinor(raw: string, field: string, next: Record<string, string>) {
     const cleaned = raw.replace(/,/g, "").trim();
     if (!cleaned) return null;
-    return majorToMinor(cleaned);
+    try {
+      return majorToMinor(cleaned);
+    } catch {
+      next[field] = "Enter a valid amount.";
+      return null;
+    }
   }
 
   function submit(event: React.FormEvent) {
     event.preventDefault();
     const next: Record<string, string> = {};
     if (!name.trim()) next.name = "Enter IPO name.";
-    if (!amount.trim()) next.amount = "Enter applied amount.";
-    if (!initial && shouldBlockBankHold(status) && !bankAccountId) {
-      next.bank = "Select a bank account to block the applied amount.";
+    let amountMinor = 0;
+    try {
+      amountMinor = majorToMinor(amount.replace(/,/g, "").trim());
+    } catch {
+      next.amount = "Enter a valid applied amount.";
     }
-    if (allottedView && allotted.trim() && Number.isNaN(parseOptionalMinor(allotted))) {
-      next.allotted = "Enter a valid allotted amount.";
-    }
+    const allottedAmountMinor = allottedView ? parseOptionalMinor(allotted, "allotted", next) : null;
+    const listingPriceMinor = allottedView ? parseOptionalMinor(listing, "listing", next) : null;
+    const currentPriceMinor = allottedView ? parseOptionalMinor(current, "current", next) : null;
     setErrors(next);
     if (Object.keys(next).length) return;
 
     const body = {
       name: name.trim(),
       appliedOn,
-      allotmentOn: initial?.allotmentOn ?? null,
-      amountMinor: majorToMinor(amount.replace(/,/g, "")),
+      allotmentOn: initial?.allotmentOn ?? (allottedView ? isoToday() : null),
+      amountMinor,
       lots: Number(lots) || 1,
       status,
       marketCategory,
-      allottedAmountMinor: allottedView ? parseOptionalMinor(allotted) : null,
-      listingPriceMinor: allottedView ? parseOptionalMinor(listing) : null,
-      currentPriceMinor: allottedView ? parseOptionalMinor(current) : null,
+      allottedAmountMinor,
+      listingPriceMinor,
+      currentPriceMinor,
       paymentSource: bankAccountId || initial?.paymentSource || null,
       currency,
     };
@@ -1078,16 +1134,14 @@ function IpoFormModal({
               ))}
             </Select>
           </Field>
-          {!allottedView || !amount.trim() ? (
-            <Field label={`Applied Amount (${currency})`} error={errors.amount}>
-              <Input
-                inputMode="decimal"
-                value={amount}
-                onChange={(event) => setAmount(event.target.value)}
-                placeholder="Enter total applied amount"
-              />
-            </Field>
-          ) : null}
+          <Field label={`Applied Amount (${currency})`} error={errors.amount}>
+            <Input
+              inputMode="decimal"
+              value={amount}
+              onChange={(event) => setAmount(event.target.value)}
+              placeholder="Enter total applied amount"
+            />
+          </Field>
           {allottedView ? (
             <>
               <Field label={`Allotted Amount (${currency})`} error={errors.allotted}>
@@ -1141,8 +1195,8 @@ function IpoFormModal({
               error={errors.bank}
               hint={
                 shouldBlockBankHold(status)
-                  ? "Applied amount will be deducted from this bank until allotment."
-                  : "Select the savings bank account used for this IPO."
+                  ? "Optional. If selected, the applied amount is blocked in this bank until allotment."
+                  : "Optional. Select the savings bank used for this IPO."
               }
             >
               <Select
