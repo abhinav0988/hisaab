@@ -419,7 +419,7 @@ export function IpoView() {
             <Search />
             <input
               aria-label="Search IPOs"
-              placeholder="Search IPOs, companies..."
+              placeholder="Search IPOs"
               value={search}
               onChange={(event) => setSearch(event.target.value)}
             />
@@ -548,7 +548,7 @@ export function IpoView() {
               href="https://www.nseindia.com/market-data/all-upcoming-issues-ipo"
               target="_blank"
               rel="noreferrer"
-              style={{ height: 30, fontSize: 8 }}
+              style={{ height: 32, fontSize: 12 }}
             >
               View all
             </a>
@@ -576,7 +576,7 @@ export function IpoView() {
                   <div className={`ip36-upicon ${iconTone(item.name, index)}`.trim()}>
                     {ipoAbbrev(item.name)}
                   </div>
-                  <div>
+                  <div className="ip36-upcopy">
                     <b>{item.name}</b>
                     <small>
                       {item.priceBand}
@@ -632,7 +632,7 @@ export function IpoView() {
           <h4>Current P/L by IPO</h4>
           <strong>
             {money(metrics.totalPlMinor, currency)}{" "}
-            <span style={{ fontSize: 11, color: metrics.returnPct >= 0 ? "#44df94" : "#ff6570" }}>
+            <span style={{ fontSize: 13, color: metrics.returnPct >= 0 ? "#44df94" : "#ff6570" }}>
               {metrics.returnPct >= 0 ? "+" : ""}
               {metrics.returnPct}%
             </span>
@@ -661,7 +661,7 @@ export function IpoView() {
                 Listed
               </span>
             </div>
-            <b style={{ fontSize: 10, lineHeight: 1.35 }}>
+            <b style={{ fontSize: 13, lineHeight: 1.4 }}>
               {upcomingCount}
               <br />
               {appliedCount}
@@ -771,7 +771,7 @@ export function IpoView() {
                             {stats.plMinor >= 0 ? "+" : "−"}
                             {money(Math.abs(stats.plMinor), currency)}
                             <br />
-                            <span style={{ fontSize: 7.5 }}>
+                            <span style={{ fontSize: 12 }}>
                               {stats.plPct > 0 ? "+" : ""}
                               {stats.plPct}%
                             </span>
@@ -836,7 +836,7 @@ export function IpoView() {
                 </button>
               </div>
             )}
-            <div style={{ marginTop: 7, color: "#7f9589", fontSize: 8 }}>
+            <div style={{ marginTop: 7, color: "#7f9589", fontSize: 12 }}>
               Showing {list.length} of {periodFiltered.length} application
               {periodFiltered.length === 1 ? "" : "s"}
             </div>
