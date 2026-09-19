@@ -349,6 +349,24 @@ export function BankView() {
   const [editing, setEditing] = useState<Account | null>(null);
   const [menuId, setMenuId] = useState<string | null>(null);
   const [balanceRange, setBalanceRange] = useState<BalanceRange>("1M");
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!menuId) return;
+    const onPointer = (event: MouseEvent) => {
+      if (menuRef.current?.contains(event.target as Node)) return;
+      setMenuId(null);
+    };
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setMenuId(null);
+    };
+    document.addEventListener("mousedown", onPointer);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onPointer);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [menuId]);
 
   const profile = useQuery({ queryKey: ["profile"], queryFn: () => profileService.get() });
   const banks = useQuery({ queryKey: ["bank-accounts"], queryFn: () => accountService.listBanks() });
@@ -581,7 +599,7 @@ export function BankView() {
                   const flow = accountMonthFlow(account.id, bankTxns);
                   const negative = account.currentBalanceMinor < 0;
                   return (
-                    <div key={account.id} className="bank23-row">
+                    <div key={account.id} className="bank23-row" ref={menuId === account.id ? menuRef : undefined}>
                       <div className="bank23-bank">
                         <i className={`bank23-banklogo ${bankLogoClass(label)}`.trim()}>
                           {bankAbbrev(label)}
@@ -615,14 +633,19 @@ export function BankView() {
                         type="button"
                         className="bank23-more"
                         aria-label="Account options"
-                        onClick={() => setMenuId(menuId === account.id ? null : account.id)}
+                        aria-expanded={menuId === account.id}
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          setMenuId(menuId === account.id ? null : account.id);
+                        }}
                       >
                         <MoreVertical />
                       </button>
                       {menuId === account.id ? (
-                        <div className="bank23-menu-pop">
+                        <div className="bank23-menu-pop" role="menu">
                           <button
                             type="button"
+                            role="menuitem"
                             onClick={() => {
                               setMenuId(null);
                               router.push(bankTransactionHref(account.id, "INCOME"));
@@ -632,6 +655,7 @@ export function BankView() {
                           </button>
                           <button
                             type="button"
+                            role="menuitem"
                             onClick={() => {
                               setMenuId(null);
                               router.push(bankTransactionHref(account.id, "EXPENSE"));
@@ -641,6 +665,7 @@ export function BankView() {
                           </button>
                           <button
                             type="button"
+                            role="menuitem"
                             onClick={() => {
                               setMenuId(null);
                               setEditing(account);
@@ -1168,23 +1193,21 @@ function EditBankAccountModal({
   onSaved: () => void;
 }) {
   const [bank, setBank] = useState("");
-  const [accountType, setAccountType] = useState<string>(BANK_ACCOUNT_TYPES[0]);
+  const [accountType, setAccountType] = useState<string>(BANK_ACCOUNT_TYPES[0] ?? "Savings");
   const [nickname, setNickname] = useState("");
   const [branch, setBranch] = useState("");
   const [opening, setOpening] = useState("");
   const [active, setActive] = useState(true);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
-  const accountKey = account?.id ?? "";
-  const [loadedKey, setLoadedKey] = useState(accountKey);
-  if (account && accountKey !== loadedKey) {
+  useEffect(() => {
+    if (!account || !open) return;
     const institution = account.institutionName?.trim() ?? "";
     const [bankPart, ...branchParts] = institution.split(" · ");
     const matchedBank =
       INDIAN_BANKS.find((item) => item.toLowerCase() === (bankPart ?? "").toLowerCase()) ??
       bankPart?.trim() ??
-      "HDFC Bank";
-    setLoadedKey(accountKey);
+      "";
     setBank(matchedBank);
     setBranch(branchParts.join(" · ").trim());
     setAccountType(bankSubtype(account));
@@ -1192,7 +1215,7 @@ function EditBankAccountModal({
     setOpening(String((account.openingBalanceMinor ?? 0) / 100));
     setActive(account.isActive === true || Number(account.isActive) === 1);
     setErrors({});
-  }
+  }, [account, open]);
 
   const mutation = useMutation({
     mutationFn: () => {
@@ -1233,7 +1256,10 @@ function EditBankAccountModal({
       <form className="bank-form" onSubmit={submit}>
         <Field label="Bank" error={errors.bank}>
           <Select value={bank} onChange={(event) => setBank(event.target.value)}>
-            {!INDIAN_BANKS.includes(bank as (typeof INDIAN_BANKS)[number]) ? (
+            <option value="" disabled>
+              Choose a bank
+            </option>
+            {bank && !INDIAN_BANKS.includes(bank as (typeof INDIAN_BANKS)[number]) ? (
               <option value={bank}>{bank}</option>
             ) : null}
             {INDIAN_BANKS.map((item) => (

@@ -9,7 +9,7 @@ Hisaab is a responsive personal budgeting application for India, Nepal, Pakistan
 This repository is a pnpm/Turborepo workspace in the Micron layout: **backend Workers** plus **frontend** clients.
 
 - `frontend/web` — Next.js App Router client (`@hisaab/web`): Tailwind CSS, TanStack Query, React Hook Form, Recharts, and Better Auth client. Domain UI in `src/components/<domain>/`, API calls in `src/services/`.
-- `frontend/app` — reserved for the mobile/native Hisaab app (`@hisaab/app`).
+- `frontend/app` — Expo / React Native client (`@hisaab/app`). Screens in `src/screens/`, navigation in `src/navigation/`. See [Mobile](docs/mobile.md).
 - `backend/gateway` — public Hono Worker: CORS, CSRF, rate limits, and service-binding proxy (`http://localhost:8787`).
 - `backend/auth` — Better Auth (`/api/auth/*`) and internal `GET /internal/session`. Not published on workers.dev.
 - `backend/profile`, `accounts`, `categories`, `transactions`, `budgets`, `reports`, `recurring`, `finance` — one Worker per domain.

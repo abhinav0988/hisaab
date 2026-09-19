@@ -9,3 +9,5 @@ worker-configuration.d.ts
 .env.*
 .dev.vars
 .dev.vars.*
+frontend/app/Hisaab-React-Native-UI
+frontend/app/appDesign

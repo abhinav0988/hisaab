@@ -17,6 +17,17 @@ import { flagOn } from "../flags";
 type PatchAccount = z.infer<typeof accountPatchSchema>;
 type CreateAccount = z.infer<typeof accountSchema>;
 
+/** Banks the user added on the Bank page (not the catalog "Bank" payment stub). */
+function isUserLinkedBank(row: {
+  type: string;
+  catalogId: string | null;
+  institutionName: string | null;
+}) {
+  if (row.type !== "BANK") return false;
+  if (!row.catalogId) return true;
+  return Boolean(row.institutionName?.trim());
+}
+
 export async function listAccountCatalog(env: Env) {
   const db = createDatabase(env.DB);
   await ensureAccountCatalog(db);
@@ -88,20 +99,49 @@ export async function listAccounts(env: Env, userId: string) {
   }
   return unique;
 }
-export async function getAccount(env: Env, userId: string, id: string) {
+
+async function accountWithBalance(env: Env, userId: string, id: string) {
   const db = createDatabase(env.DB);
-  const row = await db.query.accounts.findFirst({
-    where: and(eq(accounts.id, id), eq(accounts.userId, userId)),
-  });
+  const rows = await db
+    .select({
+      id: accounts.id,
+      catalogId: accounts.catalogId,
+      name: accounts.name,
+      type: accounts.type,
+      institutionName: accounts.institutionName,
+      openingBalanceMinor: accounts.openingBalanceMinor,
+      currentBalanceMinor: accountBalanceMinorSql,
+      currency: accounts.currency,
+      isActive: accounts.isActive,
+      createdAt: accounts.createdAt,
+      updatedAt: accounts.updatedAt,
+    })
+    .from(accounts)
+    .leftJoin(
+      transactions,
+      and(
+        isNull(transactions.deletedAt),
+        or(
+          eq(transactions.accountId, accounts.id),
+          eq(transactions.destinationAccountId, accounts.id),
+        ),
+      ),
+    )
+    .where(and(eq(accounts.userId, userId), eq(accounts.id, id)))
+    .groupBy(accounts.id);
+  const row = rows[0];
   if (!row) throw notFound("Account");
-  const listed = (await listAccounts(env, userId)).find((item) => item.id === id);
-  if (listed) return listed;
   return {
     ...row,
     isActive: Number(row.isActive) === 1,
-    currentBalanceMinor: Number(row.openingBalanceMinor ?? 0),
+    currentBalanceMinor: Number(row.currentBalanceMinor ?? 0),
   };
 }
+
+export async function getAccount(env: Env, userId: string, id: string) {
+  return accountWithBalance(env, userId, id);
+}
+
 export async function updateAccount(env: Env, userId: string, id: string, input: PatchAccount) {
   const db = createDatabase(env.DB);
   const existing = await db.query.accounts.findFirst({
@@ -122,6 +162,7 @@ export async function updateAccount(env: Env, userId: string, id: string, input:
   });
   return getAccount(env, userId, id);
 }
+
 export async function deactivateAccount(env: Env, userId: string, id: string) {
   return updateAccount(env, userId, id, { isActive: false });
 }
@@ -159,7 +200,7 @@ export async function listBankAccounts(env: Env, userId: string) {
     .orderBy(accounts.name)
     .then((items) =>
       items
-        .filter((item) => Number(item.isActive) === 1)
+        .filter((item) => Number(item.isActive) === 1 && isUserLinkedBank(item))
         .map((row) => ({
           ...row,
           isActive: true,
@@ -184,13 +225,16 @@ export async function createBankAccount(env: Env, userId: string, input: CreateA
     catalogId: null,
     name: input.name,
     type: "BANK" as const,
-    institutionName: input.institutionName ?? null,
+    institutionName: input.institutionName?.trim() || null,
     openingBalanceMinor: input.openingBalanceMinor,
     currency: input.currency ?? prefs?.defaultCurrency ?? "INR",
     isActive: input.isActive ?? true,
     createdAt: now(),
     updatedAt: now(),
   };
+  if (!value.institutionName) {
+    throw new AppError(400, "INVALID_INSTITUTION", "Select a bank institution.");
+  }
   await db.insert(accounts).values(value);
   await audit(db, {
     userId,

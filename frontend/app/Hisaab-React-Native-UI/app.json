@@ -1,0 +1,12 @@
+{
+  "expo": {
+    "name": "Hisaab",
+    "slug": "hisaab",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "dark",
+    "splash": { "backgroundColor": "#021612" },
+    "android": { "package": "com.hisaab.mobile", "edgeToEdgeEnabled": true },
+    "ios": { "bundleIdentifier": "com.hisaab.mobile", "supportsTablet": true }
+  }
+}

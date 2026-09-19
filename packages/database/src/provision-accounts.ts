@@ -11,6 +11,18 @@ function flagOn(value: unknown) {
   return value === true || Number(value) === 1;
 }
 
+/** Catalog stub vs a bank the user explicitly linked on the Bank page. */
+function isUserLinkedBank(row: {
+  type: string;
+  catalogId: string | null;
+  institutionName: string | null;
+  name: string;
+}) {
+  if (row.type !== "BANK") return false;
+  if (!row.catalogId) return true;
+  return Boolean(row.institutionName?.trim());
+}
+
 export async function ensureAccountCatalog(db: Database) {
   const existing = await db.query.accountCatalog.findMany();
   if (existing.length) return existing;
@@ -41,26 +53,44 @@ export async function provisionUserAccounts(db: Database, userId: string, curren
   const now = stamp();
   for (const item of catalog) {
     const linked = existing.find((row) => row.catalogId === item.id);
-    const byType = existing.filter((row) => row.type === item.type);
-    const primary = linked ?? byType[0];
+    // Never adopt a user-linked bank (custom institution / null catalog) as the catalog stub.
+    const pristineByType = existing.find(
+      (row) =>
+        row.type === item.type &&
+        !isUserLinkedBank(row) &&
+        (row.catalogId === item.id || row.name === item.name),
+    );
+    const primary = linked ?? pristineByType;
     if (primary) {
-      if (primary.catalogId !== item.id || primary.name !== item.name || !flagOn(primary.isActive)) {
+      const patch: {
+        catalogId?: string;
+        name?: string;
+        type?: typeof item.type;
+        isActive?: boolean;
+        updatedAt: string;
+      } = { updatedAt: now };
+      if (primary.catalogId !== item.id) patch.catalogId = item.id;
+      if (!flagOn(primary.isActive)) patch.isActive = true;
+      // Only restore the catalog label on an uncustomized stub — never wipe bank edits.
+      if (!isUserLinkedBank(primary) && primary.name !== item.name) {
+        patch.name = item.name;
+      }
+      if (patch.catalogId || patch.name || patch.isActive !== undefined) {
         await db
           .update(accounts)
           .set({
-            catalogId: item.id,
-            name: item.name,
+            ...(patch.catalogId ? { catalogId: patch.catalogId } : {}),
+            ...(patch.name ? { name: patch.name } : {}),
             type: item.type,
-            isActive: true,
+            ...(patch.isActive !== undefined ? { isActive: patch.isActive } : {}),
             updatedAt: now,
           })
           .where(eq(accounts.id, primary.id));
-        primary.catalogId = item.id;
-        primary.name = item.name;
-        primary.isActive = true;
+        if (patch.catalogId) primary.catalogId = patch.catalogId;
+        if (patch.name) primary.name = patch.name;
+        if (patch.isActive !== undefined) primary.isActive = patch.isActive;
       }
-      for (const extra of byType) {
-        if (extra.id === primary.id) continue;
+      for (const extra of byTypeExtras(existing, item.type, primary.id)) {
         if (!extra.catalogId) continue;
         if (flagOn(extra.isActive)) {
           await db
@@ -89,4 +119,12 @@ export async function provisionUserAccounts(db: Database, userId: string, curren
       })
       .onConflictDoNothing();
   }
+}
+
+function byTypeExtras(
+  existing: Array<{ id: string; type: string; catalogId: string | null; isActive: boolean | number }>,
+  type: string,
+  primaryId: string,
+) {
+  return existing.filter((row) => row.type === type && row.id !== primaryId);
 }

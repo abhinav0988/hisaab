@@ -16,17 +16,17 @@ The browser talks to one public Worker (the gateway). Domain logic runs in inter
 
 ## Backend Workers
 
-| Package                | Worker                | Public | Owns                                                  |
-| ---------------------- | --------------------- | ------ | ----------------------------------------------------- |
-| `backend/gateway`      | `hisaab-gateway`      | yes    | CORS, CSRF, rate limit, reverse-proxy                 |
-| `backend/auth`         | `hisaab-auth`         | no     | Better Auth, `GET /internal/session`                  |
-| `backend/profile`      | `hisaab-profile`      | no     | `/api/v1/profile`                                     |
-| `backend/accounts`     | `hisaab-accounts`     | no     | `/api/v1/accounts`                                    |
-| `backend/categories`   | `hisaab-categories`   | no     | `/api/v1/categories`                                  |
-| `backend/transactions` | `hisaab-transactions` | no     | `/api/v1/transactions`                                |
-| `backend/budgets`      | `hisaab-budgets`      | no     | `/api/v1/budgets`                                     |
-| `backend/reports`      | `hisaab-reports`      | no     | `/api/v1/dashboard/*`, `/api/v1/reports/*`            |
-| `backend/recurring`    | `hisaab-recurring`    | no     | `/api/v1/recurring-transactions`, cron `*/15 * * * *` |
+| Package                | Worker                | Public | Owns                                                                            |
+| ---------------------- | --------------------- | ------ | ------------------------------------------------------------------------------- |
+| `backend/gateway`      | `hisaab-gateway`      | yes    | CORS, CSRF, rate limit, reverse-proxy                                           |
+| `backend/auth`         | `hisaab-auth`         | no     | Better Auth, `GET /internal/session`                                            |
+| `backend/profile`      | `hisaab-profile`      | no     | `/api/v1/profile`                                                               |
+| `backend/accounts`     | `hisaab-accounts`     | no     | `/api/v1/accounts`                                                              |
+| `backend/categories`   | `hisaab-categories`   | no     | `/api/v1/categories`                                                            |
+| `backend/transactions` | `hisaab-transactions` | no     | `/api/v1/transactions`                                                          |
+| `backend/budgets`      | `hisaab-budgets`      | no     | `/api/v1/budgets`                                                               |
+| `backend/reports`      | `hisaab-reports`      | no     | `/api/v1/dashboard/*`, `/api/v1/reports/*`                                      |
+| `backend/recurring`    | `hisaab-recurring`    | no     | `/api/v1/recurring-transactions`, cron `*/15 * * * *`                           |
 | `backend/finance`      | `hisaab-finance`      | no     | `/api/v1/investments`, `/ipos`, `/loans`, `/credit-facilities`, `/lend-records` |
 
 Shared packages: `packages/database`, `packages/validation`, `packages/types`, `packages/ui`, `packages/worker-lib`. All domain Workers and auth bind the same D1 database `hisaab`.
@@ -35,7 +35,9 @@ Shared packages: `packages/database`, `packages/validation`, `packages/types`, `
 
 ## Frontend
 
-`frontend/web` is the Next.js app (`@hisaab/web`). Domain UI lives in `src/components/<domain>/`, HTTP calls in `src/services/*.service.ts`, providers in `src/providers/`, and the fetch client in `src/lib/api-client.ts`. `frontend/app` is reserved for the mobile/native client (`@hisaab/app`).
+`frontend/web` is the Next.js app (`@hisaab/web`). Domain UI lives in `src/components/<domain>/`, HTTP calls in `src/services/*.service.ts`, providers in `src/providers/`, and the fetch client in `src/lib/api-client.ts`.
+
+`frontend/app` is the Expo React Native client (`@hisaab/app`). Screens live in `src/screens/`, navigation in `src/navigation/`, and the gateway client in `src/services/`. See [Mobile architecture](mobile.md).
 
 The UI is responsive from 320px. Desktop uses a persistent sidebar; mobile uses a compact header, bottom navigation, and floating transaction action. The CSS token system provides WCAG-conscious light and dark themes. Every server-driven feature implements loading, empty, error, and success feedback.
 
