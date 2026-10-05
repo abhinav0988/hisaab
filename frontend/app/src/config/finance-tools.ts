@@ -11,28 +11,9 @@ export type FinanceTool = {
   href: string;
   group: "everyday" | "grow" | "more";
   pro?: boolean;
-  tab?: "Home" | "Transactions";
 };
 
 export const financeTools: FinanceTool[] = [
-  {
-    id: "overview",
-    title: "Overview",
-    subtitle: "Money snapshot",
-    icon: "home-outline",
-    href: "/dashboard",
-    group: "everyday",
-    tab: "Home",
-  },
-  {
-    id: "transactions",
-    title: "Transactions",
-    subtitle: "Track activity",
-    icon: "swap-horizontal-outline",
-    href: "/transactions",
-    group: "everyday",
-    tab: "Transactions",
-  },
   {
     id: "bank",
     title: "Bank",

@@ -1,10 +1,11 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Alert, Pressable, ScrollView, StatusBar, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { passwordSchema } from "@hisaab/validation";
 import { colors, radius } from "../../theme/tokens";
 import type { AuthStackParamList } from "../../navigation/types";
+import { useSession } from "../../providers/session-provider";
 import { authService } from "../../services/auth.service";
 import { AppButton } from "../../components/ui/button";
 import { Field } from "../../components/ui/field";
@@ -12,14 +13,29 @@ import { Icon } from "../../components/ui/icon";
 
 type Props = NativeStackScreenProps<AuthStackParamList, "Register">;
 
-export function RegisterScreen({ navigation }: Props) {
-  const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
+export function RegisterScreen({ navigation, route }: Props) {
+  const { signIn } = useSession();
+  const verifiedFromRoute = route.params?.verifiedEmail?.trim().toLowerCase() ?? "";
+  const [name, setName] = useState(route.params?.name ?? "");
+  const [email, setEmail] = useState(verifiedFromRoute);
+  const [verifiedEmail, setVerifiedEmail] = useState(verifiedFromRoute);
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [hidePassword, setHidePassword] = useState(true);
   const [hideConfirm, setHideConfirm] = useState(true);
   const [agreed, setAgreed] = useState(true);
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    const next = route.params?.verifiedEmail?.trim().toLowerCase() ?? "";
+    if (!next) return;
+    setVerifiedEmail(next);
+    setEmail(next);
+    if (route.params?.name) setName(route.params.name);
+  }, [route.params?.verifiedEmail, route.params?.name]);
+
+  const emailVerified =
+    verifiedEmail !== "" && verifiedEmail === email.trim().toLowerCase();
 
   const checks = useMemo(
     () => [
@@ -32,9 +48,35 @@ export function RegisterScreen({ navigation }: Props) {
 
   const strong = checks.every((check) => check.ok) && passwordSchema.safeParse(password).success;
 
-  function goToOtp() {
-    if (!name.trim() || !email.trim()) {
-      Alert.alert("Missing details", "Enter your name and email first.");
+  async function sendCode() {
+    if (!name.trim()) {
+      Alert.alert("Missing details", "Enter your full name first.");
+      return;
+    }
+    const nextEmail = email.trim().toLowerCase();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(nextEmail)) {
+      Alert.alert("Email", "Enter a valid email address.");
+      return;
+    }
+    setBusy(true);
+    try {
+      const result = await authService.sendVerificationCode(nextEmail);
+      navigation.navigate("Otp", {
+        email: nextEmail,
+        purpose: "signup",
+        name: name.trim(),
+        otp: result.otp,
+      });
+    } catch (error) {
+      Alert.alert("Could not send code", error instanceof Error ? error.message : "Try again.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function createAccount() {
+    if (!emailVerified) {
+      Alert.alert("Verify email", "Verify your email before creating your account.");
       return;
     }
     if (!strong) {
@@ -45,8 +87,27 @@ export function RegisterScreen({ navigation }: Props) {
       Alert.alert("Terms", "Please agree to the Terms & Privacy Policy.");
       return;
     }
-    void authService.signUp({ name, email, password });
-    navigation.navigate("Otp", { email, purpose: "signup" });
+    setBusy(true);
+    try {
+      await authService.signUp({
+        name: name.trim(),
+        email: verifiedEmail,
+        password,
+      });
+      try {
+        await authService.signIn({ email: verifiedEmail, password });
+      } catch {
+        // Session cookie may already be set from sign-up.
+      }
+      await signIn();
+    } catch (error) {
+      Alert.alert(
+        "Could not create account",
+        error instanceof Error ? error.message : "Try again.",
+      );
+    } finally {
+      setBusy(false);
+    }
   }
 
   return (
@@ -64,8 +125,9 @@ export function RegisterScreen({ navigation }: Props) {
                 Create your <Text style={styles.brand}>Hisaab</Text>
               </Text>
               <Text style={styles.subtitle}>
-                Create your private money space. Verify your email first, then complete secure
-                account setup.
+                {emailVerified
+                  ? "Email verified. Set a secure password to finish account setup."
+                  : "Verify your email first, then create your password."}
               </Text>
             </View>
             <View style={styles.shield}>
@@ -80,102 +142,136 @@ export function RegisterScreen({ navigation }: Props) {
             autoCapitalize="words"
             value={name}
             onChangeText={setName}
+            editable={!emailVerified}
             hint="Required for profile setup."
           />
 
           <View style={styles.emailHead}>
             <Text style={styles.label}>Email address</Text>
-            <Text style={styles.emailHint}>Verify this email before registration</Text>
-          </View>
-          <View style={styles.emailRow}>
-            <View style={{ flex: 1 }}>
-              <Field
-                placeholder="name@example.com"
-                leftIcon="mail-outline"
-                keyboardType="email-address"
-                value={email}
-                onChangeText={setEmail}
-              />
-            </View>
-            <Pressable style={styles.send} onPress={goToOtp}>
-              <Icon name="mail-outline" size={16} />
-              <Text style={styles.sendText}>Send code</Text>
-            </Pressable>
-          </View>
-
-          <View style={styles.passRow}>
-            <View style={styles.passCol}>
-              <View style={styles.passHead}>
-                <Text style={styles.label}>Create password</Text>
-                <Pressable onPress={() => setHidePassword((value) => !value)}>
-                  <Text style={styles.show}>{hidePassword ? "Show" : "Hide"}</Text>
-                </Pressable>
-              </View>
-              <Field
-                placeholder="Enter your password"
-                leftIcon="lock-closed-outline"
-                secure={hidePassword}
-                value={password}
-                onChangeText={setPassword}
-              />
-              <Text style={styles.hint}>Use 8+ characters and at least 1 number.</Text>
-            </View>
-            <View style={styles.passCol}>
-              <View style={styles.passHead}>
-                <Text style={styles.label}>Confirm password</Text>
-                <Pressable onPress={() => setHideConfirm((value) => !value)}>
-                  <Text style={styles.show}>{hideConfirm ? "Show" : "Hide"}</Text>
-                </Pressable>
-              </View>
-              <Field
-                placeholder="Re-enter your password"
-                leftIcon="lock-closed-outline"
-                secure={hideConfirm}
-                value={confirm}
-                onChangeText={setConfirm}
-              />
-              <Text style={styles.hint}>Re-enter the same secure password.</Text>
-            </View>
-          </View>
-
-          <View style={styles.quality}>
-            <View style={styles.qualityHead}>
-              <Text style={styles.qualityTitle}>Password quality</Text>
-              <View style={styles.target}>
-                <Icon name="sparkles-outline" size={12} />
-                <Text style={styles.targetText}>Strong target</Text>
-              </View>
-            </View>
-            <View style={styles.chips}>
-              {checks.map((check) => (
-                <View key={check.label} style={[styles.chip, check.ok && styles.chipOk]}>
-                  <Icon
-                    name="checkmark-circle"
-                    size={16}
-                    color={check.ok ? colors.green : colors.muted}
-                  />
-                  <Text style={[styles.chipText, check.ok && { color: colors.white }]}>
-                    {check.label}
-                  </Text>
-                </View>
-              ))}
-            </View>
-          </View>
-
-          <Pressable style={styles.terms} onPress={() => setAgreed((value) => !value)}>
-            <View style={[styles.box, agreed && styles.boxOn]}>
-              {agreed ? <Icon name="checkmark" size={14} color={colors.ink} /> : null}
-            </View>
-            <Text style={styles.termsText}>
-              I agree to the <Text style={styles.link}>Terms & Privacy Policy</Text>
+            <Text style={styles.emailHint}>
+              {emailVerified ? "Verified identity email" : "Verify this email before registration"}
             </Text>
-          </Pressable>
+          </View>
 
-          <AppButton
-            label="Verify email to continue"
-            leftIcon="shield-checkmark-outline"
-            onPress={goToOtp}
-          />
+          {emailVerified ? (
+            <View style={styles.verifiedBox}>
+              <Icon name="checkmark-circle" size={22} />
+              <View style={{ flex: 1 }}>
+                <Text style={styles.verifiedTitle}>Email verified</Text>
+                <Text style={styles.verifiedCopy}>{verifiedEmail}</Text>
+              </View>
+              <Pressable
+                onPress={() => {
+                  setVerifiedEmail("");
+                  setPassword("");
+                  setConfirm("");
+                  navigation.setParams({ verifiedEmail: undefined, name: name.trim() || undefined });
+                }}
+              >
+                <Text style={styles.change}>Change</Text>
+              </Pressable>
+            </View>
+          ) : (
+            <View style={styles.emailRow}>
+              <View style={{ flex: 1 }}>
+                <Field
+                  placeholder="name@example.com"
+                  leftIcon="mail-outline"
+                  keyboardType="email-address"
+                  value={email}
+                  onChangeText={setEmail}
+                />
+              </View>
+              <Pressable style={styles.send} onPress={() => void sendCode()} disabled={busy}>
+                <Icon name="mail-outline" size={16} />
+                <Text style={styles.sendText}>{busy ? "…" : "Send code"}</Text>
+              </Pressable>
+            </View>
+          )}
+
+          {emailVerified ? (
+            <>
+              <View style={styles.passRow}>
+                <View style={styles.passCol}>
+                  <View style={styles.passHead}>
+                    <Text style={styles.label}>Create password</Text>
+                    <Pressable onPress={() => setHidePassword((value) => !value)}>
+                      <Text style={styles.show}>{hidePassword ? "Show" : "Hide"}</Text>
+                    </Pressable>
+                  </View>
+                  <Field
+                    placeholder="Enter your password"
+                    leftIcon="lock-closed-outline"
+                    secure={hidePassword}
+                    value={password}
+                    onChangeText={setPassword}
+                  />
+                  <Text style={styles.hint}>Use 8+ characters and at least 1 number.</Text>
+                </View>
+                <View style={styles.passCol}>
+                  <View style={styles.passHead}>
+                    <Text style={styles.label}>Confirm password</Text>
+                    <Pressable onPress={() => setHideConfirm((value) => !value)}>
+                      <Text style={styles.show}>{hideConfirm ? "Show" : "Hide"}</Text>
+                    </Pressable>
+                  </View>
+                  <Field
+                    placeholder="Re-enter your password"
+                    leftIcon="lock-closed-outline"
+                    secure={hideConfirm}
+                    value={confirm}
+                    onChangeText={setConfirm}
+                  />
+                  <Text style={styles.hint}>Re-enter the same secure password.</Text>
+                </View>
+              </View>
+
+              <View style={styles.quality}>
+                <View style={styles.qualityHead}>
+                  <Text style={styles.qualityTitle}>Password quality</Text>
+                  <View style={styles.target}>
+                    <Icon name="sparkles-outline" size={12} />
+                    <Text style={styles.targetText}>Strong target</Text>
+                  </View>
+                </View>
+                <View style={styles.chips}>
+                  {checks.map((check) => (
+                    <View key={check.label} style={[styles.chip, check.ok && styles.chipOk]}>
+                      <Icon
+                        name="checkmark-circle"
+                        size={16}
+                        color={check.ok ? colors.green : colors.muted}
+                      />
+                      <Text style={[styles.chipText, check.ok && { color: colors.white }]}>
+                        {check.label}
+                      </Text>
+                    </View>
+                  ))}
+                </View>
+              </View>
+
+              <Pressable style={styles.terms} onPress={() => setAgreed((value) => !value)}>
+                <View style={[styles.box, agreed && styles.boxOn]}>
+                  {agreed ? <Icon name="checkmark" size={14} color={colors.ink} /> : null}
+                </View>
+                <Text style={styles.termsText}>
+                  I agree to the <Text style={styles.link}>Terms & Privacy Policy</Text>
+                </Text>
+              </Pressable>
+
+              <AppButton
+                label={busy ? "Creating…" : "Create account"}
+                leftIcon="shield-checkmark-outline"
+                onPress={() => void createAccount()}
+              />
+            </>
+          ) : (
+            <AppButton
+              label={busy ? "Sending…" : "Verify email to continue"}
+              leftIcon="shield-checkmark-outline"
+              onPress={() => void sendCode()}
+            />
+          )}
         </View>
 
         <View style={styles.footer}>
@@ -241,6 +337,19 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   sendText: { color: colors.green, fontWeight: "800", fontSize: 13 },
+  verifiedBox: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    borderWidth: 1,
+    borderColor: colors.green,
+    backgroundColor: colors.panel2,
+    borderRadius: 16,
+    padding: 14,
+  },
+  verifiedTitle: { color: colors.white, fontWeight: "800" },
+  verifiedCopy: { color: colors.muted, fontSize: 12, marginTop: 2 },
+  change: { color: colors.green, fontWeight: "800", fontSize: 13 },
   passRow: { flexDirection: "row", gap: 10 },
   passCol: { flex: 1, gap: 8 },
   passHead: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },

@@ -8,7 +8,8 @@ const ALLOWED_HEADERS = [
   "X-Hisaab-Country",
 ];
 const MAX_JSON_BODY_BYTES = 64 * 1024;
-const SENSITIVE_AUTH = [
+/** Strict credential endpoints — shared low budget. */
+const CREDENTIAL_AUTH = [
   "/sign-in",
   "/sign-up",
   "/forget-password",
@@ -16,9 +17,9 @@ const SENSITIVE_AUTH = [
   "/request-password-reset",
   "/reset-password",
   "/change-password",
-  "send-verification-code",
-  "verify-email-code",
 ];
+/** OTP endpoints — separate higher budget so verify is not blocked by send/login. */
+const OTP_AUTH = ["send-verification-code", "verify-email-code"];
 
 export function sameOrigin(origin: string | undefined, allowed: string) {
   if (!origin || !allowed) return false;
@@ -41,11 +42,27 @@ export function mutationIsCsrfSafe(
   const site = fetchSite?.toLowerCase();
   if (site === "cross-site") return false;
   if (origin) return allowedMutationOrigin(origin, env);
+  // Expo / native clients typically omit Origin and Sec-Fetch-Site.
+  if (!origin && !site) return true;
   return site === "same-origin" || site === "same-site" || site === "none";
 }
 
-function isSensitiveAuth(path: string) {
-  return SENSITIVE_AUTH.some((item) => path.includes(item));
+function pathMatches(path: string, needles: string[]) {
+  return needles.some((item) => path.includes(item));
+}
+
+export function rateLimitPlan(path: string): {
+  scope: string;
+  windowSeconds: number;
+  maximum: number;
+} {
+  if (pathMatches(path, OTP_AUTH)) {
+    return { scope: "otp", windowSeconds: 900, maximum: 60 };
+  }
+  if (pathMatches(path, CREDENTIAL_AUTH)) {
+    return { scope: "auth", windowSeconds: 900, maximum: 20 };
+  }
+  return { scope: "api", windowSeconds: 60, maximum: 120 };
 }
 
 export const browserCors = createMiddleware<{ Bindings: Env }>(async (c, next) => {
@@ -104,17 +121,15 @@ export const rateLimit = createMiddleware<{ Bindings: Env }>(async (c, next) => 
     return;
   }
   const ip = c.req.header("cf-connecting-ip") ?? "local";
-  const key = await hashIp(ip, c.env.RATE_LIMIT_SECRET);
-  const authRoute = isSensitiveAuth(c.req.path);
-  const windowSeconds = authRoute ? 900 : 60;
-  const maximum = authRoute ? 10 : 120;
-  const bucket = Math.floor(Date.now() / (windowSeconds * 1000));
+  const plan = rateLimitPlan(c.req.path);
+  const key = `${plan.scope}:${await hashIp(ip, c.env.RATE_LIMIT_SECRET)}`;
+  const bucket = Math.floor(Date.now() / (plan.windowSeconds * 1000));
   const result = await c.env.DB.prepare(
     "INSERT INTO api_rate_limits (key, bucket, count, expires_at) VALUES (?, ?, 1, ?) ON CONFLICT(key, bucket) DO UPDATE SET count = count + 1 RETURNING count",
   )
-    .bind(key, bucket, new Date((bucket + 2) * windowSeconds * 1000).toISOString())
+    .bind(key, bucket, new Date((bucket + 2) * plan.windowSeconds * 1000).toISOString())
     .first<{ count: number }>();
-  if ((result?.count ?? 1) > maximum)
+  if ((result?.count ?? 1) > plan.maximum)
     throw new AppError(429, "RATE_LIMITED", "Too many requests. Please try again later.");
   await next();
 });

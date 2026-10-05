@@ -5,10 +5,12 @@ export function SparkLine({
   values,
   width = 132,
   height = 58,
+  color = colors.green,
 }: {
   values: number[];
   width?: number;
   height?: number;
+  color?: string;
 }) {
   if (values.length < 2) return null;
   const pad = 6;
@@ -24,26 +26,27 @@ export function SparkLine({
   const last = points[points.length - 1];
   if (!last) return null;
   const area = `${line} L ${last.x} ${height} L ${points[0]!.x} ${height} Z`;
+  const fillId = `sparkFill-${color.replace("#", "")}`;
 
   return (
     <Svg width={width} height={height}>
       <Defs>
-        <LinearGradient id="sparkFill" x1="0" y1="0" x2="0" y2="1">
-          <Stop offset="0" stopColor={colors.green} stopOpacity="0.32" />
-          <Stop offset="1" stopColor={colors.green} stopOpacity="0" />
+        <LinearGradient id={fillId} x1="0" y1="0" x2="0" y2="1">
+          <Stop offset="0" stopColor={color} stopOpacity="0.32" />
+          <Stop offset="1" stopColor={color} stopOpacity="0" />
         </LinearGradient>
       </Defs>
-      <Path d={area} fill="url(#sparkFill)" />
+      <Path d={area} fill={`url(#${fillId})`} />
       <Path
         d={line}
-        stroke={colors.green}
+        stroke={color}
         strokeWidth={2.4}
         fill="none"
         strokeLinecap="round"
         strokeLinejoin="round"
       />
-      <Circle cx={last.x} cy={last.y} r={8} fill={colors.green} opacity={0.22} />
-      <Circle cx={last.x} cy={last.y} r={3.6} fill={colors.green} />
+      <Circle cx={last.x} cy={last.y} r={8} fill={color} opacity={0.22} />
+      <Circle cx={last.x} cy={last.y} r={3.6} fill={color} />
     </Svg>
   );
 }

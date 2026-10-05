@@ -15,6 +15,7 @@ export const colors = {
   orange: "#FF9F43",
   purple: "#A78BFA",
   teal: "#3DDC97",
+  blue: "#3A83FF",
   nav: "#031B16",
   input: "#041D18",
   premium: "#172717",

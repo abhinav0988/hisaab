@@ -95,8 +95,12 @@ describe("CSRF guard", () => {
     expect(mutationIsCsrfSafe("POST", "https://evil.example", "cross-site", csrfEnv)).toBe(false);
   });
 
-  it("rejects mutating requests with no origin and no fetch metadata", () => {
-    expect(mutationIsCsrfSafe("PATCH", undefined, undefined, csrfEnv)).toBe(false);
+  it("allows native clients with no origin and no fetch metadata", () => {
+    expect(mutationIsCsrfSafe("PATCH", undefined, undefined, csrfEnv)).toBe(true);
+  });
+
+  it("still rejects cross-site when Sec-Fetch-Site is present without origin", () => {
+    expect(mutationIsCsrfSafe("POST", undefined, "cross-site", csrfEnv)).toBe(false);
   });
 
   it("blocks forged origin on the gateway", async () => {

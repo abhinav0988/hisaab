@@ -1,5 +1,6 @@
 import { Alert, StyleSheet, Text, View } from "react-native";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
+import { useQuery } from "@tanstack/react-query";
 import { colors } from "../../theme/tokens";
 import type { AppStackParamList } from "../../navigation/types";
 import { premiumBenefits } from "../../data/fixtures";
@@ -10,21 +11,29 @@ import { Header } from "../../components/ui/header";
 import { Icon } from "../../components/ui/icon";
 import { Screen } from "../../components/ui/screen";
 import { SectionTitle } from "../../components/ui/section-title";
+import { LoadingBlock } from "../../components/ui/states";
+import { profileService } from "../../services/profile.service";
 
 type Props = NativeStackScreenProps<AppStackParamList, "Subscription">;
 
 export function SubscriptionScreen({ navigation }: Props) {
+  const profile = useQuery({ queryKey: ["profile"], queryFn: () => profileService.get() });
+  const name = profile.data?.name?.split(" ")[0] ?? "you";
+
   return (
     <Screen>
       <BackLink onPress={() => navigation.goBack()} />
-      <Header title="Hisaab Premium" subtitle="Choose the plan that fits your goals" />
+      <Header title="Hisaab Premium" subtitle={`Deeper clarity for ${name}`} />
+      {profile.isLoading ? <LoadingBlock /> : null}
       <Card style={styles.premium}>
         <Text style={styles.pro}>CURRENT PLAN</Text>
-        <Text style={styles.h1}>Premium Annual</Text>
+        <Text style={styles.h1}>Free</Text>
         <Text style={styles.balance}>
-          ₹999<Text style={{ fontSize: 16 }}>/year</Text>
+          ₹0<Text style={{ fontSize: 16 }}>/month</Text>
         </Text>
-        <Text style={styles.subtitle}>Renews on 14 September 2027</Text>
+        <Text style={styles.subtitle}>
+          Upgrade unlocks advanced analytics, coach, and bill intelligence — same as web Premium.
+        </Text>
       </Card>
       <SectionTitle title="YOUR BENEFITS" />
       {premiumBenefits.map((item) => (
@@ -34,14 +43,19 @@ export function SubscriptionScreen({ navigation }: Props) {
         </View>
       ))}
       <AppButton
-        label="Manage payment method"
-        onPress={() => Alert.alert("Payment method", "Connect your payment provider here.")}
+        label="Start 14-day free trial"
+        onPress={() =>
+          Alert.alert("Premium", "14-day trial will start once billing is connected.")
+        }
       />
       <AppButton
         outline
-        label="Cancel subscription"
+        label="Compare plans"
         onPress={() =>
-          Alert.alert("Cancel subscription", "Add your cancellation confirmation flow here.")
+          Alert.alert(
+            "Plans",
+            "Free: core tracking, budgets, goals.\nPremium: analytics, coach, automation, forecasts.",
+          )
         }
       />
     </Screen>

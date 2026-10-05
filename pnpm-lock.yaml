@@ -505,9 +505,15 @@ importers:
       '@react-navigation/native-stack':
         specifier: ^7.3.26
         version: 7.18.10(@react-navigation/native@7.3.18(react-native@0.81.4(@babel/core@7.29.7)(@types/react@19.1.12)(react@19.1.0))(react@19.1.0))(react-native-safe-area-context@5.6.2(react-native@0.81.4(@babel/core@7.29.7)(@types/react@19.1.12)(react@19.1.0))(react@19.1.0))(react-native-screens@4.16.0(react-native@0.81.4(@babel/core@7.29.7)(@types/react@19.1.12)(react@19.1.0))(react@19.1.0))(react-native@0.81.4(@babel/core@7.29.7)(@types/react@19.1.12)(react@19.1.0))(react@19.1.0)
+      '@tanstack/react-query':
+        specifier: 5.102.8
+        version: 5.102.8(react@19.1.0)
       expo:
         specifier: ~54.0.0
         version: 54.0.37(@babel/core@7.29.7)(react-native@0.81.4(@babel/core@7.29.7)(@types/react@19.1.12)(react@19.1.0))(react@19.1.0)(typescript@5.9.2)
+      expo-secure-store:
+        specifier: ~15.0.8
+        version: 15.0.8(expo@54.0.37(@babel/core@7.29.7)(react-native@0.81.4(@babel/core@7.29.7)(@types/react@19.1.12)(react@19.1.0))(react@19.1.0)(typescript@5.9.2))
       expo-status-bar:
         specifier: ~3.0.8
         version: 3.0.9(react-native@0.81.4(@babel/core@7.29.7)(@types/react@19.1.12)(react@19.1.0))(react@19.1.0)
@@ -4522,6 +4528,11 @@ packages:
     peerDependencies:
       react: '*'
       react-native: '*'
+
+  expo-secure-store@15.0.8:
+    resolution: {integrity: sha512-lHnzvRajBu4u+P99+0GEMijQMFCOYpWRO4dWsXSuMt77+THPIGjzNvVKrGSl6mMrLsfVaKL8BpwYZLGlgA+zAw==}
+    peerDependencies:
+      expo: '*'
 
   expo-server@1.0.7:
     resolution: {integrity: sha512-mcmyML3oXcqFUXUxtdtCL1O00ztNI2v76d+MdniXRUgHNxIcHZ05zo+DqBaOOT6LQnPk4vA4YHqQl7iGUfRb3g==}
@@ -9063,6 +9074,11 @@ snapshots:
 
   '@tanstack/query-core@5.102.8': {}
 
+  '@tanstack/react-query@5.102.8(react@19.1.0)':
+    dependencies:
+      '@tanstack/query-core': 5.102.8
+      react: 19.1.0
+
   '@tanstack/react-query@5.102.8(react@19.2.8)':
     dependencies:
       '@tanstack/query-core': 5.102.8
@@ -10801,6 +10817,10 @@ snapshots:
       invariant: 2.2.4
       react: 19.1.0
       react-native: 0.81.4(@babel/core@7.29.7)(@types/react@19.1.12)(react@19.1.0)
+
+  expo-secure-store@15.0.8(expo@54.0.37(@babel/core@7.29.7)(react-native@0.81.4(@babel/core@7.29.7)(@types/react@19.1.12)(react@19.1.0))(react@19.1.0)(typescript@5.9.2)):
+    dependencies:
+      expo: 54.0.37(@babel/core@7.29.7)(react-native@0.81.4(@babel/core@7.29.7)(@types/react@19.1.12)(react@19.1.0))(react@19.1.0)(typescript@5.9.2)
 
   expo-server@1.0.7: {}
 

@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { StyleSheet, Text, TextInput, View } from "react-native";
+import { StyleSheet, Text, TextInput, View, type KeyboardTypeOptions } from "react-native";
 import { colors, radius } from "../../theme/tokens";
 import { Icon } from "./icon";
 import type { IconName } from "../../config/finance-tools";
@@ -16,6 +16,7 @@ export function Field({
   right,
   keyboardType,
   autoCapitalize = "none",
+  editable = true,
 }: {
   label?: string;
   placeholder: string;
@@ -26,14 +27,15 @@ export function Field({
   variant?: "dark" | "light";
   leftIcon?: IconName;
   right?: ReactNode;
-  keyboardType?: "email-address" | "default";
-  autoCapitalize?: "none" | "words";
+  keyboardType?: KeyboardTypeOptions;
+  autoCapitalize?: "none" | "words" | "sentences";
+  editable?: boolean;
 }) {
   const light = variant === "light";
   return (
     <View style={styles.wrap}>
       {label ? <Text style={[styles.label, light && styles.labelLight]}>{label}</Text> : null}
-      <View style={[styles.inputRow, light && styles.inputRowLight]}>
+      <View style={[styles.inputRow, light && styles.inputRowLight, !editable && styles.disabled]}>
         {leftIcon ? (
           <Icon name={leftIcon} size={18} color={light ? colors.lightMuted : colors.muted} />
         ) : null}
@@ -45,6 +47,7 @@ export function Field({
           secureTextEntry={secure}
           autoCapitalize={autoCapitalize}
           keyboardType={keyboardType}
+          editable={editable}
           style={[styles.input, light && styles.inputLight]}
         />
         {right}
@@ -74,6 +77,7 @@ const styles = StyleSheet.create({
     borderColor: colors.lightLine,
     borderRadius: 16,
   },
+  disabled: { opacity: 0.65 },
   input: {
     flex: 1,
     color: colors.white,

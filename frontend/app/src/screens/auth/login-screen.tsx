@@ -25,6 +25,25 @@ export function LoginScreen({ navigation }: Props) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [hidden, setHidden] = useState(true);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function onLogin() {
+    setError(null);
+    if (!email.trim() || !password) {
+      setError("Enter email and password.");
+      return;
+    }
+    setBusy(true);
+    try {
+      await authService.signIn({ email, password });
+      await signIn();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not sign in.");
+    } finally {
+      setBusy(false);
+    }
+  }
 
   return (
     <SafeAreaView style={styles.safe} edges={["top", "bottom"]}>
@@ -70,14 +89,8 @@ export function LoginScreen({ navigation }: Props) {
             </Pressable>
           }
         />
-        <AppButton
-          tone="forest"
-          label="Login"
-          onPress={async () => {
-            await authService.signIn({ email, password });
-            signIn();
-          }}
-        />
+        {error ? <Text style={styles.error}>{error}</Text> : null}
+        <AppButton tone="forest" label={busy ? "Signing in…" : "Login"} onPress={() => void onLogin()} />
         <View style={styles.divider}>
           <View style={styles.rule} />
           <Text style={styles.or}>or continue with</Text>
@@ -147,4 +160,5 @@ const styles = StyleSheet.create({
   secureTitle: { color: colors.lightInk, fontWeight: "800", fontSize: 15 },
   secureCopy: { color: colors.lightMuted, fontSize: 13, marginTop: 2 },
   footer: { color: colors.lightMuted, textAlign: "center", marginTop: 6 },
+  error: { color: colors.red, fontSize: 13, fontWeight: "600" },
 });

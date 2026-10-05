@@ -100,8 +100,20 @@ export function ResetPasswordScreen({ navigation, route }: Props) {
               Alert.alert("Password", "Use a strong password and confirm it matches.");
               return;
             }
-            await authService.resetPassword(password);
-            navigation.navigate("ResetSuccess");
+            const token = route.params.token;
+            if (!token) {
+              Alert.alert(
+                "Reset link required",
+                "Open the reset link from your email to set a new password, then try again.",
+              );
+              return;
+            }
+            try {
+              await authService.resetPassword({ newPassword: password, token });
+              navigation.navigate("ResetSuccess");
+            } catch (err) {
+              Alert.alert("Reset failed", err instanceof Error ? err.message : "Try again.");
+            }
           }}
         />
       </ScrollView>

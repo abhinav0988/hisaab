@@ -16,6 +16,9 @@
     "android": {
       "package": "com.hisaab.mobile",
       "edgeToEdgeEnabled": true
-    }
+    },
+    "plugins": [
+      "expo-secure-store"
+    ]
   }
 }

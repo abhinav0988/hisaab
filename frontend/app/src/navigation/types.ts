@@ -1,10 +1,21 @@
 export type AuthStackParamList = {
   Welcome: undefined;
   Login: undefined;
-  Register: undefined;
+  Register:
+    | {
+        verifiedEmail?: string;
+        name?: string;
+      }
+    | undefined;
   ForgotPassword: undefined;
-  Otp: { email: string; purpose?: "reset" | "signup" };
-  ResetPassword: { email?: string };
+  Otp: {
+    email: string;
+    purpose?: "reset" | "signup";
+    name?: string;
+    /** Shown when email delivery is unavailable / API returns a code. */
+    otp?: string;
+  };
+  ResetPassword: { email?: string; token?: string };
   ResetSuccess: undefined;
 };
 

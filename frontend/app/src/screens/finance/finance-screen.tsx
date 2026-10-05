@@ -19,14 +19,6 @@ type Props = CompositeScreenProps<
 
 export function FinanceScreen({ navigation }: Props) {
   function openTool(tool: FinanceTool) {
-    if (tool.tab === "Home") {
-      navigation.navigate("Home");
-      return;
-    }
-    if (tool.tab === "Transactions") {
-      navigation.navigate("Transactions");
-      return;
-    }
     if (tool.id === "premium") {
       navigation.navigate("Subscription");
       return;
