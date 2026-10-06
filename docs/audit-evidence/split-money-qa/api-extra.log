@@ -1,0 +1,8 @@
+PASS API-percentage-40-25-20-15: status=201 shares=[240000,150000,120000,90000] sum=600000
+PASS API-shares-2-1-1: status=201 shares=[200000,100000,100000]
+PASS API-itemwise-total: status=201 sum=280000 shares=[80000,80000,60000,60000]
+PASS API-multi-payer-contribution-not-settlement: status=201 selfPaid=400000 rohitPaid=200000 selfShare=150000 selfPartPaid=0
+FAIL API-waiver: status=201 pending=120000 adjShare=120000 statusPart=pending
+PASS API-reminder-persisted: status=201 count=2 channels=in_app,email
+
+EXTRA SUMMARY 5/6 passed

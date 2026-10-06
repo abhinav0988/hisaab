@@ -1,0 +1,10 @@
+
+> @hisaab/finance@1.0.0 typecheck /home/abhinav/Videos/MyProjects/Hisaab/backend/finance
+> tsc -p tsconfig.json
+
+src/nse-ipos.ts(1,89): error TS2307: Cannot find module '@hisaab/types' or its corresponding type declarations.
+src/nse-ipos.ts(109,33): error TS2339: Property 'default' does not exist on type 'CacheStorage'.
+src/nse-ipos.ts(119,18): error TS2339: Property 'default' does not exist on type 'CacheStorage'.
+/home/abhinav/Videos/MyProjects/Hisaab/backend/finance:
+ ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL  @hisaab/finance@1.0.0 typecheck: `tsc -p tsconfig.json`
+Exit status 2

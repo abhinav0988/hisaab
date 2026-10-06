@@ -1,0 +1,4 @@
+
+> @hisaab/web@1.0.0 typecheck /home/abhinav/Videos/MyProjects/Hisaab/frontend/web
+> tsc --noEmit
+

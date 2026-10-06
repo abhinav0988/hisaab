@@ -44,6 +44,20 @@ describe("allocateByShares", () => {
     const parts = allocateByShares(600_000, [2, 1, 1]);
     expect(parts).toEqual([300_000, 150_000, 150_000]);
   });
+
+  it("supports ₹4,000 as 2:1:1", () => {
+    expect(allocateByShares(400_000, [2, 1, 1])).toEqual([200_000, 100_000, 100_000]);
+  });
+});
+
+describe("currency precision edges", () => {
+  it.each([1, 105, 9999, 10000, 150050, 9_999_999])(
+    "equal split of %s paise across 3 people still sums exactly",
+    (total) => {
+      const parts = allocateEqual(total, 3);
+      expect(parts.reduce((a, b) => a + b, 0)).toBe(total);
+    },
+  );
 });
 
 describe("allocateExact", () => {

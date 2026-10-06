@@ -1,0 +1,22 @@
+PASS ENV-health: {"success":true,"data":{"service":"hisaab-gateway","status":"ok"}}
+PASS AUTH-register-A: split-a-1791269945647-6b5031125fc2e@example.com
+PASS API-dashboard-empty: status=200 body={"success":true,"data":{"summary":{"totalSharedMinor":0,"moneyToReceiveMinor":0,"moneyToPayMinor":0,"pendingSettlements":0,"collectedMinor":0,"pendingMinor":0,"overdueMinor":0,"settledPercent":0,"tota
+PASS API-reject-invalid-payload: status=400
+PASS API-people-list: count=1
+PASS API-create-people: self=274feae0-21fd-4428-b5e5-b4a3275a32ef
+PASS API-reject-payer-mismatch: status=400
+PASS API-create-equal-expense: status=201 id=d11ef7dc-1823-4456-abb1-358794321c17
+PASS CALC-equal-1500: shares=[150000,150000,150000,150000]
+PASS API-partial-payment-1: {"id":"dbb97def-f7bc-42fe-b026-5512421f4d5d","expenseId":"d11ef7dc-1823-4456-abb1-358794321c17","personId":"bfda567d-3d96-431b-b512-9bea36ba434e","sharePercentageBps":2500,"shareValue":1,"shareAmountMinor":150000,"adjustedShareAmountMinor":150000,"paidAmountMinor":50000,"pendingAmountMinor":100000,"status":"partially_paid","person":{"id":"bfda567d-3d96-431b-b512-9bea36ba434e","userId":"7YETfVO0HvJiXtJnqmSOaDA9AG8oSfkj","fullName":"Rohit Sharma","phone":"9000000000","countryCode":"IN","email":null,"relationship":"friend","photoUrl":null,"isSelf":false,"createdAt":"2026-10-06T06:59:06.685Z","updatedAt":"2026-10-06T06:59:06.685Z"}}
+PASS API-multiple-partial-history: paid=90000 payments=2
+PASS API-overpayment: {"paid":170000,"status":"overpaid","pending":0}
+PASS API-adjustment: {"id":"dbb97def-f7bc-42fe-b026-5512421f4d5d","expenseId":"d11ef7dc-1823-4456-abb1-358794321c17","personId":"bfda567d-3d96-431b-b512-9bea36ba434e","sharePercentageBps":2500,"shareValue":1,"shareAmountMinor":150000,"adjustedShareAmountMinor":130000,"paidAmountMinor":170000,"pendingAmountMinor":0,"status":"overpaid","person":{"id":"bfda567d-3d96-431b-b512-9bea36ba434e","userId":"7YETfVO0HvJiXtJnqmSOaDA9AG8oSfkj","fullName":"Rohit Sharma","phone":"9000000000","countryCode":"IN","email":null,"relationship":"friend","photoUrl":null,"isSelf":false,"createdAt":"2026-10-06T06:59:06.685Z","updatedAt":"2026-10-06T06:59:06.685Z"}}
+PASS API-multi-payer: status=201
+PASS API-create-group: status=201
+PASS API-history: {"totalExpenses":2,"totalExpensesMinor":1200000,"yourShareMinor":300000,"youPaidMinor":1000000,"youOweMinor":300000,"youllReceiveMinor":700000}
+PASS AUTHZ-cross-user: status=404
+PASS API-reject-bad-percentage: status=400
+PASS API-receipt-upload: status=201
+PASS API-simplify: status=200
+
+SUMMARY 20/20 passed, 0 failed

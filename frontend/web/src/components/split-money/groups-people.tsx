@@ -205,6 +205,7 @@ export function GroupsView({ onBack }: { onBack: () => void }) {
             <button
               className="sm-primary"
               type="button"
+              disabled={createMutation.isPending}
               onClick={() => {
                 if (step < 4) {
                   if (step === 1 && !name.trim()) {
@@ -217,7 +218,11 @@ export function GroupsView({ onBack }: { onBack: () => void }) {
                 createMutation.mutate();
               }}
             >
-              {step === 4 ? "Create Group" : "Next"}
+              {createMutation.isPending
+                ? "Creating…"
+                : step === 4
+                  ? "Create Group"
+                  : "Next"}
             </button>
           </footer>
         </section>
@@ -423,8 +428,13 @@ export function PeopleView({ onBack }: { onBack: () => void }) {
             <button className="sm-outline" type="button" onClick={() => setAdding(false)}>
               Cancel
             </button>
-            <button className="sm-primary" type="button" onClick={() => createMutation.mutate()}>
-              Save Person
+            <button
+              className="sm-primary"
+              type="button"
+              disabled={createMutation.isPending}
+              onClick={() => createMutation.mutate()}
+            >
+              {createMutation.isPending ? "Saving…" : "Save Person"}
             </button>
           </footer>
         </section>

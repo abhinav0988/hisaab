@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   allocateByPercentage,
@@ -88,6 +88,15 @@ export function CreateSplitWizard({
       return next;
     });
   };
+
+  // Keep self in the draft participant list so UI "Added" state and toggles stay in sync.
+  useEffect(() => {
+    if (!self?.id) return;
+    if (draft.participantIds.includes(self.id)) return;
+    if (draft.participantIds.length === 0) {
+      update({ participantIds: [self.id] });
+    }
+  }, [self?.id, draft.participantIds]);
 
   const totalMinor = useMemo(() => {
     try {
@@ -595,13 +604,19 @@ export function CreateSplitWizard({
                     <button
                       key={p.id}
                       type="button"
-                      onClick={() =>
+                      onClick={() => {
+                        const current =
+                          draft.participantIds.length > 0
+                            ? draft.participantIds
+                            : self
+                              ? [self.id]
+                              : [];
                         update({
                           participantIds: on
-                            ? draft.participantIds.filter((id) => id !== p.id)
-                            : [...new Set([...draft.participantIds, p.id])],
-                        })
-                      }
+                            ? current.filter((id) => id !== p.id)
+                            : [...new Set([...current, p.id])],
+                        });
+                      }}
                     >
                       <Avatar name={p.fullName} tone={avatarTone(i)} />
                       <div>

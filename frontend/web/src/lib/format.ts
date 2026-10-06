@@ -1,9 +1,10 @@
 export function money(minor: number, currency = "INR") {
+  const safe = Number.isFinite(Number(minor)) ? Number(minor) : 0;
   return new Intl.NumberFormat("en-IN", {
     style: "currency",
     currency,
     maximumFractionDigits: 2,
-  }).format(minor / 100);
+  }).format(safe / 100);
 }
 
 export function signedMoney(minor: number, currency: string, type: "INCOME" | "EXPENSE" | "TRANSFER") {

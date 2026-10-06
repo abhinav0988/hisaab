@@ -1,0 +1,108 @@
+{
+  "base": "http://localhost:8797",
+  "passed": 20,
+  "failed": 0,
+  "total": 20,
+  "results": [
+    {
+      "id": "ENV-health",
+      "pass": true,
+      "detail": "{\"success\":true,\"data\":{\"service\":\"hisaab-gateway\",\"status\":\"ok\"}}"
+    },
+    {
+      "id": "AUTH-register-A",
+      "pass": true,
+      "detail": "split-a-1791269945647-6b5031125fc2e@example.com"
+    },
+    {
+      "id": "API-dashboard-empty",
+      "pass": true,
+      "detail": "status=200 body={\"success\":true,\"data\":{\"summary\":{\"totalSharedMinor\":0,\"moneyToReceiveMinor\":0,\"moneyToPayMinor\":0,\"pendingSettlements\":0,\"collectedMinor\":0,\"pendingMinor\":0,\"overdueMinor\":0,\"settledPercent\":0,\"tota"
+    },
+    {
+      "id": "API-reject-invalid-payload",
+      "pass": true,
+      "detail": "status=400"
+    },
+    {
+      "id": "API-people-list",
+      "pass": true,
+      "detail": "count=1"
+    },
+    {
+      "id": "API-create-people",
+      "pass": true,
+      "detail": "self=274feae0-21fd-4428-b5e5-b4a3275a32ef"
+    },
+    {
+      "id": "API-reject-payer-mismatch",
+      "pass": true,
+      "detail": "status=400"
+    },
+    {
+      "id": "API-create-equal-expense",
+      "pass": true,
+      "detail": "status=201 id=d11ef7dc-1823-4456-abb1-358794321c17"
+    },
+    {
+      "id": "CALC-equal-1500",
+      "pass": true,
+      "detail": "shares=[150000,150000,150000,150000]"
+    },
+    {
+      "id": "API-partial-payment-1",
+      "pass": true,
+      "detail": "{\"id\":\"dbb97def-f7bc-42fe-b026-5512421f4d5d\",\"expenseId\":\"d11ef7dc-1823-4456-abb1-358794321c17\",\"personId\":\"bfda567d-3d96-431b-b512-9bea36ba434e\",\"sharePercentageBps\":2500,\"shareValue\":1,\"shareAmountMinor\":150000,\"adjustedShareAmountMinor\":150000,\"paidAmountMinor\":50000,\"pendingAmountMinor\":100000,\"status\":\"partially_paid\",\"person\":{\"id\":\"bfda567d-3d96-431b-b512-9bea36ba434e\",\"userId\":\"7YETfVO0HvJiXtJnqmSOaDA9AG8oSfkj\",\"fullName\":\"Rohit Sharma\",\"phone\":\"9000000000\",\"countryCode\":\"IN\",\"email\":null,\"relationship\":\"friend\",\"photoUrl\":null,\"isSelf\":false,\"createdAt\":\"2026-10-06T06:59:06.685Z\",\"updatedAt\":\"2026-10-06T06:59:06.685Z\"}}"
+    },
+    {
+      "id": "API-multiple-partial-history",
+      "pass": true,
+      "detail": "paid=90000 payments=2"
+    },
+    {
+      "id": "API-overpayment",
+      "pass": true,
+      "detail": "{\"paid\":170000,\"status\":\"overpaid\",\"pending\":0}"
+    },
+    {
+      "id": "API-adjustment",
+      "pass": true,
+      "detail": "{\"id\":\"dbb97def-f7bc-42fe-b026-5512421f4d5d\",\"expenseId\":\"d11ef7dc-1823-4456-abb1-358794321c17\",\"personId\":\"bfda567d-3d96-431b-b512-9bea36ba434e\",\"sharePercentageBps\":2500,\"shareValue\":1,\"shareAmountMinor\":150000,\"adjustedShareAmountMinor\":130000,\"paidAmountMinor\":170000,\"pendingAmountMinor\":0,\"status\":\"overpaid\",\"person\":{\"id\":\"bfda567d-3d96-431b-b512-9bea36ba434e\",\"userId\":\"7YETfVO0HvJiXtJnqmSOaDA9AG8oSfkj\",\"fullName\":\"Rohit Sharma\",\"phone\":\"9000000000\",\"countryCode\":\"IN\",\"email\":null,\"relationship\":\"friend\",\"photoUrl\":null,\"isSelf\":false,\"createdAt\":\"2026-10-06T06:59:06.685Z\",\"updatedAt\":\"2026-10-06T06:59:06.685Z\"}}"
+    },
+    {
+      "id": "API-multi-payer",
+      "pass": true,
+      "detail": "status=201"
+    },
+    {
+      "id": "API-create-group",
+      "pass": true,
+      "detail": "status=201"
+    },
+    {
+      "id": "API-history",
+      "pass": true,
+      "detail": "{\"totalExpenses\":2,\"totalExpensesMinor\":1200000,\"yourShareMinor\":300000,\"youPaidMinor\":1000000,\"youOweMinor\":300000,\"youllReceiveMinor\":700000}"
+    },
+    {
+      "id": "AUTHZ-cross-user",
+      "pass": true,
+      "detail": "status=404"
+    },
+    {
+      "id": "API-reject-bad-percentage",
+      "pass": true,
+      "detail": "status=400"
+    },
+    {
+      "id": "API-receipt-upload",
+      "pass": true,
+      "detail": "status=201"
+    },
+    {
+      "id": "API-simplify",
+      "pass": true,
+      "detail": "status=200"
+    }
+  ]
+}

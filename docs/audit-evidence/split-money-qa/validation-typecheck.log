@@ -1,0 +1,4 @@
+
+> @hisaab/validation@1.0.0 typecheck /home/abhinav/Videos/MyProjects/Hisaab/packages/validation
+> tsc -p tsconfig.json
+

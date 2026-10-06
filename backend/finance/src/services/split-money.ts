@@ -348,18 +348,27 @@ export async function createExpense(env: Env, userId: string, input: ExpenseInpu
   for (const participant of input.participants) await getPerson(env, userId, participant.personId);
   if (input.groupId) await getGroup(env, userId, input.groupId);
 
-  const shares = computeParticipantShares({
-    totalAmountMinor: input.totalAmountMinor,
-    method: input.splitMethod ?? "equal",
-    participants: input.participants,
-    items: input.items?.map((item) => ({
-      name: item.name,
-      quantity: item.quantity ?? 1,
-      priceMinor: item.priceMinor,
-      kind: item.kind ?? "item",
-      personIds: item.personIds,
-    })),
-  });
+  let shares;
+  try {
+    shares = computeParticipantShares({
+      totalAmountMinor: input.totalAmountMinor,
+      method: input.splitMethod ?? "equal",
+      participants: input.participants,
+      items: input.items?.map((item) => ({
+        name: item.name,
+        quantity: item.quantity ?? 1,
+        priceMinor: item.priceMinor,
+        kind: item.kind ?? "item",
+        personIds: item.personIds,
+      })),
+    });
+  } catch (error) {
+    throw new AppError(
+      400,
+      "SPLIT_INVALID",
+      error instanceof Error ? error.message : "Invalid split configuration",
+    );
+  }
 
   const expenseId = newId();
   const status = input.isDraft ? "draft" : "pending";
@@ -685,12 +694,18 @@ export async function createAdjustment(
   if (!expense.participants.some((p) => p.id === input.participantId)) {
     throw notFound("Participant");
   }
+  if (input.amountMinor === 0) {
+    throw new AppError(400, "INVALID_ADJUSTMENT", "Adjustment amount cannot be zero.");
+  }
+  // Discount/waiver always reduce share. Accept positive UI amounts and signed API values.
+  const reducing = input.type === "discount" || input.type === "waived";
+  const amountMinor = reducing ? -Math.abs(input.amountMinor) : input.amountMinor;
   const db = createDatabase(env.DB);
   await db.insert(splitAdjustments).values({
     id: newId(),
     expenseId,
     participantId: input.participantId,
-    amountMinor: input.amountMinor,
+    amountMinor,
     type: input.type,
     reason: input.reason ?? null,
     createdBy: userId,
@@ -702,7 +717,7 @@ export async function createAdjustment(
     userId,
     expenseId,
     action: "amount_adjusted",
-    metadata: { type: input.type, amountMinor: input.amountMinor },
+    metadata: { type: input.type, amountMinor },
   });
   return getExpense(env, userId, expenseId);
 }

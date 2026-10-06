@@ -1,7 +1,7 @@
 "use client";
 
-import { Suspense, useEffect, useState } from "react";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { useEffect, useState } from "react";
+import { usePathname, useRouter } from "next/navigation";
 import "../../app/split-money.css";
 import { CreateSplitWizard } from "./create-split-wizard";
 import { ExpenseDetail } from "./expense-detail";
@@ -20,6 +20,11 @@ type View =
   | { kind: "expense"; id: string }
   | { kind: "settlements" };
 
+function readExpenseId() {
+  if (typeof window === "undefined") return null;
+  return new URLSearchParams(window.location.search).get("id");
+}
+
 function viewFromPath(pathname: string, expenseId: string | null): View {
   if (pathname.endsWith("/create")) return { kind: "create" };
   if (pathname.endsWith("/history")) return { kind: "history" };
@@ -29,6 +34,12 @@ function viewFromPath(pathname: string, expenseId: string | null): View {
   if (pathname.endsWith("/settlements")) return { kind: "settlements" };
   if (pathname.endsWith("/expense") && expenseId) return { kind: "expense", id: expenseId };
   return { kind: "dashboard" };
+}
+
+function sameView(a: View, b: View) {
+  if (a.kind !== b.kind) return false;
+  if (a.kind === "expense" && b.kind === "expense") return a.id === b.id;
+  return true;
 }
 
 function pathForView(view: View) {
@@ -52,16 +63,20 @@ function pathForView(view: View) {
   }
 }
 
-function SplitMoneyViewInner() {
+export function SplitMoneyView() {
   const pathname = usePathname();
-  const searchParams = useSearchParams();
   const router = useRouter();
-  const expenseId = searchParams.get("id");
-  const [view, setView] = useState<View>(() => viewFromPath(pathname, expenseId));
+  const [view, setView] = useState<View>(() => viewFromPath(pathname, null));
 
   useEffect(() => {
-    setView(viewFromPath(pathname, expenseId));
-  }, [pathname, expenseId]);
+    const sync = () => {
+      const next = viewFromPath(pathname, readExpenseId());
+      setView((prev) => (sameView(prev, next) ? prev : next));
+    };
+    sync();
+    window.addEventListener("popstate", sync);
+    return () => window.removeEventListener("popstate", sync);
+  }, [pathname]);
 
   const go = (next: View) => {
     setView(next);
@@ -114,13 +129,5 @@ function SplitMoneyViewInner() {
         if (tab === "import") go({ kind: "import" });
       }}
     />
-  );
-}
-
-export function SplitMoneyView() {
-  return (
-    <Suspense fallback={<main className="sm-page"><p>Loading Split Money…</p></main>}>
-      <SplitMoneyViewInner />
-    </Suspense>
   );
 }
