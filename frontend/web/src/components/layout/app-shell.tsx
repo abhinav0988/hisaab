@@ -107,9 +107,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                               ? "recurring"
                               : pathname === "/lend"
                                 ? "lend"
-                                : pathname === "/settings"
-                                  ? "settings"
-                                  : undefined
+                                : pathname.startsWith("/split-money")
+                                  ? "split-money"
+                                  : pathname === "/settings"
+                                    ? "settings"
+                                    : undefined
       }
     >
       <DesktopSidebar pathname={pathname} name={activeSession.user.name} />

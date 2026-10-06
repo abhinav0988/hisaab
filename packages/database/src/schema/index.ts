@@ -617,3 +617,378 @@ export const lendRecords = sqliteTable(
     check("lend_amount_positive", sql`${table.amountMinor} > 0`),
   ],
 );
+
+export const splitPeople = sqliteTable(
+  "split_people",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    fullName: text("full_name").notNull(),
+    phone: text("phone"),
+    countryCode: text("country_code").default("IN"),
+    email: text("email"),
+    relationship: text("relationship").notNull().default("friend"),
+    photoUrl: text("photo_url"),
+    isSelf: integer("is_self", { mode: "boolean" }).notNull().default(false),
+    ...timestamps,
+  },
+  (table) => [
+    index("split_people_user_idx").on(table.userId),
+    check(
+      "split_people_relationship_valid",
+      sql`${table.relationship} IN ('friend', 'family', 'colleague', 'other')`,
+    ),
+  ],
+);
+
+export const splitGroups = sqliteTable(
+  "split_groups",
+  {
+    id: text("id").primaryKey(),
+    ownerId: text("owner_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    description: text("description"),
+    category: text("category"),
+    imageUrl: text("image_url"),
+    groupType: text("group_type").notNull().default("shared"),
+    currency: text("currency").notNull().default("INR"),
+    defaultSplitMethod: text("default_split_method").notNull().default("equal"),
+    defaultDueDays: integer("default_due_days").notNull().default(7),
+    allowMemberAdd: integer("allow_member_add", { mode: "boolean" }).notNull().default(true),
+    allowMemberEdit: integer("allow_member_edit", { mode: "boolean" }).notNull().default(true),
+    allowMemberSettle: integer("allow_member_settle", { mode: "boolean" }).notNull().default(true),
+    sendNotifications: integer("send_notifications", { mode: "boolean" }).notNull().default(true),
+    ...timestamps,
+  },
+  (table) => [
+    index("split_groups_owner_idx").on(table.ownerId),
+    check("split_groups_type_valid", sql`${table.groupType} IN ('shared', 'personal')`),
+    check(
+      "split_groups_method_valid",
+      sql`${table.defaultSplitMethod} IN ('equal', 'exact', 'percentage', 'shares', 'itemwise')`,
+    ),
+  ],
+);
+
+export const splitGroupMembers = sqliteTable(
+  "split_group_members",
+  {
+    id: text("id").primaryKey(),
+    groupId: text("group_id")
+      .notNull()
+      .references(() => splitGroups.id, { onDelete: "cascade" }),
+    personId: text("person_id")
+      .notNull()
+      .references(() => splitPeople.id, { onDelete: "cascade" }),
+    role: text("role").notNull().default("member"),
+    joinedAt: text("joined_at")
+      .notNull()
+      .$defaultFn(() => new Date().toISOString()),
+  },
+  (table) => [
+    uniqueIndex("split_group_members_unique").on(table.groupId, table.personId),
+    index("split_group_members_group_idx").on(table.groupId),
+  ],
+);
+
+export const splitExpenses = sqliteTable(
+  "split_expenses",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    title: text("title").notNull(),
+    description: text("description"),
+    category: text("category").notNull(),
+    totalAmountMinor: integer("total_amount_minor").notNull(),
+    currency: text("currency").notNull().default("INR"),
+    expenseDate: text("expense_date").notNull(),
+    expenseTime: text("expense_time"),
+    groupId: text("group_id").references(() => splitGroups.id, { onDelete: "set null" }),
+    splitMethod: text("split_method").notNull().default("equal"),
+    status: text("status").notNull().default("pending"),
+    dueDate: text("due_date"),
+    noteForParticipants: text("note_for_participants"),
+    allowPartialPayments: integer("allow_partial_payments", { mode: "boolean" }).notNull().default(true),
+    sendNotifications: integer("send_notifications", { mode: "boolean" }).notNull().default(true),
+    isDraft: integer("is_draft", { mode: "boolean" }).notNull().default(false),
+    receiptId: text("receipt_id"),
+    ...timestamps,
+  },
+  (table) => [
+    index("split_expenses_user_idx").on(table.userId),
+    index("split_expenses_status_idx").on(table.userId, table.status),
+    check("split_expenses_amount_positive", sql`${table.totalAmountMinor} > 0`),
+    check(
+      "split_expenses_method_valid",
+      sql`${table.splitMethod} IN ('equal', 'exact', 'percentage', 'shares', 'itemwise')`,
+    ),
+    check(
+      "split_expenses_status_valid",
+      sql`${table.status} IN ('draft', 'pending', 'partially_paid', 'partially_settled', 'almost_settled', 'settled', 'overdue', 'overpaid', 'cancelled')`,
+    ),
+  ],
+);
+
+export const splitExpensePayers = sqliteTable(
+  "split_expense_payers",
+  {
+    id: text("id").primaryKey(),
+    expenseId: text("expense_id")
+      .notNull()
+      .references(() => splitExpenses.id, { onDelete: "cascade" }),
+    personId: text("person_id")
+      .notNull()
+      .references(() => splitPeople.id, { onDelete: "restrict" }),
+    paidAmountMinor: integer("paid_amount_minor").notNull(),
+  },
+  (table) => [
+    uniqueIndex("split_expense_payers_unique").on(table.expenseId, table.personId),
+    index("split_expense_payers_expense_idx").on(table.expenseId),
+    check("split_expense_payers_amount_positive", sql`${table.paidAmountMinor} > 0`),
+  ],
+);
+
+export const splitParticipants = sqliteTable(
+  "split_participants",
+  {
+    id: text("id").primaryKey(),
+    expenseId: text("expense_id")
+      .notNull()
+      .references(() => splitExpenses.id, { onDelete: "cascade" }),
+    personId: text("person_id")
+      .notNull()
+      .references(() => splitPeople.id, { onDelete: "restrict" }),
+    sharePercentageBps: integer("share_percentage_bps").notNull().default(0),
+    shareValue: integer("share_value").notNull().default(1),
+    shareAmountMinor: integer("share_amount_minor").notNull(),
+    adjustedShareAmountMinor: integer("adjusted_share_amount_minor").notNull(),
+    paidAmountMinor: integer("paid_amount_minor").notNull().default(0),
+    pendingAmountMinor: integer("pending_amount_minor").notNull().default(0),
+    status: text("status").notNull().default("pending"),
+  },
+  (table) => [
+    uniqueIndex("split_participants_unique").on(table.expenseId, table.personId),
+    index("split_participants_expense_idx").on(table.expenseId),
+    check(
+      "split_participants_status_valid",
+      sql`${table.status} IN ('pending', 'partially_paid', 'paid', 'overpaid', 'waived')`,
+    ),
+  ],
+);
+
+export const splitPayments = sqliteTable(
+  "split_payments",
+  {
+    id: text("id").primaryKey(),
+    expenseId: text("expense_id")
+      .notNull()
+      .references(() => splitExpenses.id, { onDelete: "cascade" }),
+    participantId: text("participant_id")
+      .notNull()
+      .references(() => splitParticipants.id, { onDelete: "cascade" }),
+    payerPersonId: text("payer_person_id")
+      .notNull()
+      .references(() => splitPeople.id, { onDelete: "restrict" }),
+    receiverPersonId: text("receiver_person_id")
+      .notNull()
+      .references(() => splitPeople.id, { onDelete: "restrict" }),
+    amountMinor: integer("amount_minor").notNull(),
+    method: text("method").notNull().default("upi"),
+    referenceId: text("reference_id"),
+    note: text("note"),
+    proofUrl: text("proof_url"),
+    paymentDate: text("payment_date").notNull(),
+    status: text("status").notNull().default("completed"),
+    isFinalSettlement: integer("is_final_settlement", { mode: "boolean" }).notNull().default(false),
+    ...timestamps,
+  },
+  (table) => [
+    index("split_payments_expense_idx").on(table.expenseId),
+    index("split_payments_participant_idx").on(table.participantId),
+    check("split_payments_amount_positive", sql`${table.amountMinor} > 0`),
+    check(
+      "split_payments_method_valid",
+      sql`${table.method} IN ('upi', 'cash', 'bank_transfer', 'card', 'other')`,
+    ),
+    check("split_payments_status_valid", sql`${table.status} IN ('completed', 'voided')`),
+  ],
+);
+
+export const splitAdjustments = sqliteTable(
+  "split_adjustments",
+  {
+    id: text("id").primaryKey(),
+    expenseId: text("expense_id")
+      .notNull()
+      .references(() => splitExpenses.id, { onDelete: "cascade" }),
+    participantId: text("participant_id")
+      .notNull()
+      .references(() => splitParticipants.id, { onDelete: "cascade" }),
+    amountMinor: integer("amount_minor").notNull(),
+    type: text("type").notNull(),
+    reason: text("reason"),
+    createdBy: text("created_by")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    ...timestamps,
+  },
+  (table) => [
+    index("split_adjustments_expense_idx").on(table.expenseId),
+    check(
+      "split_adjustments_type_valid",
+      sql`${table.type} IN ('discount', 'waived', 'correction', 'refund', 'other')`,
+    ),
+  ],
+);
+
+export const splitReminders = sqliteTable(
+  "split_reminders",
+  {
+    id: text("id").primaryKey(),
+    expenseId: text("expense_id")
+      .notNull()
+      .references(() => splitExpenses.id, { onDelete: "cascade" }),
+    participantId: text("participant_id").references(() => splitParticipants.id, {
+      onDelete: "cascade",
+    }),
+    channel: text("channel").notNull(),
+    scheduledAt: text("scheduled_at").notNull(),
+    frequency: text("frequency"),
+    status: text("status").notNull().default("scheduled"),
+    message: text("message"),
+    sentAt: text("sent_at"),
+    stopAfterSettlement: integer("stop_after_settlement", { mode: "boolean" })
+      .notNull()
+      .default(true),
+    ...timestamps,
+  },
+  (table) => [
+    index("split_reminders_expense_idx").on(table.expenseId),
+    check(
+      "split_reminders_channel_valid",
+      sql`${table.channel} IN ('in_app', 'email', 'whatsapp', 'sms')`,
+    ),
+    check(
+      "split_reminders_status_valid",
+      sql`${table.status} IN ('scheduled', 'sent', 'cancelled', 'failed')`,
+    ),
+  ],
+);
+
+export const splitReceipts = sqliteTable(
+  "split_receipts",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    expenseId: text("expense_id").references(() => splitExpenses.id, { onDelete: "set null" }),
+    fileUrl: text("file_url").notNull(),
+    fileName: text("file_name"),
+    mimeType: text("mime_type"),
+    fileSizeBytes: integer("file_size_bytes"),
+    merchant: text("merchant"),
+    receiptDate: text("receipt_date"),
+    subtotalMinor: integer("subtotal_minor"),
+    taxMinor: integer("tax_minor"),
+    totalMinor: integer("total_minor"),
+    ocrStatus: text("ocr_status").notNull().default("pending"),
+    ocrPayload: text("ocr_payload"),
+    ...timestamps,
+  },
+  (table) => [
+    index("split_receipts_user_idx").on(table.userId),
+    check(
+      "split_receipts_ocr_status_valid",
+      sql`${table.ocrStatus} IN ('pending', 'processing', 'extracted', 'failed', 'manual')`,
+    ),
+  ],
+);
+
+export const splitItems = sqliteTable(
+  "split_items",
+  {
+    id: text("id").primaryKey(),
+    expenseId: text("expense_id")
+      .notNull()
+      .references(() => splitExpenses.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    quantity: integer("quantity").notNull().default(1),
+    priceMinor: integer("price_minor").notNull(),
+    kind: text("kind").notNull().default("item"),
+  },
+  (table) => [
+    index("split_items_expense_idx").on(table.expenseId),
+    check("split_items_kind_valid", sql`${table.kind} IN ('item', 'tax', 'tip')`),
+    check("split_items_price_non_negative", sql`${table.priceMinor} >= 0`),
+  ],
+);
+
+export const splitItemParticipants = sqliteTable(
+  "split_item_participants",
+  {
+    id: text("id").primaryKey(),
+    itemId: text("item_id")
+      .notNull()
+      .references(() => splitItems.id, { onDelete: "cascade" }),
+    personId: text("person_id")
+      .notNull()
+      .references(() => splitPeople.id, { onDelete: "cascade" }),
+  },
+  (table) => [uniqueIndex("split_item_participants_unique").on(table.itemId, table.personId)],
+);
+
+export const splitActivities = sqliteTable(
+  "split_activities",
+  {
+    id: text("id").primaryKey(),
+    expenseId: text("expense_id").references(() => splitExpenses.id, { onDelete: "cascade" }),
+    groupId: text("group_id").references(() => splitGroups.id, { onDelete: "cascade" }),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    actorPersonId: text("actor_person_id").references(() => splitPeople.id, {
+      onDelete: "set null",
+    }),
+    action: text("action").notNull(),
+    metadata: text("metadata"),
+    createdAt: text("created_at")
+      .notNull()
+      .$defaultFn(() => new Date().toISOString()),
+  },
+  (table) => [
+    index("split_activities_expense_idx").on(table.expenseId),
+    index("split_activities_user_idx").on(table.userId),
+  ],
+);
+
+export const splitSettlementSuggestions = sqliteTable(
+  "split_settlement_suggestions",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    fromPersonId: text("from_person_id")
+      .notNull()
+      .references(() => splitPeople.id, { onDelete: "cascade" }),
+    toPersonId: text("to_person_id")
+      .notNull()
+      .references(() => splitPeople.id, { onDelete: "cascade" }),
+    amountMinor: integer("amount_minor").notNull(),
+    currency: text("currency").notNull().default("INR"),
+    status: text("status").notNull().default("suggested"),
+    metadata: text("metadata"),
+    ...timestamps,
+  },
+  (table) => [
+    index("split_settlement_suggestions_user_idx").on(table.userId),
+    check("split_settlement_suggestions_amount_positive", sql`${table.amountMinor} > 0`),
+  ],
+);

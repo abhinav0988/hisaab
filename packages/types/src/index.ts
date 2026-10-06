@@ -325,6 +325,182 @@ export interface LendRecord {
   createdAt: string;
   updatedAt: string;
 }
+
+export type SplitMethod = "equal" | "exact" | "percentage" | "shares" | "itemwise";
+export type SplitExpenseStatus =
+  | "draft"
+  | "pending"
+  | "partially_paid"
+  | "partially_settled"
+  | "almost_settled"
+  | "settled"
+  | "overdue"
+  | "overpaid"
+  | "cancelled";
+export type SplitParticipantStatus =
+  | "pending"
+  | "partially_paid"
+  | "paid"
+  | "overpaid"
+  | "waived";
+export type SplitRelationship = "friend" | "family" | "colleague" | "other";
+export type SplitPaymentMethod = "upi" | "cash" | "bank_transfer" | "card" | "other";
+
+export interface SplitPerson {
+  id: string;
+  fullName: string;
+  phone: string | null;
+  countryCode: string | null;
+  email: string | null;
+  relationship: SplitRelationship;
+  photoUrl: string | null;
+  isSelf: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface SplitGroup {
+  id: string;
+  name: string;
+  description: string | null;
+  category: string | null;
+  imageUrl: string | null;
+  groupType: "shared" | "personal";
+  currency: Currency;
+  defaultSplitMethod: SplitMethod;
+  defaultDueDays: number;
+  allowMemberAdd: boolean;
+  allowMemberEdit: boolean;
+  allowMemberSettle: boolean;
+  sendNotifications: boolean;
+  members?: Array<{
+    id: string;
+    personId: string;
+    role: string;
+    person: SplitPerson | null;
+  }>;
+  expenses?: SplitExpense[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface SplitParticipant {
+  id: string;
+  expenseId: string;
+  personId: string;
+  sharePercentageBps: number;
+  shareValue: number;
+  shareAmountMinor: number;
+  adjustedShareAmountMinor: number;
+  paidAmountMinor: number;
+  pendingAmountMinor: number;
+  status: SplitParticipantStatus;
+  person?: SplitPerson | null;
+}
+
+export interface SplitExpense {
+  id: string;
+  title: string;
+  description: string | null;
+  category: string;
+  totalAmountMinor: number;
+  currency: Currency;
+  expenseDate: string;
+  expenseTime: string | null;
+  groupId: string | null;
+  splitMethod: SplitMethod;
+  status: SplitExpenseStatus;
+  dueDate: string | null;
+  noteForParticipants: string | null;
+  allowPartialPayments: boolean;
+  sendNotifications: boolean;
+  isDraft: boolean;
+  receiptId: string | null;
+  group?: SplitGroup | null;
+  participants?: SplitParticipant[];
+  payers?: Array<{
+    id: string;
+    personId: string;
+    paidAmountMinor: number;
+    person?: SplitPerson | null;
+  }>;
+  payments?: SplitPayment[];
+  activities?: SplitActivity[];
+  yourShareMinor?: number;
+  youPaidMinor?: number;
+  collectedMinor?: number;
+  pendingMinor?: number;
+  settledPercent?: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface SplitPayment {
+  id: string;
+  expenseId: string;
+  participantId: string;
+  payerPersonId: string;
+  receiverPersonId: string;
+  amountMinor: number;
+  method: SplitPaymentMethod;
+  referenceId: string | null;
+  note: string | null;
+  proofUrl: string | null;
+  paymentDate: string;
+  status: string;
+  isFinalSettlement: boolean;
+  payer?: SplitPerson | null;
+  receiver?: SplitPerson | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface SplitActivity {
+  id: string;
+  expenseId: string | null;
+  groupId: string | null;
+  action: string;
+  metadata: string | null;
+  createdAt: string;
+}
+
+export interface SplitDashboard {
+  summary: {
+    totalSharedMinor: number;
+    moneyToReceiveMinor: number;
+    moneyToPayMinor: number;
+    pendingSettlements: number;
+    collectedMinor: number;
+    pendingMinor: number;
+    overdueMinor: number;
+    settledPercent: number;
+    totalSharedChangePct: number;
+    receiveChangePct: number;
+    payChangePct: number;
+    pendingChange: number;
+  };
+  topCategories: Array<{ name: string; amountMinor: number }>;
+  upcomingSettlements: Array<{
+    expenseId: string;
+    title: string;
+    dueDate: string | null;
+    pendingMinor: number;
+    participants: Array<{ personId: string; name: string; pendingMinor: number }>;
+  }>;
+  recentExpenses: SplitExpense[];
+}
+
+export interface SplitHistory {
+  summary: {
+    totalExpenses: number;
+    totalExpensesMinor: number;
+    yourShareMinor: number;
+    youPaidMinor: number;
+    youOweMinor: number;
+    youllReceiveMinor: number;
+  };
+  expenses: SplitExpense[];
+}
 export interface DashboardSummary {
   spentThisMonth: number;
   incomeThisMonth: number;

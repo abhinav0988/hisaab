@@ -5,6 +5,7 @@ import {
   Bell,
   CreditCard,
   Handshake,
+  Split,
   Home,
   Landmark,
   LineChart,
@@ -45,13 +46,14 @@ export const moreHrefs = moreNavigation.map((item) => item.href);
 
 export const financeToolsNavigation = [
   { href: "/accounts", label: "Accounts", hint: "All bank balances", icon: Landmark },
+  { href: "/split-money", label: "Split Money", hint: "Split expenses & settle", icon: Split },
+  { href: "/lend", label: "Borrow / Lend", hint: "Track money with dates", icon: Handshake },
   { href: "/investments", label: "Investments", hint: "MF, stocks & gold", icon: LineChart },
   { href: "/ipo", label: "IPO Tracker", hint: "Applied & allotment", icon: Banknote },
   { href: "/loans", label: "EMI & Loans", hint: "Due dates & payments", icon: Timer },
   { href: "/cards", label: "Credit Cards", hint: "Limit, due & overdue", icon: CreditCard },
   { href: "/upi-credit", label: "UPI Credit", hint: "Used & remaining limit", icon: Smartphone },
   { href: "/recurring", label: "Bills & Reminders", hint: "Never miss a due date", icon: Bell },
-  { href: "/lend", label: "Borrow / Lend", hint: "Track money with dates", icon: Handshake },
   { href: "/coach", label: "AI Financial Coach", hint: "Personal money guidance", icon: Sparkles, pro: true },
 ] as const;
 

@@ -563,3 +563,5 @@ export function applyCardPayment(input: {
     paidMinor,
   };
 }
+
+export * from "./split-money";

@@ -6,6 +6,7 @@ import { investmentRoutes } from "./routes/investments";
 import { ipoRoutes } from "./routes/ipos";
 import { lendRecordRoutes } from "./routes/lend-records";
 import { loanRoutes } from "./routes/loans";
+import { splitMoneyRoutes } from "./routes/split-money";
 
 type Variables = { requestId: string; userId: string };
 const app = new Hono<{ Bindings: Env; Variables: Variables }>();
@@ -17,6 +18,7 @@ app.route("/api/v1/ipos", ipoRoutes);
 app.route("/api/v1/loans", loanRoutes);
 app.route("/api/v1/credit-facilities", creditFacilityRoutes);
 app.route("/api/v1/lend-records", lendRecordRoutes);
+app.route("/api/v1/split-money", splitMoneyRoutes);
 app.notFound(() => {
   throw new AppError(404, "ROUTE_NOT_FOUND", "The requested endpoint does not exist.");
 });

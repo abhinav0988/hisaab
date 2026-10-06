@@ -24,7 +24,8 @@ export function domainFetcher(env: Env, path: string): Fetcher | null {
     path.startsWith("/api/v1/ipos") ||
     path.startsWith("/api/v1/loans") ||
     path.startsWith("/api/v1/credit-facilities") ||
-    path.startsWith("/api/v1/lend-records")
+    path.startsWith("/api/v1/lend-records") ||
+    path.startsWith("/api/v1/split-money")
   )
     return env.FINANCE;
   if (path.startsWith("/api/v1/dashboard") || path.startsWith("/api/v1/reports"))
