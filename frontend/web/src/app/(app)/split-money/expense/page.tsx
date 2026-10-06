@@ -3,6 +3,6 @@ import { SplitMoneyView } from "@/components/split-money/split-money-view";
 
 export const metadata: Metadata = { title: "Split Money" };
 
-export default function SplitMoneyEntityPage() {
+export default function SplitMoneyExpensePage() {
   return <SplitMoneyView />;
 }

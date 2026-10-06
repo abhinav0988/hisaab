@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { usePathname, useRouter } from "next/navigation";
+import { Suspense, useEffect, useState } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import "../../app/split-money.css";
 import { CreateSplitWizard } from "./create-split-wizard";
 import { ExpenseDetail } from "./expense-detail";
@@ -20,15 +20,14 @@ type View =
   | { kind: "expense"; id: string }
   | { kind: "settlements" };
 
-function viewFromPath(pathname: string): View {
+function viewFromPath(pathname: string, expenseId: string | null): View {
   if (pathname.endsWith("/create")) return { kind: "create" };
   if (pathname.endsWith("/history")) return { kind: "history" };
-  if (pathname.endsWith("/groups") || pathname.includes("/groups/")) return { kind: "groups" };
-  if (pathname.endsWith("/people") || pathname.includes("/people/")) return { kind: "people" };
+  if (pathname.endsWith("/groups")) return { kind: "groups" };
+  if (pathname.endsWith("/people")) return { kind: "people" };
   if (pathname.endsWith("/import-receipt")) return { kind: "import" };
   if (pathname.endsWith("/settlements")) return { kind: "settlements" };
-  const expenseMatch = pathname.match(/\/split-money\/expense\/([^/]+)/);
-  if (expenseMatch?.[1]) return { kind: "expense", id: expenseMatch[1] };
+  if (pathname.endsWith("/expense") && expenseId) return { kind: "expense", id: expenseId };
   return { kind: "dashboard" };
 }
 
@@ -47,20 +46,22 @@ function pathForView(view: View) {
     case "settlements":
       return "/split-money/settlements";
     case "expense":
-      return `/split-money/expense/${view.id}`;
+      return `/split-money/expense?id=${encodeURIComponent(view.id)}`;
     default:
       return "/split-money";
   }
 }
 
-export function SplitMoneyView() {
+function SplitMoneyViewInner() {
   const pathname = usePathname();
+  const searchParams = useSearchParams();
   const router = useRouter();
-  const [view, setView] = useState<View>(() => viewFromPath(pathname));
+  const expenseId = searchParams.get("id");
+  const [view, setView] = useState<View>(() => viewFromPath(pathname, expenseId));
 
   useEffect(() => {
-    setView(viewFromPath(pathname));
-  }, [pathname]);
+    setView(viewFromPath(pathname, expenseId));
+  }, [pathname, expenseId]);
 
   const go = (next: View) => {
     setView(next);
@@ -113,5 +114,13 @@ export function SplitMoneyView() {
         if (tab === "import") go({ kind: "import" });
       }}
     />
+  );
+}
+
+export function SplitMoneyView() {
+  return (
+    <Suspense fallback={<main className="sm-page"><p>Loading Split Money…</p></main>}>
+      <SplitMoneyViewInner />
+    </Suspense>
   );
 }
