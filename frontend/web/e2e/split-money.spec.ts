@@ -61,7 +61,7 @@ test.describe("Split Money", () => {
     await shot(page, "01-empty-dashboard");
 
     // Empty dashboard stats (use visible main text — raw getByText("NaN") can hit hidden next payloads)
-    await expect(page.getByText("Total shared expenses")).toBeVisible();
+    await expect(page.locator(".sm-stat").getByText("Total shared expenses")).toBeVisible();
     await expect(page.getByText("No split expenses yet")).toBeVisible();
     const dashText = await page.locator("main.sm-page").innerText();
     expect(dashText).not.toMatch(/₹NaN|\bNaN\b|\bundefined\b/);

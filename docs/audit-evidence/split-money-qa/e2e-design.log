@@ -1,0 +1,13 @@
+
+Running 3 tests using 1 worker
+
+  ✓  1 [chromium] › e2e/split-money.spec.ts:48:3 › Split Money › sidebar, empty dashboard, people, equal split, partial payment (16.1s)
+  ✓  2 [chromium] › e2e/split-money.spec.ts:262:3 › Split Money › mobile split money dashboard has no horizontal overflow (3.5s)
+  ✓  3 [chromium] › e2e/split-money.spec.ts:278:3 › Split Money authz API › user B cannot read user A expense (8.2s)
+
+  3 passed (28.4s)
+
+To open last HTML report run:
+
+  pnpm exec playwright show-report
+
