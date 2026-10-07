@@ -1067,10 +1067,30 @@ html[data-theme="dark"] .bank23-row {
   }
   .bank23-head-actions {
     flex-wrap: wrap;
+    width: 100%;
   }
   .bank23-add {
-    flex: 1;
+    flex: 1 1 100%;
+    width: 100%;
     justify-content: center;
+  }
+  .bank23-head-actions > .bank23-notify-wrap,
+  .bank23-head-actions > .bank23-icon-btn {
+    flex: 0 0 40px;
+  }
+  .bank23-subactions {
+    width: 100%;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+  }
+  .bank23-addbank {
+    flex: 1 1 100%;
+    width: 100%;
+    min-width: 0;
+    justify-content: center;
+    box-sizing: border-box;
   }
   .bank23-title p {
     white-space: normal;
@@ -1081,10 +1101,80 @@ html[data-theme="dark"] .bank23-row {
   .bank23-tablehdr {
     display: none;
   }
+  .bank23-pad {
+    min-height: 0;
+    overflow: hidden;
+  }
+  /* Card stack: bank → balance → in/out → updated (never 6-col squeeze) */
   .bank23-row {
     height: auto;
-    min-height: 72px;
-    grid-template-columns: 1.4fr 1fr 1fr;
+    min-height: 0;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 8px 10px;
+    align-items: start;
+    padding: 12px 40px 12px 12px;
+  }
+  .bank23-row > .bank23-bank {
+    grid-column: 1 / -1;
+    min-width: 0;
+  }
+  .bank23-bank b {
+    white-space: normal;
+    flex-wrap: wrap;
+    overflow-wrap: anywhere;
+  }
+  .bank23-bank small {
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+  .bank23-row > .bank23-cell:nth-child(2) {
+    grid-column: 1 / -1;
+    height: auto;
+  }
+  .bank23-row > .bank23-cell:nth-child(2) b {
+    font-size: 16px;
+    line-height: 1.2;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+  .bank23-row > .bank23-cell:nth-child(3),
+  .bank23-row > .bank23-cell:nth-child(4) {
+    height: auto;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2px;
+  }
+  .bank23-row > .bank23-cell:nth-child(3)::before {
+    content: "Inflow";
+    font-size: 8.5px;
+    font-weight: 750;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--b-muted);
+  }
+  .bank23-row > .bank23-cell:nth-child(4)::before {
+    content: "Outflow";
+    font-size: 8.5px;
+    font-weight: 750;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--b-muted);
+  }
+  .bank23-row > .bank23-cell:nth-child(5) {
+    grid-column: 1 / -1;
+    height: auto;
+  }
+  .bank23-row > .bank23-cell:nth-child(5)::before {
+    content: "Updated ";
+    font-size: 8.5px;
+    font-weight: 750;
+    color: var(--b-muted);
+  }
+  .bank23-cell b {
+    white-space: normal;
+    overflow-wrap: anywhere;
+    word-break: break-word;
   }
   .bank23-row .bank23-more {
     position: absolute;
@@ -1113,6 +1203,13 @@ html[data-theme="dark"] .bank23-row {
   .bank23-cstat {
     height: auto;
     min-height: 58px;
+  }
+  .bank23-row {
+    padding: 12px 38px 12px 10px;
+    gap: 7px 8px;
+  }
+  .bank23-row > .bank23-cell:nth-child(2) b {
+    font-size: 15px;
   }
 }
 

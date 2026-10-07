@@ -1071,11 +1071,22 @@ html:not(.dark):not([data-theme="dark"]) .tx16-page-btn.active {
     grid-template-columns: 1fr;
   }
   .tx16-row {
-    grid-template-columns: 64px minmax(0, 1fr) 100px;
+    grid-template-columns: 56px minmax(0, 1fr) minmax(0, 92px);
     padding: 10px 12px;
+    gap: 8px;
+    align-items: start;
+  }
+  .tx16-row > * {
+    min-width: 0;
   }
   .tx16-account {
     display: none;
+  }
+  .tx16-row b,
+  .tx16-row strong,
+  .tx16-row small {
+    white-space: normal;
+    overflow-wrap: anywhere;
   }
   .tx16-daybar em {
     display: none;

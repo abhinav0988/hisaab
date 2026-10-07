@@ -372,6 +372,19 @@ html:not(.dark):not([data-theme="dark"]) .iv35-hero p{color:#5f7267}
     display: none !important;
   }
   .iv35-holding {
-    grid-template-columns: minmax(0, 1fr) auto auto !important;
+    grid-template-columns: minmax(0, 1fr) auto !important;
+    gap: 8px !important;
+  }
+  .iv35-holding .val,
+  .iv35-holding .ret {
+    text-align: left !important;
+  }
+  .iv35-holding > :first-child {
+    grid-column: 1 / -1;
+    min-width: 0;
+  }
+  .iv35-holding b,
+  .iv35-holding small {
+    overflow-wrap: anywhere;
   }
 }
