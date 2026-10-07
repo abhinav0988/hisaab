@@ -4696,3 +4696,21 @@ button.sm-hist-row.active {
     grid-template-columns: 1fr 1fr;
   }
 }
+
+
+/* mobile filter containment */
+@media (max-width: 640px) {
+  .sm-filters {
+    width: 100% !important;
+    max-width: 100% !important;
+    overflow-x: auto !important;
+    overscroll-behavior-x: contain;
+  }
+  .sm-page,
+  .sm-head,
+  .sm-neon-create {
+    max-width: 100% !important;
+    min-width: 0 !important;
+    overflow-x: clip;
+  }
+}

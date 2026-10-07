@@ -7509,3 +7509,237 @@ html[data-theme="dark"] .premium-dash .pd-insight {
   border-color: rgb(111 153 129 / 0.14);
   background: linear-gradient(145deg, #102117, #0b1710);
 }
+
+/* =========================================================
+   SITEWIDE MOBILE CONTAINMENT (≤640px)
+   Un-nested, high-specificity. Prevents clipped CTAs / heads.
+   ========================================================= */
+@media (max-width: 900px) {
+  [data-app-shell][data-page] {
+    grid-template-columns: 1fr !important;
+  }
+  [data-app-shell][data-page] > aside {
+    width: min(280px, 88vw) !important;
+  }
+  [data-app-shell][data-page] .app-main {
+    max-width: 100% !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    padding-left: 12px !important;
+    padding-right: 12px !important;
+    overflow-x: clip !important;
+    box-sizing: border-box !important;
+  }
+}
+
+@media (max-width: 640px) {
+  [data-app-shell],
+  [data-app-shell][data-page],
+  .app-main,
+  .cards38,
+  .lend38,
+  .loans36,
+  .iv35,
+  .ip36,
+  .sg31,
+  .ac33,
+  .bank23,
+  .premium-dash {
+    max-width: 100% !important;
+    min-width: 0 !important;
+    box-sizing: border-box !important;
+  }
+
+  /* Feature page headers: contain + wrap */
+  .c38-head,
+  .l38-head,
+  .r38-head,
+  .u38-head,
+  .loans-head,
+  .iv35-head,
+  .ip36-head,
+  .sg31-header,
+  .ac33-head,
+  .bank23-top,
+  .sl29-header,
+  .s38-head,
+  .pd-greeting {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    flex-direction: column !important;
+    align-items: stretch !important;
+    box-sizing: border-box !important;
+  }
+
+  .c38-head-left,
+  .l38-head-left,
+  .r38-head-left,
+  .u38-head-left,
+  .loans-head-left,
+  .iv35-head-left,
+  .ip36-head-left,
+  .sg31-header-left,
+  .ac33-head-left {
+    min-width: 0 !important;
+    max-width: 100% !important;
+  }
+
+  .c38-head-left > div,
+  .l38-head-left > div,
+  .r38-head-left > div,
+  .u38-head-left > div,
+  .loans-head-left > div,
+  .iv35-head-left > div,
+  .ip36-head-left > div,
+  .sg31-header-left > div {
+    min-width: 0 !important;
+  }
+
+  .c38-head h1,
+  .l38-head h1,
+  .r38-head h1,
+  .u38-head h1,
+  .loans-head h1,
+  .iv35-head h1,
+  .ip36-head h1,
+  .sg31-header h1,
+  .ac33-head h1 {
+    font-size: 20px !important;
+    overflow-wrap: anywhere;
+  }
+
+  .c38-head p,
+  .l38-head p,
+  .r38-head p,
+  .u38-head p,
+  .loans-head p,
+  .iv35-head p,
+  .ip36-head p,
+  .sg31-header p,
+  .ac33-head p,
+  .pd-greeting p {
+    font-size: 10.5px !important;
+    line-height: 1.35 !important;
+    overflow-wrap: anywhere !important;
+  }
+
+  /* Action rows: search full → chrome row → CTA full */
+  .c38-head-actions,
+  .l38-head-actions,
+  .r38-head-actions,
+  .u38-head-actions,
+  .loans-head-actions,
+  .iv35-head-actions,
+  .ip36-head-actions,
+  .sg31-header-actions,
+  .ac33-head-actions,
+  .sl29-head-actions,
+  .bank23-head-actions,
+  .s38-head-actions,
+  .pd-greeting-actions {
+    display: flex !important;
+    flex-wrap: wrap !important;
+    align-items: center !important;
+    gap: 8px !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    box-sizing: border-box !important;
+  }
+
+  .c38-search,
+  .l38-search,
+  .r38-search,
+  .u38-search,
+  .loans-search,
+  .iv35-search,
+  .ip36-search,
+  .pd-search,
+  .ac33-search {
+    flex: 1 1 100% !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    box-sizing: border-box !important;
+  }
+
+  .c38-head-actions > .c38-btn.primary,
+  .l38-head-actions > .l38-btn.primary,
+  .r38-head-actions > .r38-btn.primary,
+  .u38-head-actions > .u38-btn.primary,
+  .loans-head-actions > .loans-btn.primary,
+  .iv35-head-actions > .iv35-btn.primary,
+  .ip36-head-actions > .ip36-btn.primary,
+  .sg31-header-actions > .sg31-primary,
+  .pd-greeting-actions > .pd-add,
+  .sl29-head-actions > .sl29-add,
+  .bank23-head-actions > .bank23-add,
+  .ac33-head-actions > .ac33-btn.primary {
+    flex: 1 1 100% !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    justify-content: center !important;
+    box-sizing: border-box !important;
+  }
+
+  /* Date/month chips grow; icon-only chrome stays square */
+  .c38-head-actions > .c38-btn:not(.icon):not(.primary),
+  .l38-head-actions > .l38-btn:not(.icon):not(.primary),
+  .r38-head-actions > .r38-btn:not(.icon):not(.primary),
+  .u38-head-actions > .u38-btn:not(.icon):not(.primary),
+  .loans-head-actions > .loans-btn:not(.icon):not(.primary),
+  .iv35-head-actions > .iv35-btn:not(.primary):not(:has(> svg:only-child)),
+  .ip36-head-actions > .ip36-btn:not(.primary):not(:has(> svg:only-child)),
+  .sg31-header-actions > .sg31-control {
+    flex: 1 1 auto !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+  }
+
+  .c38-notify-wrap,
+  .l38-notify-wrap,
+  .r38-notify-wrap,
+  .u38-notify-wrap,
+  .loans-notify-wrap,
+  .pd-notify-wrap,
+  .page-chrome-notify-wrap,
+  .c38-head-actions > .c38-btn.icon,
+  .l38-head-actions > .l38-btn.icon,
+  .r38-head-actions > .r38-btn.icon,
+  .u38-head-actions > .u38-btn.icon,
+  .loans-head-actions > .loans-btn.icon,
+  .iv35-head-actions > .iv35-btn:not(.primary):has(> svg:only-child),
+  .ip36-head-actions > .ip36-btn:not(.primary):has(> svg:only-child),
+  .sg31-header-actions > .sg31-ghost,
+  .pd-greeting-actions > .pd-icon-btn {
+    flex: 0 0 38px !important;
+    width: 38px !important;
+    min-width: 38px !important;
+    max-width: 38px !important;
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+  }
+
+  /* KPI stacks on phones */
+  .c38-kpis,
+  .l38-kpis,
+  .r38-kpis,
+  .u38-kpis,
+  .loans-kpis,
+  .iv35-kpis,
+  .ip36-kpis,
+  .sg31-kpis,
+  .ac33-kpis,
+  .pd-kpis {
+    grid-template-columns: 1fr !important;
+  }
+
+  .mobile-bottom-nav {
+    inset-inline: 8px !important;
+    gap: 2px !important;
+    padding-left: 4px !important;
+    padding-right: 4px !important;
+  }
+}

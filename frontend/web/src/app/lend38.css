@@ -1170,20 +1170,6 @@
     object-position: center;
   }
 
-  @media (max-width: 640px) {
-    .l38-hero {
-      padding: 18px 14px;
-      min-height: 0;
-    }
-
-    .l38-hero-copy h2 {
-      font-size: 22px;
-    }
-
-    .l38-hero-copy p {
-      font-size: 12px;
-    }
-  }
 
   .l38-why ul {
     grid-template-columns: 1fr 1fr;
@@ -1209,66 +1195,6 @@
     grid-template-columns: 1fr;
   }
 
-  @media (max-width: 640px) {
-    .l38-head {
-      gap: 10px;
-      min-height: 0;
-      padding-bottom: 8px;
-    }
-
-    .l38-page-icon {
-      width: 42px;
-      height: 42px;
-      border-radius: 12px;
-    }
-
-    .l38-head h1 {
-      font-size: 20px;
-    }
-
-    .l38-head p {
-      font-size: 10.5px;
-      line-height: 1.35;
-    }
-
-    .l38-head-actions {
-      display: grid;
-      grid-template-columns: minmax(0, 1fr) 38px 38px;
-      gap: 8px;
-      align-items: center;
-      flex-wrap: nowrap;
-    }
-
-    .l38-search {
-      grid-column: 1 / -1;
-      width: 100%;
-      min-width: 0;
-    }
-
-    .l38-head-actions > .l38-btn:not(.icon):not(.primary) {
-      grid-column: 1;
-      min-width: 0;
-      width: 100%;
-      justify-content: flex-start;
-      padding: 0 10px;
-    }
-
-    .l38-notify-wrap {
-      grid-column: 2;
-      justify-self: center;
-    }
-
-    .l38-head-actions > .l38-btn.icon:not(.l38-notify) {
-      grid-column: 3;
-      justify-self: center;
-    }
-
-    .l38-head-actions > .l38-btn.primary {
-      grid-column: 1 / -1;
-      width: 100%;
-      min-width: 0;
-    }
-  }
 
   .l38-why ul {
     grid-template-columns: 1fr 1fr;
@@ -1516,5 +1442,42 @@ html:not(.dark):not([data-theme="dark"]) .l38-notify-empty {
   .l38-why li {
     min-width: 0 !important;
     padding: 10px !important;
+  }
+}
+
+@media (max-width: 640px) {
+  .l38-hero,
+  .l38-why,
+  .l38-why ul,
+  .l38-board,
+  .l38-list,
+  .l38-panel,
+  .l38-list-toolbar {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    box-sizing: border-box !important;
+  }
+  .l38-hero {
+    padding: 16px 12px !important;
+    grid-template-columns: 1fr !important;
+  }
+  .l38-why ul {
+    grid-template-columns: 1fr !important;
+  }
+  .l38-hero-visual img {
+    width: 100% !important;
+    max-width: 100% !important;
+    height: auto !important;
+  }
+  .l38-list-toolbar {
+    flex-wrap: wrap !important;
+    gap: 8px !important;
+  }
+  .l38-tabs {
+    width: 100% !important;
+    max-width: 100% !important;
+    overflow-x: auto !important;
+    flex-wrap: nowrap !important;
   }
 }

@@ -341,3 +341,37 @@ html:not(.dark):not([data-theme="dark"]) .iv35-hero p{color:#5f7267}
     overflow: hidden;
   }
 }
+
+@media (max-width: 640px) {
+  .iv35,
+  .iv35-panel,
+  .iv35-top,
+  .iv35-mid,
+  .iv35-bottom,
+  .iv35-hero,
+  .iv35-holdings,
+  .iv35-holding {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    box-sizing: border-box !important;
+  }
+  .iv35-top,
+  .iv35-mid,
+  .iv35-bottom {
+    grid-template-columns: 1fr !important;
+  }
+  .iv35-hero {
+    min-height: 0 !important;
+    overflow: hidden !important;
+  }
+  .iv35-hero-copy {
+    max-width: 100% !important;
+  }
+  .iv35-art {
+    display: none !important;
+  }
+  .iv35-holding {
+    grid-template-columns: minmax(0, 1fr) auto auto !important;
+  }
+}

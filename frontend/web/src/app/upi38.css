@@ -1065,66 +1065,6 @@
     grid-template-columns: 1fr;
   }
 
-  @media (max-width: 640px) {
-    .u38-head {
-      gap: 10px;
-      min-height: 0;
-      padding-bottom: 8px;
-    }
-
-    .u38-page-icon {
-      width: 42px;
-      height: 42px;
-      border-radius: 12px;
-    }
-
-    .u38-head h1 {
-      font-size: 20px;
-    }
-
-    .u38-head p {
-      font-size: 10.5px;
-      line-height: 1.35;
-    }
-
-    .u38-head-actions {
-      display: grid;
-      grid-template-columns: minmax(0, 1fr) 38px 38px;
-      gap: 8px;
-      align-items: center;
-      flex-wrap: nowrap;
-    }
-
-    .u38-search {
-      grid-column: 1 / -1;
-      width: 100%;
-      min-width: 0;
-    }
-
-    .u38-head-actions > .u38-btn:not(.icon):not(.primary) {
-      grid-column: 1;
-      min-width: 0;
-      width: 100%;
-      justify-content: flex-start;
-      padding: 0 10px;
-    }
-
-    .u38-notify-wrap {
-      grid-column: 2;
-      justify-self: center;
-    }
-
-    .u38-head-actions > .u38-btn.icon:not(.u38-notify) {
-      grid-column: 3;
-      justify-self: center;
-    }
-
-    .u38-head-actions > .u38-btn.primary {
-      grid-column: 1 / -1;
-      width: 100%;
-      min-width: 0;
-    }
-  }
 
   .u38-features {
     grid-template-columns: 1fr 1fr;

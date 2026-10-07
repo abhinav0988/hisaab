@@ -591,3 +591,51 @@ html:not(.dark):not([data-theme="dark"]) .ip36-kpi small{color:#6d7f74}
     overflow-x: clip !important;
   }
 }
+
+@media (max-width: 640px) {
+  .ip36,
+  .ip36-panel,
+  .ip36-top,
+  .ip36-body,
+  .ip36-hero,
+  .ip36-summary {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    box-sizing: border-box !important;
+  }
+  .ip36-top,
+  .ip36-body,
+  .ip36-summary {
+    grid-template-columns: 1fr !important;
+  }
+  .ip36-hero {
+    min-height: 0 !important;
+    overflow: hidden !important;
+  }
+  .ip36-hero-copy {
+    max-width: 100% !important;
+  }
+  .ip36-hero-art {
+    display: none !important;
+  }
+  .ip36-panel,
+  .ip36-tabsbar {
+    overflow-x: auto !important;
+    max-width: 100% !important;
+  }
+  .ip36-table-tools {
+    width: 100% !important;
+    max-width: 100% !important;
+    flex-wrap: wrap !important;
+  }
+  .ip36-tsearch {
+    width: 100% !important;
+    max-width: 100% !important;
+    flex: 1 1 100% !important;
+  }
+  /* Wide table stays scrollable inside panel, not the page */
+  .ip36-table {
+    min-width: 640px !important;
+  }
+}
