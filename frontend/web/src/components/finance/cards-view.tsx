@@ -472,12 +472,14 @@ export function CardsView() {
               onChange={(event) => setSearch(event.target.value)}
             />
           </label>
-          <button type="button" className="c38-btn" aria-label="Current month">
-            <CalendarDays size={15} aria-hidden="true" />
-            {monthLabel()}
-          </button>
-          <CardsNotifyButton notices={notices.slice(0, 5)} />
-          <CardsThemeButton />
+          <div className="c38-head-tools">
+            <button type="button" className="c38-btn c38-month" aria-label="Current month">
+              <CalendarDays size={15} aria-hidden="true" />
+              <span>{monthLabel()}</span>
+            </button>
+            <CardsNotifyButton notices={notices.slice(0, 5)} />
+            <CardsThemeButton />
+          </div>
           <button type="button" className="c38-btn primary" onClick={openAdd}>
             <Plus size={15} aria-hidden="true" />
             Add Card
