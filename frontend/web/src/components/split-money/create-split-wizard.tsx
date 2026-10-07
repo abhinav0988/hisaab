@@ -39,6 +39,7 @@ import {
   X,
 } from "lucide-react";
 import { toast } from "sonner";
+import { ImmersedNotifyButton, ImmersedThemeButton } from "@/components/layout/immersed-chrome";
 import { money } from "@/lib/format";
 import { splitMoneyService } from "@/services/split-money.service";
 import {
@@ -730,6 +731,10 @@ export function CreateSplitWizard({
         <button className="sm-back-title" type="button" onClick={onClose}>
           <ArrowLeft size={18} /> Split Money
         </button>
+        <div className="sm-create-head-actions">
+          <ImmersedNotifyButton className="sm-chrome-btn" emptyText="No split alerts yet." />
+          <ImmersedThemeButton className="sm-chrome-btn" />
+        </div>
       </header>
 
       <section className="sm-create-hero">

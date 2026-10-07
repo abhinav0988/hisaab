@@ -14,6 +14,7 @@ import {
   ArrowDownLeft,
   ArrowUpRight,
 } from "lucide-react";
+import { ImmersedNotifyButton, ImmersedThemeButton } from "@/components/layout/immersed-chrome";
 import { money } from "@/lib/format";
 import { splitMoneyService } from "@/services/split-money.service";
 import { avatarTone, initials, statusClass, statusLabel } from "./split-format";
@@ -149,6 +150,8 @@ export function SplitHistoryView({
               onChange={(e) => setQuery(e.target.value)}
             />
           </label>
+          <ImmersedNotifyButton className="sm-chrome-btn" emptyText="No split alerts yet." />
+          <ImmersedThemeButton className="sm-chrome-btn" />
           <button className="sm-outline" type="button" onClick={exportCsv} disabled={!expenses.length}>
             <Download size={15} /> Export
           </button>

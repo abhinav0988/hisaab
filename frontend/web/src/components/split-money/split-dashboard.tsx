@@ -22,6 +22,7 @@ import {
   Wallet,
   Wifi,
 } from "lucide-react";
+import { ImmersedNotifyButton, ImmersedThemeButton } from "@/components/layout/immersed-chrome";
 import { money } from "@/lib/format";
 import { splitMoneyService } from "@/services/split-money.service";
 import { avatarTone, initials, statusLabel } from "./split-format";
@@ -308,24 +309,24 @@ export function SplitDashboard({
   return (
     <main className="sm-page">
       <header className="sm-head">
-        <div>
-          <h1>
-            <BadgeCheck size={26} className="sm-title-check" aria-hidden />
-            Split Money
-          </h1>
-        </div>
+        <h1>
+          <BadgeCheck size={22} className="sm-title-check" aria-hidden />
+          Split Money
+        </h1>
+        <label className="sm-head-search">
+          <Search size={16} />
+          <input
+            placeholder="Search expenses, people, groups..."
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+          />
+        </label>
         <div className="sm-tools">
-          <label>
-            <Search size={16} />
-            <input
-              placeholder="Search expenses, people, groups..."
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-            />
-          </label>
           <button className="sm-month" type="button">
             <CalendarDays size={16} /> {monthLabel} <ChevronDown size={14} />
           </button>
+          <ImmersedNotifyButton className="sm-chrome-btn" emptyText="No split alerts yet." />
+          <ImmersedThemeButton className="sm-chrome-btn" />
           <button className="sm-primary" type="button" onClick={onCreate}>
             <Plus size={18} /> Split Expense
           </button>
