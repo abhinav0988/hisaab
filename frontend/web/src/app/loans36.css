@@ -1434,13 +1434,57 @@
     justify-items: center;
   }
 
-  .loans36 .loans-head-actions {
-    width: 100%;
+  .loans36 .loans-head {
+    gap: 10px;
+    min-height: 0;
   }
 
-  .loans36 .loans-search,
-  .loans36 .loans-btn {
+  .loans36 .loans-head h1 {
+    font-size: 20px;
+  }
+
+  .loans36 .loans-head p {
+    font-size: 10.5px;
+    line-height: 1.35;
+  }
+
+  .loans36 .loans-head-actions {
     width: 100%;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 38px 38px;
+    gap: 8px;
+    align-items: center;
+  }
+
+  .loans36 .loans-search {
+    grid-column: 1 / -1;
+    width: 100%;
+    min-width: 0;
+  }
+
+  .loans36 .loans-head-actions > .loans-btn:not(.icon):not(.primary) {
+    grid-column: 1;
+    min-width: 0;
+    width: 100%;
+    justify-content: flex-start;
+    padding: 0 10px;
+  }
+
+  .loans36 .loans-notify-wrap {
+    grid-column: 2;
+    justify-self: center;
+  }
+
+  .loans36 .loans-head-actions > .loans-btn.icon:not(.loans-notify) {
+    grid-column: 3;
+    justify-self: center;
+    width: 38px;
+  }
+
+  .loans36 .loans-head-actions > .loans-btn.primary {
+    grid-column: 1 / -1;
+    width: 100%;
+    min-width: 0;
     justify-content: center;
   }
 }

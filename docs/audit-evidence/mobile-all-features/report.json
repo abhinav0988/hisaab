@@ -1,0 +1,1985 @@
+{
+  "fails": [
+    {
+      "route": "/investments",
+      "viewport": "320",
+      "scrollW": 310,
+      "clientW": 320,
+      "bodyW": 332,
+      "overflowPx": 12,
+      "overflow": true,
+      "offenders": [
+        {
+          "tag": "section",
+          "cls": "iv35-head",
+          "left": 14,
+          "right": 332,
+          "w": 318
+        },
+        {
+          "tag": "div",
+          "cls": "iv35-head-left",
+          "left": 16,
+          "right": 330,
+          "w": 314
+        },
+        {
+          "tag": "div",
+          "cls": "",
+          "left": 61,
+          "right": 330,
+          "w": 270
+        },
+        {
+          "tag": "h1",
+          "cls": "",
+          "left": 61,
+          "right": 330,
+          "w": 270
+        },
+        {
+          "tag": "p",
+          "cls": "",
+          "left": 61,
+          "right": 330,
+          "w": 270
+        },
+        {
+          "tag": "div",
+          "cls": "iv35-head-actions",
+          "left": 16,
+          "right": 330,
+          "w": 314
+        },
+        {
+          "tag": "label",
+          "cls": "iv35-search",
+          "left": 16,
+          "right": 330,
+          "w": 314
+        },
+        {
+          "tag": "input",
+          "cls": "",
+          "left": 17,
+          "right": 329,
+          "w": 312
+        }
+      ],
+      "file": "investments-320.png"
+    },
+    {
+      "route": "/ipo",
+      "viewport": "320",
+      "scrollW": 310,
+      "clientW": 320,
+      "bodyW": 378,
+      "overflowPx": 58,
+      "overflow": true,
+      "offenders": [
+        {
+          "tag": "section",
+          "cls": "ip36-head",
+          "left": 14,
+          "right": 378,
+          "w": 364
+        },
+        {
+          "tag": "div",
+          "cls": "ip36-head-left",
+          "left": 14,
+          "right": 378,
+          "w": 364
+        },
+        {
+          "tag": "div",
+          "cls": "",
+          "left": 62,
+          "right": 378,
+          "w": 316
+        },
+        {
+          "tag": "h1",
+          "cls": "",
+          "left": 62,
+          "right": 378,
+          "w": 316
+        },
+        {
+          "tag": "p",
+          "cls": "",
+          "left": 62,
+          "right": 378,
+          "w": 316
+        },
+        {
+          "tag": "div",
+          "cls": "ip36-head-actions",
+          "left": 14,
+          "right": 378,
+          "w": 364
+        },
+        {
+          "tag": "label",
+          "cls": "ip36-search",
+          "left": 14,
+          "right": 378,
+          "w": 364
+        },
+        {
+          "tag": "input",
+          "cls": "",
+          "left": 51,
+          "right": 365,
+          "w": 314
+        }
+      ],
+      "file": "ipo-320.png"
+    },
+    {
+      "route": "/ipo",
+      "viewport": "360",
+      "scrollW": 350,
+      "clientW": 360,
+      "bodyW": 378,
+      "overflowPx": 18,
+      "overflow": true,
+      "offenders": [
+        {
+          "tag": "section",
+          "cls": "ip36-head",
+          "left": 14,
+          "right": 378,
+          "w": 364
+        },
+        {
+          "tag": "div",
+          "cls": "ip36-head-left",
+          "left": 14,
+          "right": 378,
+          "w": 364
+        },
+        {
+          "tag": "div",
+          "cls": "",
+          "left": 62,
+          "right": 378,
+          "w": 316
+        },
+        {
+          "tag": "h1",
+          "cls": "",
+          "left": 62,
+          "right": 378,
+          "w": 316
+        },
+        {
+          "tag": "p",
+          "cls": "",
+          "left": 62,
+          "right": 378,
+          "w": 316
+        },
+        {
+          "tag": "div",
+          "cls": "ip36-head-actions",
+          "left": 14,
+          "right": 378,
+          "w": 364
+        },
+        {
+          "tag": "label",
+          "cls": "ip36-search",
+          "left": 14,
+          "right": 378,
+          "w": 364
+        },
+        {
+          "tag": "input",
+          "cls": "",
+          "left": 51,
+          "right": 365,
+          "w": 314
+        }
+      ],
+      "file": "ipo-360.png"
+    },
+    {
+      "route": "/lend",
+      "viewport": "320",
+      "scrollW": 310,
+      "clientW": 320,
+      "bodyW": 326,
+      "overflowPx": 6,
+      "overflow": true,
+      "offenders": [
+        {
+          "tag": "section",
+          "cls": "l38-hero",
+          "left": 16,
+          "right": 326,
+          "w": 310
+        },
+        {
+          "tag": "div",
+          "cls": "rounded-[var(--radius-card)] border border-[color-mix(in_srgb,var(--border)_82%,",
+          "left": 16,
+          "right": 326,
+          "w": 310
+        },
+        {
+          "tag": "section",
+          "cls": "l38-why",
+          "left": 16,
+          "right": 326,
+          "w": 310
+        },
+        {
+          "tag": "h2",
+          "cls": "",
+          "left": 16,
+          "right": 326,
+          "w": 310
+        },
+        {
+          "tag": "ul",
+          "cls": "",
+          "left": 16,
+          "right": 326,
+          "w": 310
+        },
+        {
+          "tag": "li",
+          "cls": "is-gold",
+          "left": 176,
+          "right": 326,
+          "w": 150
+        },
+        {
+          "tag": "li",
+          "cls": "is-purple",
+          "left": 176,
+          "right": 326,
+          "w": 150
+        }
+      ],
+      "file": "lend-320.png"
+    },
+    {
+      "route": "/split-money",
+      "viewport": "320",
+      "scrollW": 310,
+      "clientW": 320,
+      "bodyW": 310,
+      "overflowPx": -10,
+      "overflow": false,
+      "offenders": [
+        {
+          "tag": "div",
+          "cls": "sm-filters",
+          "left": 25,
+          "right": 395,
+          "w": 370
+        },
+        {
+          "tag": "button",
+          "cls": "",
+          "left": 246,
+          "right": 338,
+          "w": 92
+        },
+        {
+          "tag": "button",
+          "cls": "",
+          "left": 344,
+          "right": 409,
+          "w": 65
+        },
+        {
+          "tag": "button",
+          "cls": "",
+          "left": 415,
+          "right": 486,
+          "w": 70
+        }
+      ],
+      "file": "split-money-320.png"
+    },
+    {
+      "route": "/split-money",
+      "viewport": "360",
+      "scrollW": 350,
+      "clientW": 360,
+      "bodyW": 350,
+      "overflowPx": -10,
+      "overflow": false,
+      "offenders": [
+        {
+          "tag": "div",
+          "cls": "sm-filters",
+          "left": 25,
+          "right": 395,
+          "w": 370
+        },
+        {
+          "tag": "button",
+          "cls": "",
+          "left": 344,
+          "right": 409,
+          "w": 65
+        },
+        {
+          "tag": "button",
+          "cls": "",
+          "left": 415,
+          "right": 486,
+          "w": 70
+        }
+      ],
+      "file": "split-money-360.png"
+    },
+    {
+      "route": "/split-money",
+      "viewport": "390",
+      "scrollW": 380,
+      "clientW": 390,
+      "bodyW": 380,
+      "overflowPx": -10,
+      "overflow": false,
+      "offenders": [
+        {
+          "tag": "div",
+          "cls": "sm-filters",
+          "left": 25,
+          "right": 395,
+          "w": 370
+        },
+        {
+          "tag": "button",
+          "cls": "",
+          "left": 344,
+          "right": 409,
+          "w": 65
+        },
+        {
+          "tag": "button",
+          "cls": "",
+          "left": 415,
+          "right": 486,
+          "w": 70
+        }
+      ],
+      "file": "split-money-390.png"
+    },
+    {
+      "route": "/split-money/create",
+      "viewport": "320",
+      "scrollW": 310,
+      "clientW": 320,
+      "bodyW": 310,
+      "overflowPx": -10,
+      "overflow": false,
+      "offenders": [
+        {
+          "tag": "button",
+          "cls": "",
+          "left": 289,
+          "right": 377,
+          "w": 88
+        },
+        {
+          "tag": "b",
+          "cls": "",
+          "left": 289,
+          "right": 377,
+          "w": 88
+        },
+        {
+          "tag": "button",
+          "cls": "",
+          "left": 377,
+          "right": 488,
+          "w": 111
+        },
+        {
+          "tag": "span",
+          "cls": "",
+          "left": 377,
+          "right": 408,
+          "w": 31
+        },
+        {
+          "tag": "b",
+          "cls": "",
+          "left": 377,
+          "right": 488,
+          "w": 111
+        },
+        {
+          "tag": "button",
+          "cls": "",
+          "left": 488,
+          "right": 576,
+          "w": 88
+        },
+        {
+          "tag": "span",
+          "cls": "",
+          "left": 488,
+          "right": 519,
+          "w": 31
+        },
+        {
+          "tag": "b",
+          "cls": "",
+          "left": 488,
+          "right": 576,
+          "w": 88
+        }
+      ],
+      "file": "split-money_create-320.png"
+    },
+    {
+      "route": "/split-money/create",
+      "viewport": "360",
+      "scrollW": 350,
+      "clientW": 360,
+      "bodyW": 350,
+      "overflowPx": -10,
+      "overflow": false,
+      "offenders": [
+        {
+          "tag": "button",
+          "cls": "",
+          "left": 289,
+          "right": 377,
+          "w": 88
+        },
+        {
+          "tag": "b",
+          "cls": "",
+          "left": 289,
+          "right": 377,
+          "w": 88
+        },
+        {
+          "tag": "button",
+          "cls": "",
+          "left": 377,
+          "right": 488,
+          "w": 111
+        },
+        {
+          "tag": "span",
+          "cls": "",
+          "left": 377,
+          "right": 408,
+          "w": 31
+        },
+        {
+          "tag": "b",
+          "cls": "",
+          "left": 377,
+          "right": 488,
+          "w": 111
+        },
+        {
+          "tag": "button",
+          "cls": "",
+          "left": 488,
+          "right": 576,
+          "w": 88
+        },
+        {
+          "tag": "span",
+          "cls": "",
+          "left": 488,
+          "right": 519,
+          "w": 31
+        },
+        {
+          "tag": "b",
+          "cls": "",
+          "left": 488,
+          "right": 576,
+          "w": 88
+        }
+      ],
+      "file": "split-money_create-360.png"
+    },
+    {
+      "route": "/split-money/create",
+      "viewport": "390",
+      "scrollW": 380,
+      "clientW": 390,
+      "bodyW": 380,
+      "overflowPx": -10,
+      "overflow": false,
+      "offenders": [
+        {
+          "tag": "button",
+          "cls": "",
+          "left": 377,
+          "right": 488,
+          "w": 111
+        },
+        {
+          "tag": "span",
+          "cls": "",
+          "left": 377,
+          "right": 408,
+          "w": 31
+        },
+        {
+          "tag": "b",
+          "cls": "",
+          "left": 377,
+          "right": 488,
+          "w": 111
+        },
+        {
+          "tag": "button",
+          "cls": "",
+          "left": 488,
+          "right": 576,
+          "w": 88
+        },
+        {
+          "tag": "span",
+          "cls": "",
+          "left": 488,
+          "right": 519,
+          "w": 31
+        },
+        {
+          "tag": "b",
+          "cls": "",
+          "left": 488,
+          "right": 576,
+          "w": 88
+        }
+      ],
+      "file": "split-money_create-390.png"
+    },
+    {
+      "route": "/split-money/history",
+      "viewport": "320",
+      "scrollW": 310,
+      "clientW": 320,
+      "bodyW": 310,
+      "overflowPx": -10,
+      "overflow": false,
+      "offenders": [
+        {
+          "tag": "button",
+          "cls": "",
+          "left": 275,
+          "right": 364,
+          "w": 89
+        },
+        {
+          "tag": "button",
+          "cls": "",
+          "left": 370,
+          "right": 447,
+          "w": 77
+        }
+      ],
+      "file": "split-money_history-320.png"
+    },
+    {
+      "route": "/split-money/history",
+      "viewport": "360",
+      "scrollW": 350,
+      "clientW": 360,
+      "bodyW": 350,
+      "overflowPx": -10,
+      "overflow": false,
+      "offenders": [
+        {
+          "tag": "button",
+          "cls": "",
+          "left": 275,
+          "right": 364,
+          "w": 89
+        },
+        {
+          "tag": "button",
+          "cls": "",
+          "left": 370,
+          "right": 447,
+          "w": 77
+        }
+      ],
+      "file": "split-money_history-360.png"
+    },
+    {
+      "route": "/split-money/history",
+      "viewport": "390",
+      "scrollW": 380,
+      "clientW": 390,
+      "bodyW": 380,
+      "overflowPx": -10,
+      "overflow": false,
+      "offenders": [
+        {
+          "tag": "button",
+          "cls": "",
+          "left": 370,
+          "right": 447,
+          "w": 77
+        }
+      ],
+      "file": "split-money_history-390.png"
+    }
+  ],
+  "results": [
+    {
+      "route": "/dashboard",
+      "viewport": "320",
+      "scrollW": 310,
+      "clientW": 320,
+      "bodyW": 310,
+      "overflowPx": -10,
+      "overflow": false,
+      "offenders": [],
+      "file": "dashboard-320.png"
+    },
+    {
+      "route": "/dashboard",
+      "viewport": "360",
+      "scrollW": 350,
+      "clientW": 360,
+      "bodyW": 350,
+      "overflowPx": -10,
+      "overflow": false,
+      "offenders": [],
+      "file": "dashboard-360.png"
+    },
+    {
+      "route": "/dashboard",
+      "viewport": "390",
+      "scrollW": 380,
+      "clientW": 390,
+      "bodyW": 380,
+      "overflowPx": -10,
+      "overflow": false,
+      "offenders": [],
+      "file": "dashboard-390.png"
+    },
+    {
+      "route": "/transactions",
+      "viewport": "320",
+      "scrollW": 310,
+      "clientW": 320,
+      "bodyW": 310,
+      "overflowPx": -10,
+      "overflow": false,
+      "offenders": [],
+      "file": "transactions-320.png"
+    },
+    {
+      "route": "/transactions",
+      "viewport": "360",
+      "scrollW": 350,
+      "clientW": 360,
+      "bodyW": 350,
+      "overflowPx": -10,
+      "overflow": false,
+      "offenders": [],
+      "file": "transactions-360.png"
+    },
+    {
+      "route": "/transactions",
+      "viewport": "390",
+      "scrollW": 380,
+      "clientW": 390,
+      "bodyW": 380,
+      "overflowPx": -10,
+      "overflow": false,
+      "offenders": [],
+      "file": "transactions-390.png"
+    },
+    {
+      "route": "/bank",
+      "viewport": "320",
+      "scrollW": 310,
+      "clientW": 320,
+      "bodyW": 310,
+      "overflowPx": -10,
+      "overflow": false,
+      "offenders": [],
+      "file": "bank-320.png"
+    },
+    {
+      "route": "/bank",
+      "viewport": "360",
+      "scrollW": 350,
+      "clientW": 360,
+      "bodyW": 350,
+      "overflowPx": -10,
+      "overflow": false,
+      "offenders": [],
+      "file": "bank-360.png"
+    },
+    {
+      "route": "/bank",
+      "viewport": "390",
+      "scrollW": 380,
+      "clientW": 390,
+      "bodyW": 380,
+      "overflowPx": -10,
+      "overflow": false,
+      "offenders": [],
+      "file": "bank-390.png"
+    },
+    {
+      "route": "/budgets",
+      "viewport": "320",
+      "scrollW": 310,
+      "clientW": 320,
+      "bodyW": 310,
+      "overflowPx": -10,
+      "overflow": false,
+      "offenders": [],
+      "file": "budgets-320.png"
+    },
+    {
+      "route": "/budgets",
+      "viewport": "360",
+      "scrollW": 350,
+      "clientW": 360,
+      "bodyW": 350,
+      "overflowPx": -10,
+      "overflow": false,
+      "offenders": [],
+      "file": "budgets-360.png"
+    },
+    {
+      "route": "/budgets",
+      "viewport": "390",
+      "scrollW": 380,
+      "clientW": 390,
+      "bodyW": 380,
+      "overflowPx": -10,
+      "overflow": false,
+      "offenders": [],
+      "file": "budgets-390.png"
+    },
+    {
+      "route": "/goals",
+      "viewport": "320",
+      "scrollW": 310,
+      "clientW": 320,
+      "bodyW": 310,
+      "overflowPx": -10,
+      "overflow": false,
+      "offenders": [],
+      "file": "goals-320.png"
+    },
+    {
+      "route": "/goals",
+      "viewport": "360",
+      "scrollW": 350,
+      "clientW": 360,
+      "bodyW": 350,
+      "overflowPx": -10,
+      "overflow": false,
+      "offenders": [],
+      "file": "goals-360.png"
+    },
+    {
+      "route": "/goals",
+      "viewport": "390",
+      "scrollW": 380,
+      "clientW": 390,
+      "bodyW": 380,
+      "overflowPx": -10,
+      "overflow": false,
+      "offenders": [],
+      "file": "goals-390.png"
+    },
+    {
+      "route": "/accounts",
+      "viewport": "320",
+      "scrollW": 310,
+      "clientW": 320,
+      "bodyW": 310,
+      "overflowPx": -10,
+      "overflow": false,
+      "offenders": [],
+      "file": "accounts-320.png"
+    },
+    {
+      "route": "/accounts",
+      "viewport": "360",
+      "scrollW": 350,
+      "clientW": 360,
+      "bodyW": 350,
+      "overflowPx": -10,
+      "overflow": false,
+      "offenders": [],
+      "file": "accounts-360.png"
+    },
+    {
+      "route": "/accounts",
+      "viewport": "390",
+      "scrollW": 380,
+      "clientW": 390,
+      "bodyW": 380,
+      "overflowPx": -10,
+      "overflow": false,
+      "offenders": [],
+      "file": "accounts-390.png"
+    },
+    {
+      "route": "/investments",
+      "viewport": "320",
+      "scrollW": 310,
+      "clientW": 320,
+      "bodyW": 332,
+      "overflowPx": 12,
+      "overflow": true,
+      "offenders": [
+        {
+          "tag": "section",
+          "cls": "iv35-head",
+          "left": 14,
+          "right": 332,
+          "w": 318
+        },
+        {
+          "tag": "div",
+          "cls": "iv35-head-left",
+          "left": 16,
+          "right": 330,
+          "w": 314
+        },
+        {
+          "tag": "div",
+          "cls": "",
+          "left": 61,
+          "right": 330,
+          "w": 270
+        },
+        {
+          "tag": "h1",
+          "cls": "",
+          "left": 61,
+          "right": 330,
+          "w": 270
+        },
+        {
+          "tag": "p",
+          "cls": "",
+          "left": 61,
+          "right": 330,
+          "w": 270
+        },
+        {
+          "tag": "div",
+          "cls": "iv35-head-actions",
+          "left": 16,
+          "right": 330,
+          "w": 314
+        },
+        {
+          "tag": "label",
+          "cls": "iv35-search",
+          "left": 16,
+          "right": 330,
+          "w": 314
+        },
+        {
+          "tag": "input",
+          "cls": "",
+          "left": 17,
+          "right": 329,
+          "w": 312
+        }
+      ],
+      "file": "investments-320.png"
+    },
+    {
+      "route": "/investments",
+      "viewport": "360",
+      "scrollW": 350,
+      "clientW": 360,
+      "bodyW": 350,
+      "overflowPx": -10,
+      "overflow": false,
+      "offenders": [],
+      "file": "investments-360.png"
+    },
+    {
+      "route": "/investments",
+      "viewport": "390",
+      "scrollW": 380,
+      "clientW": 390,
+      "bodyW": 380,
+      "overflowPx": -10,
+      "overflow": false,
+      "offenders": [],
+      "file": "investments-390.png"
+    },
+    {
+      "route": "/ipo",
+      "viewport": "320",
+      "scrollW": 310,
+      "clientW": 320,
+      "bodyW": 378,
+      "overflowPx": 58,
+      "overflow": true,
+      "offenders": [
+        {
+          "tag": "section",
+          "cls": "ip36-head",
+          "left": 14,
+          "right": 378,
+          "w": 364
+        },
+        {
+          "tag": "div",
+          "cls": "ip36-head-left",
+          "left": 14,
+          "right": 378,
+          "w": 364
+        },
+        {
+          "tag": "div",
+          "cls": "",
+          "left": 62,
+          "right": 378,
+          "w": 316
+        },
+        {
+          "tag": "h1",
+          "cls": "",
+          "left": 62,
+          "right": 378,
+          "w": 316
+        },
+        {
+          "tag": "p",
+          "cls": "",
+          "left": 62,
+          "right": 378,
+          "w": 316
+        },
+        {
+          "tag": "div",
+          "cls": "ip36-head-actions",
+          "left": 14,
+          "right": 378,
+          "w": 364
+        },
+        {
+          "tag": "label",
+          "cls": "ip36-search",
+          "left": 14,
+          "right": 378,
+          "w": 364
+        },
+        {
+          "tag": "input",
+          "cls": "",
+          "left": 51,
+          "right": 365,
+          "w": 314
+        }
+      ],
+      "file": "ipo-320.png"
+    },
+    {
+      "route": "/ipo",
+      "viewport": "360",
+      "scrollW": 350,
+      "clientW": 360,
+      "bodyW": 378,
+      "overflowPx": 18,
+      "overflow": true,
+      "offenders": [
+        {
+          "tag": "section",
+          "cls": "ip36-head",
+          "left": 14,
+          "right": 378,
+          "w": 364
+        },
+        {
+          "tag": "div",
+          "cls": "ip36-head-left",
+          "left": 14,
+          "right": 378,
+          "w": 364
+        },
+        {
+          "tag": "div",
+          "cls": "",
+          "left": 62,
+          "right": 378,
+          "w": 316
+        },
+        {
+          "tag": "h1",
+          "cls": "",
+          "left": 62,
+          "right": 378,
+          "w": 316
+        },
+        {
+          "tag": "p",
+          "cls": "",
+          "left": 62,
+          "right": 378,
+          "w": 316
+        },
+        {
+          "tag": "div",
+          "cls": "ip36-head-actions",
+          "left": 14,
+          "right": 378,
+          "w": 364
+        },
+        {
+          "tag": "label",
+          "cls": "ip36-search",
+          "left": 14,
+          "right": 378,
+          "w": 364
+        },
+        {
+          "tag": "input",
+          "cls": "",
+          "left": 51,
+          "right": 365,
+          "w": 314
+        }
+      ],
+      "file": "ipo-360.png"
+    },
+    {
+      "route": "/ipo",
+      "viewport": "390",
+      "scrollW": 380,
+      "clientW": 390,
+      "bodyW": 380,
+      "overflowPx": -10,
+      "overflow": false,
+      "offenders": [],
+      "file": "ipo-390.png"
+    },
+    {
+      "route": "/loans",
+      "viewport": "320",
+      "scrollW": 310,
+      "clientW": 320,
+      "bodyW": 310,
+      "overflowPx": -10,
+      "overflow": false,
+      "offenders": [],
+      "file": "loans-320.png"
+    },
+    {
+      "route": "/loans",
+      "viewport": "360",
+      "scrollW": 350,
+      "clientW": 360,
+      "bodyW": 350,
+      "overflowPx": -10,
+      "overflow": false,
+      "offenders": [],
+      "file": "loans-360.png"
+    },
+    {
+      "route": "/loans",
+      "viewport": "390",
+      "scrollW": 380,
+      "clientW": 390,
+      "bodyW": 380,
+      "overflowPx": -10,
+      "overflow": false,
+      "offenders": [],
+      "file": "loans-390.png"
+    },
+    {
+      "route": "/cards",
+      "viewport": "320",
+      "scrollW": 310,
+      "clientW": 320,
+      "bodyW": 310,
+      "overflowPx": -10,
+      "overflow": false,
+      "offenders": [],
+      "file": "cards-320.png"
+    },
+    {
+      "route": "/cards",
+      "viewport": "360",
+      "scrollW": 350,
+      "clientW": 360,
+      "bodyW": 350,
+      "overflowPx": -10,
+      "overflow": false,
+      "offenders": [],
+      "file": "cards-360.png"
+    },
+    {
+      "route": "/cards",
+      "viewport": "390",
+      "scrollW": 380,
+      "clientW": 390,
+      "bodyW": 380,
+      "overflowPx": -10,
+      "overflow": false,
+      "offenders": [],
+      "file": "cards-390.png"
+    },
+    {
+      "route": "/upi-credit",
+      "viewport": "320",
+      "scrollW": 310,
+      "clientW": 320,
+      "bodyW": 310,
+      "overflowPx": -10,
+      "overflow": false,
+      "offenders": [],
+      "file": "upi-credit-320.png"
+    },
+    {
+      "route": "/upi-credit",
+      "viewport": "360",
+      "scrollW": 350,
+      "clientW": 360,
+      "bodyW": 350,
+      "overflowPx": -10,
+      "overflow": false,
+      "offenders": [],
+      "file": "upi-credit-360.png"
+    },
+    {
+      "route": "/upi-credit",
+      "viewport": "390",
+      "scrollW": 380,
+      "clientW": 390,
+      "bodyW": 380,
+      "overflowPx": -10,
+      "overflow": false,
+      "offenders": [],
+      "file": "upi-credit-390.png"
+    },
+    {
+      "route": "/recurring",
+      "viewport": "320",
+      "scrollW": 310,
+      "clientW": 320,
+      "bodyW": 310,
+      "overflowPx": -10,
+      "overflow": false,
+      "offenders": [],
+      "file": "recurring-320.png"
+    },
+    {
+      "route": "/recurring",
+      "viewport": "360",
+      "scrollW": 350,
+      "clientW": 360,
+      "bodyW": 350,
+      "overflowPx": -10,
+      "overflow": false,
+      "offenders": [],
+      "file": "recurring-360.png"
+    },
+    {
+      "route": "/recurring",
+      "viewport": "390",
+      "scrollW": 380,
+      "clientW": 390,
+      "bodyW": 380,
+      "overflowPx": -10,
+      "overflow": false,
+      "offenders": [],
+      "file": "recurring-390.png"
+    },
+    {
+      "route": "/lend",
+      "viewport": "320",
+      "scrollW": 310,
+      "clientW": 320,
+      "bodyW": 326,
+      "overflowPx": 6,
+      "overflow": true,
+      "offenders": [
+        {
+          "tag": "section",
+          "cls": "l38-hero",
+          "left": 16,
+          "right": 326,
+          "w": 310
+        },
+        {
+          "tag": "div",
+          "cls": "rounded-[var(--radius-card)] border border-[color-mix(in_srgb,var(--border)_82%,",
+          "left": 16,
+          "right": 326,
+          "w": 310
+        },
+        {
+          "tag": "section",
+          "cls": "l38-why",
+          "left": 16,
+          "right": 326,
+          "w": 310
+        },
+        {
+          "tag": "h2",
+          "cls": "",
+          "left": 16,
+          "right": 326,
+          "w": 310
+        },
+        {
+          "tag": "ul",
+          "cls": "",
+          "left": 16,
+          "right": 326,
+          "w": 310
+        },
+        {
+          "tag": "li",
+          "cls": "is-gold",
+          "left": 176,
+          "right": 326,
+          "w": 150
+        },
+        {
+          "tag": "li",
+          "cls": "is-purple",
+          "left": 176,
+          "right": 326,
+          "w": 150
+        }
+      ],
+      "file": "lend-320.png"
+    },
+    {
+      "route": "/lend",
+      "viewport": "360",
+      "scrollW": 350,
+      "clientW": 360,
+      "bodyW": 350,
+      "overflowPx": -10,
+      "overflow": false,
+      "offenders": [],
+      "file": "lend-360.png"
+    },
+    {
+      "route": "/lend",
+      "viewport": "390",
+      "scrollW": 380,
+      "clientW": 390,
+      "bodyW": 380,
+      "overflowPx": -10,
+      "overflow": false,
+      "offenders": [],
+      "file": "lend-390.png"
+    },
+    {
+      "route": "/settings",
+      "viewport": "320",
+      "scrollW": 310,
+      "clientW": 320,
+      "bodyW": 310,
+      "overflowPx": -10,
+      "overflow": false,
+      "offenders": [],
+      "file": "settings-320.png"
+    },
+    {
+      "route": "/settings",
+      "viewport": "360",
+      "scrollW": 350,
+      "clientW": 360,
+      "bodyW": 350,
+      "overflowPx": -10,
+      "overflow": false,
+      "offenders": [],
+      "file": "settings-360.png"
+    },
+    {
+      "route": "/settings",
+      "viewport": "390",
+      "scrollW": 380,
+      "clientW": 390,
+      "bodyW": 380,
+      "overflowPx": -10,
+      "overflow": false,
+      "offenders": [],
+      "file": "settings-390.png"
+    },
+    {
+      "route": "/reports",
+      "viewport": "320",
+      "scrollW": 310,
+      "clientW": 320,
+      "bodyW": 310,
+      "overflowPx": -10,
+      "overflow": false,
+      "offenders": [],
+      "file": "reports-320.png"
+    },
+    {
+      "route": "/reports",
+      "viewport": "360",
+      "scrollW": 350,
+      "clientW": 360,
+      "bodyW": 350,
+      "overflowPx": -10,
+      "overflow": false,
+      "offenders": [],
+      "file": "reports-360.png"
+    },
+    {
+      "route": "/reports",
+      "viewport": "390",
+      "scrollW": 380,
+      "clientW": 390,
+      "bodyW": 380,
+      "overflowPx": -10,
+      "overflow": false,
+      "offenders": [],
+      "file": "reports-390.png"
+    },
+    {
+      "route": "/coach",
+      "viewport": "320",
+      "scrollW": 310,
+      "clientW": 320,
+      "bodyW": 310,
+      "overflowPx": -10,
+      "overflow": false,
+      "offenders": [],
+      "file": "coach-320.png"
+    },
+    {
+      "route": "/coach",
+      "viewport": "360",
+      "scrollW": 350,
+      "clientW": 360,
+      "bodyW": 350,
+      "overflowPx": -10,
+      "overflow": false,
+      "offenders": [],
+      "file": "coach-360.png"
+    },
+    {
+      "route": "/coach",
+      "viewport": "390",
+      "scrollW": 380,
+      "clientW": 390,
+      "bodyW": 380,
+      "overflowPx": -10,
+      "overflow": false,
+      "offenders": [],
+      "file": "coach-390.png"
+    },
+    {
+      "route": "/premium",
+      "viewport": "320",
+      "scrollW": 310,
+      "clientW": 320,
+      "bodyW": 310,
+      "overflowPx": -10,
+      "overflow": false,
+      "offenders": [],
+      "file": "premium-320.png"
+    },
+    {
+      "route": "/premium",
+      "viewport": "360",
+      "scrollW": 350,
+      "clientW": 360,
+      "bodyW": 350,
+      "overflowPx": -10,
+      "overflow": false,
+      "offenders": [],
+      "file": "premium-360.png"
+    },
+    {
+      "route": "/premium",
+      "viewport": "390",
+      "scrollW": 380,
+      "clientW": 390,
+      "bodyW": 380,
+      "overflowPx": -10,
+      "overflow": false,
+      "offenders": [],
+      "file": "premium-390.png"
+    },
+    {
+      "route": "/categories",
+      "viewport": "320",
+      "scrollW": 310,
+      "clientW": 320,
+      "bodyW": 310,
+      "overflowPx": -10,
+      "overflow": false,
+      "offenders": [],
+      "file": "categories-320.png"
+    },
+    {
+      "route": "/categories",
+      "viewport": "360",
+      "scrollW": 350,
+      "clientW": 360,
+      "bodyW": 350,
+      "overflowPx": -10,
+      "overflow": false,
+      "offenders": [],
+      "file": "categories-360.png"
+    },
+    {
+      "route": "/categories",
+      "viewport": "390",
+      "scrollW": 380,
+      "clientW": 390,
+      "bodyW": 380,
+      "overflowPx": -10,
+      "overflow": false,
+      "offenders": [],
+      "file": "categories-390.png"
+    },
+    {
+      "route": "/profile",
+      "viewport": "320",
+      "scrollW": 310,
+      "clientW": 320,
+      "bodyW": 310,
+      "overflowPx": -10,
+      "overflow": false,
+      "offenders": [],
+      "file": "profile-320.png"
+    },
+    {
+      "route": "/profile",
+      "viewport": "360",
+      "scrollW": 350,
+      "clientW": 360,
+      "bodyW": 350,
+      "overflowPx": -10,
+      "overflow": false,
+      "offenders": [],
+      "file": "profile-360.png"
+    },
+    {
+      "route": "/profile",
+      "viewport": "390",
+      "scrollW": 380,
+      "clientW": 390,
+      "bodyW": 380,
+      "overflowPx": -10,
+      "overflow": false,
+      "offenders": [],
+      "file": "profile-390.png"
+    },
+    {
+      "route": "/schedules",
+      "viewport": "320",
+      "scrollW": 310,
+      "clientW": 320,
+      "bodyW": 310,
+      "overflowPx": -10,
+      "overflow": false,
+      "offenders": [],
+      "file": "schedules-320.png"
+    },
+    {
+      "route": "/schedules",
+      "viewport": "360",
+      "scrollW": 350,
+      "clientW": 360,
+      "bodyW": 350,
+      "overflowPx": -10,
+      "overflow": false,
+      "offenders": [],
+      "file": "schedules-360.png"
+    },
+    {
+      "route": "/schedules",
+      "viewport": "390",
+      "scrollW": 380,
+      "clientW": 390,
+      "bodyW": 380,
+      "overflowPx": -10,
+      "overflow": false,
+      "offenders": [],
+      "file": "schedules-390.png"
+    },
+    {
+      "route": "/split-money",
+      "viewport": "320",
+      "scrollW": 310,
+      "clientW": 320,
+      "bodyW": 310,
+      "overflowPx": -10,
+      "overflow": false,
+      "offenders": [
+        {
+          "tag": "div",
+          "cls": "sm-filters",
+          "left": 25,
+          "right": 395,
+          "w": 370
+        },
+        {
+          "tag": "button",
+          "cls": "",
+          "left": 246,
+          "right": 338,
+          "w": 92
+        },
+        {
+          "tag": "button",
+          "cls": "",
+          "left": 344,
+          "right": 409,
+          "w": 65
+        },
+        {
+          "tag": "button",
+          "cls": "",
+          "left": 415,
+          "right": 486,
+          "w": 70
+        }
+      ],
+      "file": "split-money-320.png"
+    },
+    {
+      "route": "/split-money",
+      "viewport": "360",
+      "scrollW": 350,
+      "clientW": 360,
+      "bodyW": 350,
+      "overflowPx": -10,
+      "overflow": false,
+      "offenders": [
+        {
+          "tag": "div",
+          "cls": "sm-filters",
+          "left": 25,
+          "right": 395,
+          "w": 370
+        },
+        {
+          "tag": "button",
+          "cls": "",
+          "left": 344,
+          "right": 409,
+          "w": 65
+        },
+        {
+          "tag": "button",
+          "cls": "",
+          "left": 415,
+          "right": 486,
+          "w": 70
+        }
+      ],
+      "file": "split-money-360.png"
+    },
+    {
+      "route": "/split-money",
+      "viewport": "390",
+      "scrollW": 380,
+      "clientW": 390,
+      "bodyW": 380,
+      "overflowPx": -10,
+      "overflow": false,
+      "offenders": [
+        {
+          "tag": "div",
+          "cls": "sm-filters",
+          "left": 25,
+          "right": 395,
+          "w": 370
+        },
+        {
+          "tag": "button",
+          "cls": "",
+          "left": 344,
+          "right": 409,
+          "w": 65
+        },
+        {
+          "tag": "button",
+          "cls": "",
+          "left": 415,
+          "right": 486,
+          "w": 70
+        }
+      ],
+      "file": "split-money-390.png"
+    },
+    {
+      "route": "/split-money/create",
+      "viewport": "320",
+      "scrollW": 310,
+      "clientW": 320,
+      "bodyW": 310,
+      "overflowPx": -10,
+      "overflow": false,
+      "offenders": [
+        {
+          "tag": "button",
+          "cls": "",
+          "left": 289,
+          "right": 377,
+          "w": 88
+        },
+        {
+          "tag": "b",
+          "cls": "",
+          "left": 289,
+          "right": 377,
+          "w": 88
+        },
+        {
+          "tag": "button",
+          "cls": "",
+          "left": 377,
+          "right": 488,
+          "w": 111
+        },
+        {
+          "tag": "span",
+          "cls": "",
+          "left": 377,
+          "right": 408,
+          "w": 31
+        },
+        {
+          "tag": "b",
+          "cls": "",
+          "left": 377,
+          "right": 488,
+          "w": 111
+        },
+        {
+          "tag": "button",
+          "cls": "",
+          "left": 488,
+          "right": 576,
+          "w": 88
+        },
+        {
+          "tag": "span",
+          "cls": "",
+          "left": 488,
+          "right": 519,
+          "w": 31
+        },
+        {
+          "tag": "b",
+          "cls": "",
+          "left": 488,
+          "right": 576,
+          "w": 88
+        }
+      ],
+      "file": "split-money_create-320.png"
+    },
+    {
+      "route": "/split-money/create",
+      "viewport": "360",
+      "scrollW": 350,
+      "clientW": 360,
+      "bodyW": 350,
+      "overflowPx": -10,
+      "overflow": false,
+      "offenders": [
+        {
+          "tag": "button",
+          "cls": "",
+          "left": 289,
+          "right": 377,
+          "w": 88
+        },
+        {
+          "tag": "b",
+          "cls": "",
+          "left": 289,
+          "right": 377,
+          "w": 88
+        },
+        {
+          "tag": "button",
+          "cls": "",
+          "left": 377,
+          "right": 488,
+          "w": 111
+        },
+        {
+          "tag": "span",
+          "cls": "",
+          "left": 377,
+          "right": 408,
+          "w": 31
+        },
+        {
+          "tag": "b",
+          "cls": "",
+          "left": 377,
+          "right": 488,
+          "w": 111
+        },
+        {
+          "tag": "button",
+          "cls": "",
+          "left": 488,
+          "right": 576,
+          "w": 88
+        },
+        {
+          "tag": "span",
+          "cls": "",
+          "left": 488,
+          "right": 519,
+          "w": 31
+        },
+        {
+          "tag": "b",
+          "cls": "",
+          "left": 488,
+          "right": 576,
+          "w": 88
+        }
+      ],
+      "file": "split-money_create-360.png"
+    },
+    {
+      "route": "/split-money/create",
+      "viewport": "390",
+      "scrollW": 380,
+      "clientW": 390,
+      "bodyW": 380,
+      "overflowPx": -10,
+      "overflow": false,
+      "offenders": [
+        {
+          "tag": "button",
+          "cls": "",
+          "left": 377,
+          "right": 488,
+          "w": 111
+        },
+        {
+          "tag": "span",
+          "cls": "",
+          "left": 377,
+          "right": 408,
+          "w": 31
+        },
+        {
+          "tag": "b",
+          "cls": "",
+          "left": 377,
+          "right": 488,
+          "w": 111
+        },
+        {
+          "tag": "button",
+          "cls": "",
+          "left": 488,
+          "right": 576,
+          "w": 88
+        },
+        {
+          "tag": "span",
+          "cls": "",
+          "left": 488,
+          "right": 519,
+          "w": 31
+        },
+        {
+          "tag": "b",
+          "cls": "",
+          "left": 488,
+          "right": 576,
+          "w": 88
+        }
+      ],
+      "file": "split-money_create-390.png"
+    },
+    {
+      "route": "/split-money/history",
+      "viewport": "320",
+      "scrollW": 310,
+      "clientW": 320,
+      "bodyW": 310,
+      "overflowPx": -10,
+      "overflow": false,
+      "offenders": [
+        {
+          "tag": "button",
+          "cls": "",
+          "left": 275,
+          "right": 364,
+          "w": 89
+        },
+        {
+          "tag": "button",
+          "cls": "",
+          "left": 370,
+          "right": 447,
+          "w": 77
+        }
+      ],
+      "file": "split-money_history-320.png"
+    },
+    {
+      "route": "/split-money/history",
+      "viewport": "360",
+      "scrollW": 350,
+      "clientW": 360,
+      "bodyW": 350,
+      "overflowPx": -10,
+      "overflow": false,
+      "offenders": [
+        {
+          "tag": "button",
+          "cls": "",
+          "left": 275,
+          "right": 364,
+          "w": 89
+        },
+        {
+          "tag": "button",
+          "cls": "",
+          "left": 370,
+          "right": 447,
+          "w": 77
+        }
+      ],
+      "file": "split-money_history-360.png"
+    },
+    {
+      "route": "/split-money/history",
+      "viewport": "390",
+      "scrollW": 380,
+      "clientW": 390,
+      "bodyW": 380,
+      "overflowPx": -10,
+      "overflow": false,
+      "offenders": [
+        {
+          "tag": "button",
+          "cls": "",
+          "left": 370,
+          "right": 447,
+          "w": 77
+        }
+      ],
+      "file": "split-money_history-390.png"
+    },
+    {
+      "route": "/split-money/groups",
+      "viewport": "320",
+      "scrollW": 310,
+      "clientW": 320,
+      "bodyW": 310,
+      "overflowPx": -10,
+      "overflow": false,
+      "offenders": [],
+      "file": "split-money_groups-320.png"
+    },
+    {
+      "route": "/split-money/groups",
+      "viewport": "360",
+      "scrollW": 350,
+      "clientW": 360,
+      "bodyW": 350,
+      "overflowPx": -10,
+      "overflow": false,
+      "offenders": [],
+      "file": "split-money_groups-360.png"
+    },
+    {
+      "route": "/split-money/groups",
+      "viewport": "390",
+      "scrollW": 380,
+      "clientW": 390,
+      "bodyW": 380,
+      "overflowPx": -10,
+      "overflow": false,
+      "offenders": [],
+      "file": "split-money_groups-390.png"
+    },
+    {
+      "route": "/split-money/people",
+      "viewport": "320",
+      "scrollW": 310,
+      "clientW": 320,
+      "bodyW": 310,
+      "overflowPx": -10,
+      "overflow": false,
+      "offenders": [],
+      "file": "split-money_people-320.png"
+    },
+    {
+      "route": "/split-money/people",
+      "viewport": "360",
+      "scrollW": 350,
+      "clientW": 360,
+      "bodyW": 350,
+      "overflowPx": -10,
+      "overflow": false,
+      "offenders": [],
+      "file": "split-money_people-360.png"
+    },
+    {
+      "route": "/split-money/people",
+      "viewport": "390",
+      "scrollW": 380,
+      "clientW": 390,
+      "bodyW": 380,
+      "overflowPx": -10,
+      "overflow": false,
+      "offenders": [],
+      "file": "split-money_people-390.png"
+    },
+    {
+      "route": "/split-money/import-receipt",
+      "viewport": "320",
+      "scrollW": 310,
+      "clientW": 320,
+      "bodyW": 310,
+      "overflowPx": -10,
+      "overflow": false,
+      "offenders": [],
+      "file": "split-money_import-receipt-320.png"
+    },
+    {
+      "route": "/split-money/import-receipt",
+      "viewport": "360",
+      "scrollW": 350,
+      "clientW": 360,
+      "bodyW": 350,
+      "overflowPx": -10,
+      "overflow": false,
+      "offenders": [],
+      "file": "split-money_import-receipt-360.png"
+    },
+    {
+      "route": "/split-money/import-receipt",
+      "viewport": "390",
+      "scrollW": 380,
+      "clientW": 390,
+      "bodyW": 380,
+      "overflowPx": -10,
+      "overflow": false,
+      "offenders": [],
+      "file": "split-money_import-receipt-390.png"
+    }
+  ]
+}

@@ -1106,13 +1106,22 @@ html:not(.dark):not([data-theme="dark"]) [data-app-shell][data-page] .nav button
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 4px;
+  align-items: stretch;
   border: 1px solid color-mix(in srgb, var(--border) 82%, transparent);
   border-bottom: 0;
   border-radius: 22px 22px 0 0;
   background: color-mix(in srgb, var(--surface) 94%, transparent);
-  padding: 7px 7px max(10px, env(safe-area-inset-bottom));
+  padding: 6px 6px max(12px, env(safe-area-inset-bottom));
   box-shadow: 0 20px 50px rgba(0, 0, 0, 0.16);
   backdrop-filter: blur(20px);
+  overflow: visible;
+}
+.mobile-bottom-nav > a,
+.mobile-bottom-nav > button {
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+  line-height: 1.1;
 }
 @media (min-width: 1024px) {
   .app-main {
@@ -6511,6 +6520,9 @@ html[data-theme="dark"] .loan-section-num {
   height: 272px;
   position: relative;
   padding: 16px 4px 26px 48px;
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
 }
 .premium-dash .pd-cashflow-grid {
   position: absolute;
@@ -7281,6 +7293,65 @@ html[data-theme="dark"] .premium-dash .pd-act-ico.shop {
   }
   .premium-dash .pd-ai-banner {
     grid-template-columns: 1fr;
+  }
+}
+@media (max-width: 640px) {
+  .premium-dash .pd-greeting {
+    gap: 10px;
+    min-height: 0;
+  }
+  .premium-dash .pd-greeting-actions {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 40px 40px;
+    gap: 8px;
+    align-items: center;
+    width: 100%;
+  }
+  .premium-dash .pd-search {
+    grid-column: 1 / -1;
+    width: 100%;
+    max-width: none;
+  }
+  .premium-dash .pd-search .key {
+    display: none;
+  }
+  .premium-dash .pd-notify-wrap {
+    grid-column: 2;
+    justify-self: center;
+  }
+  .premium-dash .pd-greeting-actions > .pd-icon-btn {
+    grid-column: 3;
+    justify-self: center;
+  }
+  .premium-dash .pd-add {
+    grid-column: 1 / -1;
+    width: 100%;
+    min-width: 0;
+    justify-content: center;
+    flex: none;
+  }
+  .premium-dash .pd-cashflow {
+    padding: 14px 2px 24px 36px;
+  }
+  .premium-dash .pd-cashflow-grid {
+    inset: 12px 2px 26px 36px;
+  }
+  .premium-dash .pd-yaxis {
+    width: 32px;
+    font-size: 8px;
+  }
+  .premium-dash .pd-bars {
+    gap: 4px;
+    max-width: 100%;
+  }
+  .premium-dash .pd-day {
+    gap: 2px;
+    min-width: 0;
+    flex: 1 1 0;
+  }
+  .premium-dash .pd-bar {
+    width: 8px;
+    max-width: 10px;
   }
 }
 @media (max-width: 560px) {

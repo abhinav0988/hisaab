@@ -199,6 +199,31 @@
   .iv35-hero{min-height:405px}.iv35-hero-copy{max-width:100%}.iv35-art{top:190px;right:13%;width:70%}
   .iv35-actions{grid-template-columns:repeat(2,1fr)}
 }
+@media(max-width:640px){
+  .iv35-head{gap:10px;min-height:0;padding-bottom:8px;max-width:100%}
+  .iv35-head h1{font-size:20px}
+  .iv35-head p{font-size:10.5px;line-height:1.35;overflow-wrap:anywhere}
+  .iv35-page-icon{width:42px;height:42px;border-radius:12px}
+  .iv35-head-actions{
+    display:grid;
+    grid-template-columns:minmax(0,1fr) 38px 38px;
+    gap:8px;
+    align-items:center;
+    width:100%;
+  }
+  .iv35-head-actions> :nth-child(1){grid-column:1/-1;width:100%;min-width:0}
+  .iv35-head-actions> :nth-child(2){
+    grid-column:1;min-width:0;width:100%;justify-content:flex-start;padding:0 10px;flex:none
+  }
+  .iv35-head-actions> :nth-child(3){grid-column:2;justify-self:center}
+  .iv35-head-actions> :nth-child(4){
+    grid-column:3;width:38px;min-width:38px;padding:0;flex:none;justify-self:center
+  }
+  .iv35-head-actions> :nth-child(5),
+  .iv35-head-actions>.iv35-btn.primary{
+    grid-column:1/-1;width:100%;min-width:0;justify-content:center;flex:none
+  }
+}
 @media(max-width:560px){
   .iv35-kpis,.iv35-actions{grid-template-columns:1fr}
   .iv35-hero h2{font-size:29px}
@@ -257,3 +282,62 @@ html:not(.dark):not([data-theme="dark"]) .iv35-kpi.purple{background:linear-grad
 html:not(.dark):not([data-theme="dark"]) .iv35-hero{background:radial-gradient(circle at 77% 45%,rgba(25,198,111,.12),transparent 35%),linear-gradient(135deg,#e8f8ef,#f7fbf8)}
 html:not(.dark):not([data-theme="dark"]) .iv35-hero p{color:#5f7267}
 @media(max-width:900px){.iv35-holding{grid-template-columns:1fr 1fr;gap:8px}.iv35-holding .edit{grid-column:1/-1;justify-self:end}}
+
+/* Mobile containment */
+@media (max-width: 640px) {
+  [data-app-shell][data-page="investments"] {
+    grid-template-columns: 1fr !important;
+  }
+  [data-app-shell][data-page="investments"] > aside {
+    width: min(280px, 88vw) !important;
+  }
+  [data-app-shell][data-page="investments"] .app-main {
+    padding-left: 12px !important;
+    padding-right: 12px !important;
+    overflow-x: clip !important;
+  }
+  .iv35,
+  .iv35-head,
+  .iv35-head-left,
+  .iv35-head-actions,
+  .iv35-top,
+  .iv35-mid,
+  .iv35-bottom {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    box-sizing: border-box !important;
+  }
+  .iv35-head {
+    flex-direction: column !important;
+    align-items: stretch !important;
+  }
+  .iv35-head-left > div {
+    min-width: 0 !important;
+  }
+  .iv35-head-actions {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) 38px 38px !important;
+    gap: 8px !important;
+  }
+  .iv35-search {
+    width: 100% !important;
+    max-width: none !important;
+  }
+  .iv35-btn.primary {
+    width: 100% !important;
+    min-width: 0 !important;
+  }
+  .iv35-top,
+  .iv35-mid,
+  .iv35-bottom {
+    grid-template-columns: 1fr !important;
+  }
+  .iv35-hero-copy {
+    max-width: 100% !important;
+  }
+  .iv35-holding {
+    grid-template-columns: minmax(0, 1.2fr) minmax(0, 0.8fr) auto !important;
+    overflow: hidden;
+  }
+}

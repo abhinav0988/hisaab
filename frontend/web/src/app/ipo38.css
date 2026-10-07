@@ -191,6 +191,34 @@
   .ip36-hero{min-height:390px}.ip36-hero-copy{max-width:100%}.ip36-hero-art{top:190px;right:10%;width:70%}
   .ip36-summary{grid-template-columns:1fr}
 }
+@media(max-width:640px){
+  .ip36-head{gap:10px;min-height:0;padding-bottom:8px}
+  .ip36-head h1{font-size:20px!important}
+  .ip36-head p{font-size:10.5px!important;line-height:1.35;overflow-wrap:anywhere}
+  .ip36-page-icon{width:42px!important;height:42px!important;border-radius:12px!important}
+  .ip36-head-actions{
+    display:grid!important;
+    grid-template-columns:minmax(0,1fr) 36px 36px;
+    gap:8px!important;
+    align-items:center;
+    width:100%;
+  }
+  .ip36-head-actions>.ip36-search,
+  .ip36-head-actions> :nth-child(1){grid-column:1/-1;width:100%!important;min-width:0}
+  .ip36-head-actions> :nth-child(2){
+    grid-column:1;min-width:0;width:100%;justify-content:flex-start;padding:0 10px!important;flex:none
+  }
+  .ip36-head-actions> :nth-child(3){grid-column:2;justify-self:center}
+  .ip36-head-actions> :nth-child(4){
+    grid-column:3;width:36px;min-width:36px;padding:0!important;flex:none;justify-self:center
+  }
+  .ip36-head-actions> :nth-child(5),
+  .ip36-head-actions>.ip36-btn.primary{
+    grid-column:1/-1;width:100%;min-width:0!important;justify-content:center;flex:none
+  }
+  [data-app-shell][data-page="ipo"] .ip36-search{width:100%!important}
+  [data-app-shell][data-page="ipo"] .ip36-btn.primary{min-width:0!important}
+}
 @media(max-width:560px){
   .ip36-kpis{grid-template-columns:1fr}
   .ip36-tabsbar{align-items:flex-start;flex-direction:column}
@@ -507,3 +535,59 @@ html:not(.dark):not([data-theme="dark"]) .ip36-kpi small{color:#6d7f74}
   [data-app-shell][data-page="ipo"] .ip36-ipo-text{display:none!important}
 }
 
+
+/* Mobile containment — must follow pixel-match !important rules */
+@media (max-width: 640px) {
+  [data-app-shell][data-page="ipo"] .ip36,
+  [data-app-shell][data-page="ipo"] .ip36-head,
+  [data-app-shell][data-page="ipo"] .ip36-head-left,
+  [data-app-shell][data-page="ipo"] .ip36-head-actions,
+  [data-app-shell][data-page="ipo"] .ip36-kpis,
+  [data-app-shell][data-page="ipo"] .ip36-top,
+  [data-app-shell][data-page="ipo"] .ip36-body {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    box-sizing: border-box !important;
+  }
+  [data-app-shell][data-page="ipo"] .ip36-head {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 10px !important;
+  }
+  [data-app-shell][data-page="ipo"] .ip36-head-left > div {
+    min-width: 0 !important;
+  }
+  [data-app-shell][data-page="ipo"] .ip36-head p {
+    overflow-wrap: anywhere !important;
+  }
+  [data-app-shell][data-page="ipo"] .ip36-head-actions {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) 36px 36px !important;
+    gap: 8px !important;
+  }
+  [data-app-shell][data-page="ipo"] .ip36-search {
+    width: 100% !important;
+    max-width: none !important;
+    flex: 0 0 auto !important;
+  }
+  [data-app-shell][data-page="ipo"] .ip36-btn {
+    min-width: 0 !important;
+  }
+  [data-app-shell][data-page="ipo"] .ip36-btn.primary {
+    min-width: 0 !important;
+    width: 100% !important;
+  }
+  [data-app-shell][data-page="ipo"] .ip36-top,
+  [data-app-shell][data-page="ipo"] .ip36-body {
+    grid-template-columns: 1fr !important;
+  }
+  [data-app-shell][data-page="ipo"] .ip36-hero-copy {
+    max-width: 100% !important;
+  }
+  [data-app-shell][data-page="ipo"] .app-main {
+    padding-left: 12px !important;
+    padding-right: 12px !important;
+    overflow-x: clip !important;
+  }
+}

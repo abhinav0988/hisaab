@@ -1697,6 +1697,68 @@
     grid-template-columns: 1fr;
   }
 
+  /* Narrow phones: title → search → month+icons → full-width CTA */
+  @media (max-width: 640px) {
+    .c38-head {
+      gap: 10px;
+      min-height: 0;
+      padding-bottom: 8px;
+    }
+
+    .c38-page-icon {
+      width: 42px;
+      height: 42px;
+      border-radius: 12px;
+    }
+
+    .c38-head h1 {
+      font-size: 20px;
+    }
+
+    .c38-head p {
+      font-size: 10.5px;
+      line-height: 1.35;
+    }
+
+    .c38-head-actions {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 38px 38px;
+      gap: 8px;
+      align-items: center;
+      flex-wrap: nowrap;
+    }
+
+    .c38-search {
+      grid-column: 1 / -1;
+      width: 100%;
+      min-width: 0;
+    }
+
+    .c38-head-actions > .c38-btn:not(.icon):not(.primary) {
+      grid-column: 1;
+      min-width: 0;
+      width: 100%;
+      justify-content: flex-start;
+      padding: 0 10px;
+    }
+
+    .c38-notify-wrap {
+      grid-column: 2;
+      justify-self: center;
+    }
+
+    .c38-head-actions > .c38-btn.icon:not(.c38-notify) {
+      grid-column: 3;
+      justify-self: center;
+    }
+
+    .c38-head-actions > .c38-btn.primary {
+      grid-column: 1 / -1;
+      width: 100%;
+      min-width: 0;
+    }
+  }
+
   .c38-bill-grid,
   .c38-feat-row.is-bill {
     grid-template-columns: 1fr 1fr;

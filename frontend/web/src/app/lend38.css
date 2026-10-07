@@ -1154,6 +1154,9 @@
 
   .l38-hero {
     grid-template-columns: 1fr;
+    max-width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
   }
 
   .l38-hero-visual {
@@ -1165,6 +1168,21 @@
     width: min(100%, 320px);
     height: 180px;
     object-position: center;
+  }
+
+  @media (max-width: 640px) {
+    .l38-hero {
+      padding: 18px 14px;
+      min-height: 0;
+    }
+
+    .l38-hero-copy h2 {
+      font-size: 22px;
+    }
+
+    .l38-hero-copy p {
+      font-size: 12px;
+    }
   }
 
   .l38-why ul {
@@ -1189,6 +1207,67 @@
 
   .l38-kpis {
     grid-template-columns: 1fr;
+  }
+
+  @media (max-width: 640px) {
+    .l38-head {
+      gap: 10px;
+      min-height: 0;
+      padding-bottom: 8px;
+    }
+
+    .l38-page-icon {
+      width: 42px;
+      height: 42px;
+      border-radius: 12px;
+    }
+
+    .l38-head h1 {
+      font-size: 20px;
+    }
+
+    .l38-head p {
+      font-size: 10.5px;
+      line-height: 1.35;
+    }
+
+    .l38-head-actions {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 38px 38px;
+      gap: 8px;
+      align-items: center;
+      flex-wrap: nowrap;
+    }
+
+    .l38-search {
+      grid-column: 1 / -1;
+      width: 100%;
+      min-width: 0;
+    }
+
+    .l38-head-actions > .l38-btn:not(.icon):not(.primary) {
+      grid-column: 1;
+      min-width: 0;
+      width: 100%;
+      justify-content: flex-start;
+      padding: 0 10px;
+    }
+
+    .l38-notify-wrap {
+      grid-column: 2;
+      justify-self: center;
+    }
+
+    .l38-head-actions > .l38-btn.icon:not(.l38-notify) {
+      grid-column: 3;
+      justify-self: center;
+    }
+
+    .l38-head-actions > .l38-btn.primary {
+      grid-column: 1 / -1;
+      width: 100%;
+      min-width: 0;
+    }
   }
 
   .l38-why ul {
@@ -1406,4 +1485,36 @@ html:not(.dark):not([data-theme="dark"]) .l38-notify-panel header p,
 html:not(.dark):not([data-theme="dark"]) .l38-notify-panel small,
 html:not(.dark):not([data-theme="dark"]) .l38-notify-empty {
   color: #6d7f74;
+}
+
+
+/* Mobile containment */
+@media (max-width: 640px) {
+  [data-app-shell][data-page="lend"] .app-main {
+    padding-left: 12px !important;
+    padding-right: 12px !important;
+    overflow-x: clip !important;
+  }
+  .lend38,
+  .l38-hero,
+  .l38-why,
+  .l38-why ul,
+  .l38-head,
+  .l38-head-actions {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    box-sizing: border-box !important;
+  }
+  .l38-hero {
+    padding: 16px 12px !important;
+  }
+  .l38-why ul {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) !important;
+    gap: 8px !important;
+  }
+  .l38-why li {
+    min-width: 0 !important;
+    padding: 10px !important;
+  }
 }

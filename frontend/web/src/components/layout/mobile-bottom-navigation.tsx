@@ -31,13 +31,13 @@ export function MobileBottomNavigation({
       />
       <Link
         href="/transactions?action=add"
-        className="grid min-h-11 min-w-11 justify-items-center gap-0.5 rounded-[15px] bg-[var(--primary)] px-1 py-1.5 text-[11px] font-extrabold text-white dark:text-[#08140d]"
+        className="grid min-h-11 min-w-0 max-w-full justify-items-center gap-0.5 overflow-hidden rounded-[15px] bg-[var(--primary)] px-1 py-[7px] text-[10px] font-extrabold text-white sm:text-[11px] dark:text-[#08140d]"
         aria-label="Add Transaction"
       >
         <span className="grid size-8 place-items-center rounded-[13px] border border-white/10 bg-white/15">
           <Plus size={18} aria-hidden="true" />
         </span>
-        Add
+        <span className="max-w-full truncate leading-none">Add</span>
       </Link>
       <MobileItem href="/budgets" label="Limits" icon={Timer} active={isNavActive(pathname, "/budgets")} />
       <button
