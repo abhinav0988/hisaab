@@ -308,7 +308,7 @@ export function SplitDashboard({
 
   return (
     <main className="sm-page">
-      <header className="sm-head">
+      <header className="sm-head sm-head-dash">
         <h1>
           <BadgeCheck size={22} className="sm-title-check" aria-hidden />
           Split Money
@@ -323,12 +323,15 @@ export function SplitDashboard({
         </label>
         <div className="sm-tools">
           <button className="sm-month" type="button">
-            <CalendarDays size={16} /> {monthLabel} <ChevronDown size={14} />
+            <CalendarDays size={16} />
+            <span className="sm-month-label">{monthLabel}</span>
+            <ChevronDown size={14} />
           </button>
           <ImmersedNotifyButton className="sm-chrome-btn" emptyText="No split alerts yet." />
           <ImmersedThemeButton className="sm-chrome-btn" />
-          <button className="sm-primary" type="button" onClick={onCreate}>
-            <Plus size={18} /> Split Expense
+          <button className="sm-primary sm-head-cta" type="button" onClick={onCreate}>
+            <Plus size={18} />
+            <span>Split Expense</span>
           </button>
         </div>
       </header>

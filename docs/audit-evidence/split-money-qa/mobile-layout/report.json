@@ -1,0 +1,242 @@
+[
+  {
+    "viewport": "320",
+    "route": "dashboard",
+    "scrollWidth": 310,
+    "clientWidth": 320,
+    "overflow": -10,
+    "shellWidth": 310,
+    "mainWidth": 310,
+    "file": "dashboard-320.png"
+  },
+  {
+    "viewport": "320",
+    "route": "create",
+    "scrollWidth": 310,
+    "clientWidth": 320,
+    "overflow": -10,
+    "shellWidth": 310,
+    "mainWidth": 310,
+    "file": "create-320.png"
+  },
+  {
+    "viewport": "320",
+    "route": "history",
+    "scrollWidth": 310,
+    "clientWidth": 320,
+    "overflow": -10,
+    "shellWidth": 310,
+    "mainWidth": 310,
+    "file": "history-320.png"
+  },
+  {
+    "viewport": "320",
+    "route": "groups",
+    "scrollWidth": 310,
+    "clientWidth": 320,
+    "overflow": -10,
+    "shellWidth": 310,
+    "mainWidth": 310,
+    "file": "groups-320.png"
+  },
+  {
+    "viewport": "320",
+    "route": "people",
+    "scrollWidth": 310,
+    "clientWidth": 320,
+    "overflow": -10,
+    "shellWidth": 310,
+    "mainWidth": 310,
+    "file": "people-320.png"
+  },
+  {
+    "viewport": "320",
+    "route": "import",
+    "scrollWidth": 310,
+    "clientWidth": 320,
+    "overflow": -10,
+    "shellWidth": 310,
+    "mainWidth": 310,
+    "file": "import-320.png"
+  },
+  {
+    "viewport": "360",
+    "route": "dashboard",
+    "scrollWidth": 350,
+    "clientWidth": 360,
+    "overflow": -10,
+    "shellWidth": 350,
+    "mainWidth": 350,
+    "file": "dashboard-360.png"
+  },
+  {
+    "viewport": "360",
+    "route": "create",
+    "scrollWidth": 350,
+    "clientWidth": 360,
+    "overflow": -10,
+    "shellWidth": 350,
+    "mainWidth": 350,
+    "file": "create-360.png"
+  },
+  {
+    "viewport": "360",
+    "route": "history",
+    "scrollWidth": 350,
+    "clientWidth": 360,
+    "overflow": -10,
+    "shellWidth": 350,
+    "mainWidth": 350,
+    "file": "history-360.png"
+  },
+  {
+    "viewport": "360",
+    "route": "groups",
+    "scrollWidth": 350,
+    "clientWidth": 360,
+    "overflow": -10,
+    "shellWidth": 350,
+    "mainWidth": 350,
+    "file": "groups-360.png"
+  },
+  {
+    "viewport": "360",
+    "route": "people",
+    "scrollWidth": 350,
+    "clientWidth": 360,
+    "overflow": -10,
+    "shellWidth": 350,
+    "mainWidth": 350,
+    "file": "people-360.png"
+  },
+  {
+    "viewport": "360",
+    "route": "import",
+    "scrollWidth": 350,
+    "clientWidth": 360,
+    "overflow": -10,
+    "shellWidth": 350,
+    "mainWidth": 350,
+    "file": "import-360.png"
+  },
+  {
+    "viewport": "390",
+    "route": "dashboard",
+    "scrollWidth": 380,
+    "clientWidth": 390,
+    "overflow": -10,
+    "shellWidth": 380,
+    "mainWidth": 380,
+    "file": "dashboard-390.png"
+  },
+  {
+    "viewport": "390",
+    "route": "create",
+    "scrollWidth": 380,
+    "clientWidth": 390,
+    "overflow": -10,
+    "shellWidth": 380,
+    "mainWidth": 380,
+    "file": "create-390.png"
+  },
+  {
+    "viewport": "390",
+    "route": "history",
+    "scrollWidth": 380,
+    "clientWidth": 390,
+    "overflow": -10,
+    "shellWidth": 380,
+    "mainWidth": 380,
+    "file": "history-390.png"
+  },
+  {
+    "viewport": "390",
+    "route": "groups",
+    "scrollWidth": 380,
+    "clientWidth": 390,
+    "overflow": -10,
+    "shellWidth": 380,
+    "mainWidth": 380,
+    "file": "groups-390.png"
+  },
+  {
+    "viewport": "390",
+    "route": "people",
+    "scrollWidth": 380,
+    "clientWidth": 390,
+    "overflow": -10,
+    "shellWidth": 380,
+    "mainWidth": 380,
+    "file": "people-390.png"
+  },
+  {
+    "viewport": "390",
+    "route": "import",
+    "scrollWidth": 380,
+    "clientWidth": 390,
+    "overflow": -10,
+    "shellWidth": 380,
+    "mainWidth": 380,
+    "file": "import-390.png"
+  },
+  {
+    "viewport": "430",
+    "route": "dashboard",
+    "scrollWidth": 420,
+    "clientWidth": 430,
+    "overflow": -10,
+    "shellWidth": 420,
+    "mainWidth": 420,
+    "file": "dashboard-430.png"
+  },
+  {
+    "viewport": "430",
+    "route": "create",
+    "scrollWidth": 420,
+    "clientWidth": 430,
+    "overflow": -10,
+    "shellWidth": 420,
+    "mainWidth": 420,
+    "file": "create-430.png"
+  },
+  {
+    "viewport": "430",
+    "route": "history",
+    "scrollWidth": 420,
+    "clientWidth": 430,
+    "overflow": -10,
+    "shellWidth": 420,
+    "mainWidth": 420,
+    "file": "history-430.png"
+  },
+  {
+    "viewport": "430",
+    "route": "groups",
+    "scrollWidth": 420,
+    "clientWidth": 430,
+    "overflow": -10,
+    "shellWidth": 420,
+    "mainWidth": 420,
+    "file": "groups-430.png"
+  },
+  {
+    "viewport": "430",
+    "route": "people",
+    "scrollWidth": 420,
+    "clientWidth": 430,
+    "overflow": -10,
+    "shellWidth": 420,
+    "mainWidth": 420,
+    "file": "people-430.png"
+  },
+  {
+    "viewport": "430",
+    "route": "import",
+    "scrollWidth": 420,
+    "clientWidth": 430,
+    "overflow": -10,
+    "shellWidth": 420,
+    "mainWidth": 420,
+    "file": "import-430.png"
+  }
+]
