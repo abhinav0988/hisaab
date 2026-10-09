@@ -85,12 +85,11 @@ export async function listAccounts(env: Env, userId: string) {
         sortOrder: Number(row.sortOrder ?? 99),
       })),
     );
-  const catalogued = rows.filter((item) => item.catalogId && item.isActive);
-  const pool = catalogued.length ? catalogued : rows.filter((item) => item.isActive);
+  const pool = rows.filter((item) => item.isActive);
   const seen = new Set<string>();
   const unique = [];
   for (const row of pool) {
-    const key = (row.catalogId || row.type).toLowerCase();
+    const key = row.catalogId ? `catalog:${row.catalogId}` : `account:${row.id}`;
     if (seen.has(key)) continue;
     seen.add(key);
     const account = { ...row };

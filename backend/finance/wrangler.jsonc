@@ -14,5 +14,12 @@
       "migrations_dir": "../../packages/database/migrations",
     },
   ],
+  "r2_buckets": [
+    {
+      "binding": "FILES",
+      "bucket_name": "hisaab-files"
+    }
+  ],
+  "ai": { "binding": "AI" },
   "observability": { "enabled": true, "head_sampling_rate": 1 },
 }

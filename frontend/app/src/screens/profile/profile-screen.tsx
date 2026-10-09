@@ -74,7 +74,7 @@ export function ProfileScreen({ navigation }: Props) {
           { name: "Security & Privacy", icon: "shield-checkmark-outline" },
           { name: "Settings", icon: "settings-outline" },
         ]}
-        onPress={(item) => item === "Settings" && navigation.navigate("Settings")}
+        onPress={(item) => item === "Personal Information" ? navigation.navigate("EditProfile") : item === "Settings" && navigation.navigate("Settings")}
       />
       <MenuGroup
         title="PREFERENCES"
@@ -96,7 +96,16 @@ export function ProfileScreen({ navigation }: Props) {
           { name: "Terms & Privacy", icon: "document-text-outline" },
           { name: "About Hisaab", icon: "information-circle-outline" },
         ]}
+        onPress={(item) => {
+          if (item === "Terms & Privacy") navigation.navigate("Terms");
+        }}
       />
+      <Pressable onPress={() => navigation.navigate("Terms")} style={styles.button}>
+        <Icon name="document-text-outline" /><Text style={[styles.buttonText, { flex: 1 }]}>Terms of Service</Text><Icon name="chevron-forward" />
+      </Pressable>
+      <Pressable onPress={() => navigation.navigate("Privacy")} style={styles.button}>
+        <Icon name="document-text-outline" /><Text style={[styles.buttonText, { flex: 1 }]}>Privacy Policy</Text><Icon name="chevron-forward" />
+      </Pressable>
       <Pressable
         style={styles.logout}
         onPress={() => {

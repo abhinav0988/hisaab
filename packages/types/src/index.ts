@@ -1,4 +1,12 @@
 export type Currency = "INR" | "NPR" | "PKR" | "BDT" | "USD";
+/**
+ * The product surface that initiated a request. This deliberately does not
+ * describe an operating system; use ClientPlatform for that concern.
+ */
+export const SALES_CHANNELS = ["WEB", "MWEB", "APP"] as const;
+export type SalesChannel = (typeof SALES_CHANNELS)[number];
+export const CLIENT_PLATFORMS = ["ios", "android", "web"] as const;
+export type ClientPlatform = (typeof CLIENT_PLATFORMS)[number];
 export type TransactionType = "INCOME" | "EXPENSE" | "TRANSFER";
 export type AccountType =
   | "CASH"
@@ -67,6 +75,71 @@ export interface Transaction {
   categoryName?: string;
   categoryIcon?: string;
   tags?: string[];
+  tagIds?: string[];
+}
+export interface StoredFile {
+  id: string;
+  fileUrl: string;
+  originalName: string;
+  mimeType: "image/jpeg" | "image/png" | "application/pdf";
+  sizeBytes: number;
+  createdAt: string;
+}
+export interface TransactionAttachment {
+  id: string;
+  transactionId: string;
+  fileId: string;
+  fileUrl: string;
+  originalName: string;
+  mimeType: string;
+  createdAt: string;
+}
+export interface Tag {
+  id: string;
+  name: string;
+  createdAt: string;
+}
+export interface OcrLineItem {
+  name: string;
+  quantity: number | null;
+  amountMinor: number;
+}
+export interface OcrReceiptResult {
+  merchant: string | null;
+  date: string | null;
+  totalMinor: number | null;
+  currency: Currency | null;
+  taxMinor: number | null;
+  items: OcrLineItem[];
+  confidence: number | null;
+  detected: boolean;
+}
+export type RepaymentStatus = "PENDING" | "PARTIALLY_REPAID" | "REPAID" | "OVERPAID";
+export interface LendRepayment {
+  id: string;
+  lendRecordId: string;
+  amountMinor: number;
+  paidAt: string;
+  note: string | null;
+  createdAt: string;
+}
+export interface LoanPayment {
+  id: string;
+  loanId: string;
+  installmentNumber: number | null;
+  amountMinor: number;
+  paidAt: string;
+  paymentType: "EMI";
+  createdAt: string;
+}
+export interface FacilityPayment {
+  id: string;
+  creditFacilityId: string;
+  amountMinor: number;
+  paidAt: string;
+  statementPeriod: string | null;
+  kind: CreditFacilityKind;
+  createdAt: string;
 }
 export interface Budget {
   id: string;
@@ -321,6 +394,9 @@ export interface LendRecord {
   givenOn: string;
   dueOn: string;
   status: LendStatus;
+  totalRepaidMinor?: number;
+  remainingMinor?: number;
+  repaymentStatus?: RepaymentStatus;
   currency: Currency;
   createdAt: string;
   updatedAt: string;
@@ -431,6 +507,7 @@ export interface SplitExpense {
   collectedMinor?: number;
   pendingMinor?: number;
   settledPercent?: number;
+  receipts?: SplitReceipt[];
   createdAt: string;
   updatedAt: string;
 }
@@ -490,6 +567,16 @@ export interface SplitDashboard {
   recentExpenses: SplitExpense[];
 }
 
+export interface SplitReceipt {
+  id: string;
+  expenseId: string | null;
+  fileId: string | null;
+  fileUrl: string;
+  fileName: string | null;
+  mimeType: string | null;
+  description: string | null;
+  ocrStatus: string;
+}
 export interface SplitHistory {
   summary: {
     totalExpenses: number;

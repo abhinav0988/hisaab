@@ -6,6 +6,7 @@ import { ArrowLeft, Check } from "lucide-react";
 import { toast } from "sonner";
 import { money } from "@/lib/format";
 import { splitMoneyService } from "@/services/split-money.service";
+import { SplitReceiptsPanel } from "@/components/finance/record-panels";
 import { avatarTone, initials, statusLabel } from "./split-format";
 
 export function ExpenseDetail({
@@ -252,6 +253,17 @@ export function ExpenseDetail({
           >
             Apply Adjustment
           </button>
+          <div style={{ marginTop: 18 }}>
+            <SplitReceiptsPanel
+              expense={expense}
+              onChanged={() =>
+                Promise.all([
+                  qc.invalidateQueries({ queryKey: ["split-expense", expenseId] }),
+                  qc.invalidateQueries({ queryKey: ["split-money"] }),
+                ])
+              }
+            />
+          </div>
         </section>
 
         <aside className="sm-preview">

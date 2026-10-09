@@ -200,7 +200,7 @@ export async function createTransaction(env: Env, userId: string, input: CreateT
       where: and(eq(tags.userId, userId), eq(tags.name, name)),
     });
     if (!tag) {
-      tag = { id: newId(), userId, name, createdAt: now() };
+      tag = { id: newId(), userId, name, normalizedName: name.trim().toLowerCase().replace(/\s+/g, " "), createdAt: now() };
       await db.insert(tags).values(tag);
     }
     await db
@@ -264,7 +264,7 @@ export async function updateTransaction(
         where: and(eq(tags.userId, userId), eq(tags.name, name)),
       });
       if (!tag) {
-        tag = { id: newId(), userId, name, createdAt: now() };
+        tag = { id: newId(), userId, name, normalizedName: name.trim().toLowerCase().replace(/\s+/g, " "), createdAt: now() };
         await db.insert(tags).values(tag);
       }
       await db

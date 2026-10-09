@@ -11,7 +11,7 @@ export function createAuth(env: Env, ctx: WaitUntilContext) {
     secret: env.BETTER_AUTH_SECRET,
     baseURL: env.BETTER_AUTH_URL,
     basePath: "/api/auth",
-    trustedOrigins: [env.APP_ORIGIN],
+    trustedOrigins: [env.APP_ORIGIN, "hisaab://", "hisaab://*"],
     advanced: {
       useSecureCookies: env.ENVIRONMENT === "production",
       cookiePrefix: "hisaab",

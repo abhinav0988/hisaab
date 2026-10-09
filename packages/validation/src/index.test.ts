@@ -293,3 +293,52 @@ describe("transfer validation", () => {
     ).toBe(true);
   });
 });
+
+describe("uploads, tags, repayments, and OCR normalization", () => {
+  it("accepts matching file signatures and rejects a mismatched MIME", async () => {
+    const { detectUploadMime, tagCreateSchema, lendRepaymentSchema, ocrReceiptSchema, normalizeReceiptExtraction, lendRepaymentPosition } = await import("./index");
+    expect(detectUploadMime(new Uint8Array([0xff, 0xd8, 0xff, 0x00]), "image/jpeg")).toBe("image/jpeg");
+    expect(detectUploadMime(new Uint8Array([0x89, 0x50, 0x4e, 0x47]), "image/png")).toBe("image/png");
+    expect(detectUploadMime(new Uint8Array([0x25, 0x50, 0x44, 0x46]), "application/pdf")).toBe("application/pdf");
+    expect(detectUploadMime(new Uint8Array([0xff, 0xd8, 0xff, 0x00]), "image/png")).toBeNull();
+    expect(detectUploadMime(new Uint8Array([0, 1, 2, 3]), "text/plain")).toBeNull();
+    expect(tagCreateSchema.safeParse({ name: "  " }).success).toBe(false);
+    expect(lendRepaymentSchema.safeParse({ amountMinor: 0 }).success).toBe(false);
+    expect(ocrReceiptSchema.safeParse({ fileId: "file-id-1" }).success).toBe(true);
+    expect(normalizeReceiptExtraction({ merchant: "Cafe", totalMinor: "12", items: [{ name: "Tea" }] })).toEqual({
+      merchant: "Cafe",
+      date: null,
+      totalMinor: null,
+      currency: null,
+      taxMinor: null,
+      items: [],
+      confidence: null,
+      detected: true,
+    });
+    expect(normalizeReceiptExtraction("no text").detected).toBe(false);
+    expect(lendRepaymentPosition(1000, 0).repaymentStatus).toBe("PENDING");
+    expect(lendRepaymentPosition(1000, 400)).toMatchObject({ remainingMinor: 600, repaymentStatus: "PARTIALLY_REPAID" });
+    expect(lendRepaymentPosition(1000, 1000).repaymentStatus).toBe("REPAID");
+    expect(lendRepaymentPosition(1000, 1200)).toMatchObject({ remainingMinor: -200, repaymentStatus: "OVERPAID" });
+    const { nextLendReminderRun, lendReminderSchema } = await import("./index");
+    expect(lendReminderSchema.safeParse({ remindAt: "not-a-date", frequency: "ONCE" }).success).toBe(false);
+    expect(lendReminderSchema.safeParse({ remindAt: "2026-10-09T12:00:00.000Z", frequency: "MONTHLY" }).success).toBe(false);
+    const once = nextLendReminderRun({
+      frequency: "ONCE",
+      remindAt: "2026-10-09T12:00:00.000Z",
+      dueOn: "2026-10-12",
+      from: "2026-10-09T12:00:00.000Z",
+      afterSend: true,
+    });
+    expect(once).toEqual({ enabled: false, nextRunAt: null });
+    const daily = nextLendReminderRun({
+      frequency: "DAILY",
+      remindAt: "2026-10-09T12:00:00.000Z",
+      dueOn: "2026-10-12",
+      from: "2026-10-09T12:00:00.000Z",
+      afterSend: true,
+    });
+    expect(daily.enabled).toBe(true);
+    expect(daily.nextRunAt).toBe("2026-10-10T12:00:00.000Z");
+  });
+});

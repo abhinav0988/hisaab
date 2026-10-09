@@ -1,6 +1,9 @@
 import { z } from "zod";
 
 export const currencySchema = z.enum(["INR", "NPR", "PKR", "BDT", "USD"]);
+/** Shared transport contract. Keep client entry point distinct from OS. */
+export const salesChannelSchema = z.enum(["WEB", "MWEB", "APP"]);
+export const clientPlatformSchema = z.enum(["ios", "android", "web"]);
 export const transactionTypeSchema = z.enum(["INCOME", "EXPENSE", "TRANSFER"]);
 export const accountTypeSchema = z.enum([
   "CASH",
@@ -81,6 +84,7 @@ export const transactionSchema = z
     notes: z.string().trim().max(500).nullable().optional(),
     transactionAt: z.iso.datetime({ offset: true }),
     tags: z.array(z.string().trim().min(1).max(30)).max(10).optional(),
+    tagIds: z.array(idSchema).max(10).optional(),
     recurring: z.boolean().optional(),
     creditFacilityId: idSchema.optional(),
     destinationAccountId: idSchema.optional(),
@@ -249,7 +253,142 @@ export const transactionQuerySchema = z.object({
   page: z.coerce.number().int().min(1).default(1),
   limit: z.coerce.number().int().min(1).max(500).default(20),
   sort: z.enum(["newest", "oldest", "amount_desc", "amount_asc"]).default("newest"),
+  tag: z.string().trim().min(1).max(30).optional(),
 });
+
+export const MAX_UPLOAD_BYTES = 8 * 1024 * 1024;
+export const uploadMimeSchema = z.enum(["image/jpeg", "image/png", "application/pdf"]);
+
+/** Accept a declared type only when the bytes match that type. */
+export function detectUploadMime(bytes: Uint8Array, declared: string) {
+  const mime = uploadMimeSchema.safeParse(declared);
+  if (!mime.success || bytes.byteLength < 4) return null;
+  const jpeg = bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff;
+  const png = bytes[0] === 0x89 && bytes[1] === 0x50 && bytes[2] === 0x4e && bytes[3] === 0x47;
+  const pdf = bytes[0] === 0x25 && bytes[1] === 0x50 && bytes[2] === 0x44 && bytes[3] === 0x46;
+  if (mime.data === "image/jpeg" && jpeg) return mime.data;
+  if (mime.data === "image/png" && png) return mime.data;
+  if (mime.data === "application/pdf" && pdf) return mime.data;
+  return null;
+}
+
+export function normalizeTagName(name: string) {
+  return name.trim().toLowerCase().replace(/\s+/g, " ");
+}
+
+export const tagCreateSchema = z.object({
+  name: z.string().trim().min(1).max(30),
+});
+export const tagPatchSchema = tagCreateSchema;
+
+export const fileAttachSchema = z.object({
+  fileId: idSchema,
+});
+
+export const ocrReceiptSchema = z.object({
+  fileId: idSchema,
+});
+
+export const lendRepaymentSchema = z.object({
+  amountMinor: z.number().int().positive().safe(),
+  paidAt: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  note: z.string().trim().max(200).nullable().optional(),
+});
+
+export type RepaymentStatus = "PENDING" | "PARTIALLY_REPAID" | "REPAID" | "OVERPAID";
+
+/** Principal stays unchanged. Remaining can be negative when repaid exceeds principal. */
+export function lendRepaymentPosition(principalMinor: number, totalRepaidMinor: number) {
+  const principal = Math.max(0, Math.trunc(principalMinor) || 0);
+  const repaid = Math.max(0, Math.trunc(totalRepaidMinor) || 0);
+  const remainingMinor = principal - repaid;
+  const repaymentStatus: RepaymentStatus =
+    repaid <= 0 ? "PENDING" : repaid < principal ? "PARTIALLY_REPAID" : repaid === principal ? "REPAID" : "OVERPAID";
+  return { principalMinor: principal, totalRepaidMinor: repaid, remainingMinor, repaymentStatus };
+}
+
+export const lendReminderFrequencySchema = z.enum(["ONCE", "DAILY", "WEEKLY", "BEFORE_DUE"]);
+
+export const lendReminderSchema = z.object({
+  enabled: z.boolean().default(true),
+  remindAt: z.string().refine((value) => !Number.isNaN(Date.parse(value)), "Choose a valid reminder time."),
+  frequency: lendReminderFrequencySchema,
+});
+
+export function nextLendReminderRun(input: {
+  frequency: z.infer<typeof lendReminderFrequencySchema>;
+  remindAt: string;
+  dueOn: string;
+  from: string;
+  afterSend: boolean;
+}) {
+  if (input.afterSend && (input.frequency === "ONCE" || input.frequency === "BEFORE_DUE")) {
+    return { enabled: false, nextRunAt: null as string | null };
+  }
+  if (!input.afterSend && input.frequency === "BEFORE_DUE") {
+    const due = new Date(`${input.dueOn}T00:00:00.000Z`);
+    if (Number.isNaN(due.getTime())) return { enabled: false, nextRunAt: null };
+    due.setUTCDate(due.getUTCDate() - 1);
+    return { enabled: true, nextRunAt: due.toISOString() };
+  }
+  const base = new Date(input.afterSend ? input.from : input.remindAt);
+  if (Number.isNaN(base.getTime())) return { enabled: false, nextRunAt: null };
+  if (input.afterSend && input.frequency === "DAILY") base.setUTCDate(base.getUTCDate() + 1);
+  if (input.afterSend && input.frequency === "WEEKLY") base.setUTCDate(base.getUTCDate() + 7);
+  return { enabled: true, nextRunAt: base.toISOString() };
+}
+
+export type OcrReceiptResult = {
+  merchant: string | null;
+  date: string | null;
+  totalMinor: number | null;
+  currency: "INR" | "NPR" | "PKR" | "BDT" | "USD" | null;
+  taxMinor: number | null;
+  items: Array<{ name: string; quantity: number | null; amountMinor: number }>;
+  confidence: number | null;
+  detected: boolean;
+};
+
+function nullableText(value: unknown, max = 120) {
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim();
+  if (!trimmed || trimmed.length > max) return null;
+  return trimmed;
+}
+
+/** Keep only fields that parse. Missing or malformed provider output stays null. */
+export function normalizeReceiptExtraction(raw: unknown): OcrReceiptResult {
+  const source = raw && typeof raw === "object" ? (raw as Record<string, unknown>) : {};
+  const date = nullableText(source.date, 10);
+  const currency = nullableText(source.currency, 3)?.toUpperCase();
+  const total = source.totalMinor;
+  const tax = source.taxMinor;
+  const confidence = source.confidence;
+  const items = Array.isArray(source.items)
+    ? source.items.flatMap((item) => {
+        if (!item || typeof item !== "object") return [];
+        const row = item as Record<string, unknown>;
+        const name = nullableText(row.name, 80);
+        const amountMinor = row.amountMinor;
+        if (!name || typeof amountMinor !== "number" || !Number.isSafeInteger(amountMinor)) return [];
+        const quantity =
+          typeof row.quantity === "number" && Number.isFinite(row.quantity) ? row.quantity : null;
+        return [{ name, quantity, amountMinor }];
+      })
+    : [];
+  const result: OcrReceiptResult = {
+    merchant: nullableText(source.merchant),
+    date: date && /^\d{4}-\d{2}-\d{2}$/.test(date) ? date : null,
+    totalMinor: typeof total === "number" && Number.isSafeInteger(total) && total >= 0 ? total : null,
+    currency: currency === "INR" || currency === "NPR" || currency === "PKR" || currency === "BDT" || currency === "USD" ? currency : null,
+    taxMinor: typeof tax === "number" && Number.isSafeInteger(tax) && tax >= 0 ? tax : null,
+    items,
+    confidence: typeof confidence === "number" && confidence >= 0 && confidence <= 1 ? confidence : null,
+    detected: false,
+  };
+  result.detected = Boolean(result.merchant || result.date || result.totalMinor != null || result.items.length);
+  return result;
+}
 
 export function majorToMinor(value: string): number {
   const normalized = value.trim();

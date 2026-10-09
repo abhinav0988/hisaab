@@ -32,7 +32,9 @@ import {
   loanSummary,
 } from "@hisaab/validation";
 import { AppError, currentMonth, monthBounds, newId, notFound, now } from "@hisaab/worker-lib";
+import { lendRepaymentPosition } from "@hisaab/validation";
 import { and, desc, eq } from "drizzle-orm";
+import { commitStatements, readIdempotent } from "../idempotency";
 import { mapCardLedgerRow } from "../card-ledger";
 import type { z } from "zod";
 
@@ -211,7 +213,10 @@ export async function getLoanSchedule(env: Env, userId: string, id: string) {
   };
 }
 
-export async function payLoanEmi(env: Env, userId: string, id: string) {
+export async function payLoanEmi(env: Env, userId: string, id: string, idempotencyKey: string | null = null) {
+  const scope = `loan-pay:${id}`;
+  const previous = await readIdempotent<Awaited<ReturnType<typeof getLoan>>>(env, userId, scope, idempotencyKey);
+  if (previous) return previous;
   const existing = await getLoan(env, userId, id);
   const paid = applyPaidEmi({
     remainingEmis: existing.remainingEmis,
@@ -222,7 +227,6 @@ export async function payLoanEmi(env: Env, userId: string, id: string) {
     emiDay: existing.emiDay,
   });
   if (!paid) throw new AppError(400, "EMI_PAID", "All EMIs on this loan are already paid.");
-  const db = createDatabase(env.DB);
   const changes = {
     remainingEmis: paid.remainingEmis,
     dueOn: paid.dueOn,
@@ -230,8 +234,33 @@ export async function payLoanEmi(env: Env, userId: string, id: string) {
     progress: paid.progress,
     updatedAt: now(),
   };
-  await db.update(loans).set(changes).where(and(eq(loans.id, id), eq(loans.userId, userId)));
-  return { ...existing, ...changes };
+  const response = { ...existing, ...changes };
+  const paidAt = now();
+  return commitStatements(
+    env,
+    [
+      env.DB.prepare(
+        "UPDATE loans SET remaining_emis = ?, due_on = ?, outstanding_minor = ?, progress = ?, updated_at = ? WHERE id = ? AND user_id = ?",
+      ).bind(changes.remainingEmis, changes.dueOn, changes.outstandingMinor, changes.progress, changes.updatedAt, id, userId),
+      env.DB.prepare(
+        "INSERT INTO loan_payments (id, loan_id, user_id, installment_number, amount_minor, paid_at, payment_type, created_at) VALUES (?, ?, ?, ?, ?, ?, 'EMI', ?)",
+      ).bind(newId(), id, userId, existing.totalEmis - existing.remainingEmis + 1, existing.emiMinor, paidAt, paidAt),
+    ],
+    userId,
+    scope,
+    idempotencyKey,
+    response,
+  );
+}
+
+export async function listLoanPayments(env: Env, userId: string, id: string) {
+  await getLoan(env, userId, id);
+  const rows = await env.DB.prepare(
+    "SELECT id, loan_id AS loanId, installment_number AS installmentNumber, amount_minor AS amountMinor, paid_at AS paidAt, payment_type AS paymentType, created_at AS createdAt FROM loan_payments WHERE loan_id = ? AND user_id = ? ORDER BY created_at ASC",
+  )
+    .bind(id, userId)
+    .all();
+  return rows.results;
 }
 
 export async function createLoan(env: Env, userId: string, input: LoanInput) {
@@ -603,13 +632,17 @@ export async function deleteCreditFacility(env: Env, userId: string, id: string)
   if (existing.kind === "CARD") await snapshotCardUtilisation(env, userId);
 }
 
-export async function payCreditFacility(env: Env, userId: string, id: string) {
+export async function payCreditFacility(env: Env, userId: string, id: string, idempotencyKey: string | null = null) {
+  const scope = `facility-pay:${id}`;
+  const previous = await readIdempotent(env, userId, scope, idempotencyKey);
+  if (previous) return previous;
   const existing = await getCreditFacility(env, userId, id);
-  if (existing.kind !== "CARD") {
-    throw new AppError(400, "NOT_A_CARD", "Only credit cards can be marked as paid.");
-  }
   if (cardPaidThisCycle(existing.lastPaidOn, existing.dueOn)) {
-    throw new AppError(400, "CARD_PAID", "This card's due is already marked paid for this cycle.");
+    throw new AppError(
+      400,
+      existing.kind === "CARD" ? "CARD_PAID" : "FACILITY_PAID",
+      "This due is already marked paid for this cycle.",
+    );
   }
   const paid = applyCardPayment({
     usedMinor: existing.usedMinor,
@@ -621,7 +654,6 @@ export async function payCreditFacility(env: Env, userId: string, id: string) {
   if (!paid) {
     throw new AppError(400, "NOTHING_DUE", "Add a minimum due or overdue amount before marking this paid.");
   }
-  const db = createDatabase(env.DB);
   const changes = {
     usedMinor: paid.usedMinor,
     overdueMinor: paid.overdueMinor,
@@ -629,21 +661,57 @@ export async function payCreditFacility(env: Env, userId: string, id: string) {
     dueOn: paid.dueOn,
     updatedAt: now(),
   };
-  await db
-    .update(creditFacilities)
-    .set(changes)
-    .where(and(eq(creditFacilities.id, id), eq(creditFacilities.userId, userId)));
-  await snapshotCardUtilisation(env, userId);
-  return { ...existing, ...changes };
+  const response = { ...existing, ...changes };
+  const paidAt = now();
+  const result = await commitStatements(
+    env,
+    [
+      env.DB.prepare(
+        "UPDATE credit_facilities SET used_minor = ?, overdue_minor = ?, last_paid_on = ?, due_on = ?, updated_at = ? WHERE id = ? AND user_id = ?",
+      ).bind(changes.usedMinor, changes.overdueMinor, changes.lastPaidOn, changes.dueOn, changes.updatedAt, id, userId),
+      env.DB.prepare(
+        "INSERT INTO facility_payments (id, credit_facility_id, user_id, amount_minor, paid_at, statement_period, kind, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+      ).bind(newId(), id, userId, paid.paidMinor, paidAt, existing.dueOn, existing.kind, paidAt),
+    ],
+    userId,
+    scope,
+    idempotencyKey,
+    response,
+  );
+  if (existing.kind === "CARD") await snapshotCardUtilisation(env, userId);
+  return result;
+}
+
+export async function listFacilityPayments(env: Env, userId: string, id: string) {
+  await getCreditFacility(env, userId, id);
+  const rows = await env.DB.prepare(
+    "SELECT id, credit_facility_id AS creditFacilityId, amount_minor AS amountMinor, paid_at AS paidAt, statement_period AS statementPeriod, kind, created_at AS createdAt FROM facility_payments WHERE credit_facility_id = ? AND user_id = ? ORDER BY created_at ASC",
+  )
+    .bind(id, userId)
+    .all();
+  return rows.results;
 }
 
 export async function listLendRecords(env: Env, userId: string) {
   const db = createDatabase(env.DB);
-  return db
+  const rows = await db
     .select()
     .from(lendRecords)
     .where(eq(lendRecords.userId, userId))
     .orderBy(desc(lendRecords.createdAt));
+  return decorateLend(env, userId, rows);
+}
+
+async function decorateLend<T extends { id: string; amountMinor: number }>(env: Env, userId: string, rows: T[]) {
+  if (!rows.length) return rows.map((row) => ({ ...row, ...lendRepaymentPosition(row.amountMinor, 0) }));
+  const placeholders = rows.map(() => "?").join(", ");
+  const sums = await env.DB.prepare(
+    `SELECT lend_record_id AS id, COALESCE(SUM(amount_minor), 0) AS total FROM lend_repayments WHERE user_id = ? AND lend_record_id IN (${placeholders}) GROUP BY lend_record_id`,
+  )
+    .bind(userId, ...rows.map((row) => row.id))
+    .all<{ id: string; total: number }>();
+  const repaid = new Map(sums.results.map((row) => [row.id, Number(row.total)]));
+  return rows.map((row) => ({ ...row, ...lendRepaymentPosition(row.amountMinor, repaid.get(row.id) ?? 0) }));
 }
 
 export async function getLendRecord(env: Env, userId: string, id: string) {
@@ -652,7 +720,63 @@ export async function getLendRecord(env: Env, userId: string, id: string) {
     where: and(eq(lendRecords.id, id), eq(lendRecords.userId, userId)),
   });
   if (!row) throw notFound("Lend record");
-  return row;
+  const [decorated] = await decorateLend(env, userId, [row]);
+  return decorated!;
+}
+
+export async function listLendRepayments(env: Env, userId: string, id: string) {
+  const record = await getLendRecord(env, userId, id);
+  const rows = await env.DB.prepare(
+    "SELECT id, lend_record_id AS lendRecordId, amount_minor AS amountMinor, paid_at AS paidAt, note, created_at AS createdAt FROM lend_repayments WHERE lend_record_id = ? AND user_id = ? ORDER BY created_at ASC",
+  )
+    .bind(id, userId)
+    .all();
+  return { record, items: rows.results };
+}
+
+export async function recordLendRepayment(
+  env: Env,
+  userId: string,
+  id: string,
+  input: { amountMinor: number; paidAt?: string; note?: string | null },
+  idempotencyKey: string | null = null,
+) {
+  const scope = `lend-repay:${id}`;
+  const previous = await readIdempotent(env, userId, scope, idempotencyKey);
+  if (previous) return previous;
+  const existing = await getLendRecord(env, userId, id);
+  const next = lendRepaymentPosition(existing.amountMinor, existing.totalRepaidMinor + input.amountMinor);
+  const today = now().slice(0, 10);
+  const status = next.remainingMinor <= 0 ? "settled" : existing.dueOn < today ? "due" : "pending";
+  const paidAt = input.paidAt ?? today;
+  const createdAt = now();
+  const repayment = {
+    id: newId(),
+    lendRecordId: id,
+    amountMinor: input.amountMinor,
+    paidAt,
+    note: input.note ?? null,
+    createdAt,
+  };
+  const response = { repayment, record: { ...existing, ...next, status, updatedAt: createdAt } };
+  return commitStatements(
+    env,
+    [
+      env.DB.prepare(
+        "INSERT INTO lend_repayments (id, lend_record_id, user_id, amount_minor, paid_at, note, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
+      ).bind(repayment.id, id, userId, repayment.amountMinor, repayment.paidAt, repayment.note, createdAt),
+      env.DB.prepare("UPDATE lend_records SET status = ?, updated_at = ? WHERE id = ? AND user_id = ?").bind(
+        status,
+        createdAt,
+        id,
+        userId,
+      ),
+    ],
+    userId,
+    scope,
+    idempotencyKey,
+    response,
+  );
 }
 
 export async function createLendRecord(env: Env, userId: string, input: LendInput) {

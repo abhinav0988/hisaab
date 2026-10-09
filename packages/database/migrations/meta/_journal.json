@@ -113,6 +113,20 @@
       "when": 1787907500000,
       "tag": "0015_split_money",
       "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "6",
+      "when": 1787907600000,
+      "tag": "0016_files_ledgers_tags",
+      "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "6",
+      "when": 1787907700000,
+      "tag": "0017_lend_reminders",
+      "breakpoints": true
     }
   ]
 }

@@ -6,8 +6,13 @@ const ALLOWED_HEADERS = [
   "Authorization",
   "X-Requested-With",
   "X-Hisaab-Country",
+  "X-Sales-Channel",
+  "X-Client-Platform",
+  "X-App-Version",
+  "Idempotency-Key",
 ];
 const MAX_JSON_BODY_BYTES = 64 * 1024;
+const MAX_UPLOAD_BODY_BYTES = 8 * 1024 * 1024;
 /** Strict credential endpoints — shared low budget. */
 const CREDENTIAL_AUTH = [
   "/sign-in",
@@ -27,6 +32,7 @@ export function sameOrigin(origin: string | undefined, allowed: string) {
 }
 
 function allowedMutationOrigin(origin: string | undefined, env: Env) {
+  if (origin?.startsWith("hisaab://")) return true;
   return (
     sameOrigin(origin, env.APP_ORIGIN) || sameOrigin(origin, new URL(env.BETTER_AUTH_URL).origin)
   );
@@ -76,7 +82,7 @@ export const browserCors = createMiddleware<{ Bindings: Env }>(async (c, next) =
   };
   if (c.req.method === "OPTIONS") {
     stamp();
-    c.header("Access-Control-Allow-Methods", "GET,HEAD,POST,PATCH,DELETE,OPTIONS");
+    c.header("Access-Control-Allow-Methods", "GET,HEAD,POST,PUT,PATCH,DELETE,OPTIONS");
     c.header("Access-Control-Allow-Headers", ALLOWED_HEADERS.join(","));
     c.header("Access-Control-Max-Age", "86400");
     c.header("Vary", "Access-Control-Request-Headers", { append: true });
@@ -109,7 +115,9 @@ export const bodyLimit = createMiddleware(async (c, next) => {
     return;
   }
   const length = Number(raw);
-  if (!Number.isFinite(length) || length < 0 || length > MAX_JSON_BODY_BYTES) {
+  const multipart = c.req.path.startsWith("/api/v1/files") && (c.req.header("content-type") ?? "").includes("multipart/form-data");
+  const limit = multipart ? MAX_UPLOAD_BODY_BYTES : MAX_JSON_BODY_BYTES;
+  if (!Number.isFinite(length) || length < 0 || length > limit) {
     throw new AppError(413, "PAYLOAD_TOO_LARGE", "This request is too large.");
   }
   await next();

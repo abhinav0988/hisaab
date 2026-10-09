@@ -1,7 +1,8 @@
 import { created, fromZod, noContent, ok } from "@hisaab/worker-lib";
 import { loanPatchSchema, loanSchema } from "@hisaab/validation";
 import { Hono } from "hono";
-import { createLoan, deleteLoan, getLoan, getLoanSchedule, listLoans, payLoanEmi, updateLoan } from "../services/service";
+import { createLoan, deleteLoan, getLoan, getLoanSchedule, listLoanPayments, listLoans, payLoanEmi, updateLoan } from "../services/service";
+import { parseIdempotencyKey } from "../idempotency";
 
 export const loanRoutes = new Hono<{ Bindings: Env; Variables: { userId: string } }>();
 loanRoutes.get("/", async (c) => ok(c, await listLoans(c.env, c.get("userId"))));
@@ -13,7 +14,20 @@ loanRoutes.post("/", async (c) => {
 loanRoutes.get("/:id/schedule", async (c) =>
   ok(c, await getLoanSchedule(c.env, c.get("userId"), c.req.param("id"))),
 );
-loanRoutes.post("/:id/pay", async (c) => ok(c, await payLoanEmi(c.env, c.get("userId"), c.req.param("id"))));
+loanRoutes.get("/:id/payments", async (c) =>
+  ok(c, await listLoanPayments(c.env, c.get("userId"), c.req.param("id"))),
+);
+loanRoutes.post("/:id/pay", async (c) =>
+  ok(
+    c,
+    await payLoanEmi(
+      c.env,
+      c.get("userId"),
+      c.req.param("id"),
+      parseIdempotencyKey(c.req.header("Idempotency-Key")),
+    ),
+  ),
+);
 loanRoutes.get("/:id", async (c) => ok(c, await getLoan(c.env, c.get("userId"), c.req.param("id"))));
 loanRoutes.patch("/:id", async (c) => {
   const parsed = loanPatchSchema.safeParse(await c.req.json());

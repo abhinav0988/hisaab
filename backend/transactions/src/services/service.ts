@@ -4,8 +4,6 @@ import {
   categories,
   createDatabase,
   creditSpendDelta,
-  tags,
-  transactionTags,
   transactions,
   userPreferences,
 } from "@hisaab/database";
@@ -18,6 +16,7 @@ import type { z } from "zod";
 import { and, eq, isNull, or } from "drizzle-orm";
 import { AppError, audit, newId, notFound, now } from "@hisaab/worker-lib";
 import { buildTransactionFilterSql, TRANSACTION_LIST_FROM } from "../filters";
+import { assignTransactionTags, transactionTagNames } from "./tags";
 import { transferDestinationError } from "../transfer";
 
 type CreateTransaction = z.infer<typeof transactionSchema>;
@@ -102,7 +101,7 @@ async function validateReferences(
 
 export async function listTransactions(env: Env, userId: string, query: Query) {
   const filter = buildTransactionFilterSql(userId, query);
-  const statement = `SELECT t.id, t.account_id AS accountId, t.category_id AS categoryId, t.type, t.amount_minor AS amountMinor, t.currency, t.merchant, t.notes, t.transaction_at AS transactionAt, t.destination_account_id AS destinationAccountId, a.name AS accountName, dest.name AS destinationAccountName, c.name AS categoryName, c.icon AS categoryIcon, c.colour AS categoryColour FROM ${TRANSACTION_LIST_FROM} WHERE ${filter.where} ORDER BY ${filter.order} LIMIT ? OFFSET ?`;
+  const statement = `SELECT t.id, t.account_id AS accountId, t.category_id AS categoryId, t.type, t.amount_minor AS amountMinor, t.currency, t.merchant, t.notes, t.transaction_at AS transactionAt, t.destination_account_id AS destinationAccountId, a.name AS accountName, dest.name AS destinationAccountName, c.name AS categoryName, c.icon AS categoryIcon, c.colour AS categoryColour, (SELECT group_concat(tg.name, char(31)) FROM transaction_tags tt JOIN tags tg ON tg.id = tt.tag_id WHERE tt.transaction_id = t.id AND tg.user_id = t.user_id) AS tagNames FROM ${TRANSACTION_LIST_FROM} WHERE ${filter.where} ORDER BY ${filter.order} LIMIT ? OFFSET ?`;
   const [rows, count] = await Promise.all([
     env.DB.prepare(statement)
       .bind(...filter.values, filter.limit, filter.offset)
@@ -113,7 +112,14 @@ export async function listTransactions(env: Env, userId: string, query: Query) {
   ]);
   const total = count?.total ?? 0;
   return {
-    items: rows.results,
+    items: (rows.results as Array<Record<string, unknown>>).map((row) => {
+      const tagNames = row.tagNames;
+      const { tagNames: _ignored, ...rest } = row;
+      return {
+        ...rest,
+        tags: typeof tagNames === "string" && tagNames ? tagNames.split("\u001f") : [],
+      };
+    }),
     meta: {
       page: query.page,
       limit: query.limit,
@@ -133,7 +139,7 @@ export async function getTransaction(env: Env, userId: string, id: string) {
     ),
   });
   if (!row) throw notFound("Transaction");
-  return row;
+  return { ...row, ...(await transactionTagNames(env, userId, id)) };
 }
 export async function createTransaction(env: Env, userId: string, input: CreateTransaction) {
   const categoryId =
@@ -146,7 +152,7 @@ export async function createTransaction(env: Env, userId: string, input: CreateT
     destinationAccountId: input.destinationAccountId,
   });
   const db = createDatabase(env.DB);
-  const { tags: tagNames, creditFacilityId, ...data } = input;
+  const { tags: tagNames, tagIds, creditFacilityId, ...data } = input;
   delete data.recurring;
   const value = {
     id: newId(),
@@ -163,19 +169,7 @@ export async function createTransaction(env: Env, userId: string, input: CreateT
     deletedAt: null,
   };
   await db.insert(transactions).values(value);
-  for (const name of [...new Set(tagNames ?? [])]) {
-    let tag = await db.query.tags.findFirst({
-      where: and(eq(tags.userId, userId), eq(tags.name, name)),
-    });
-    if (!tag) {
-      tag = { id: newId(), userId, name, createdAt: now() };
-      await db.insert(tags).values(tag);
-    }
-    await db
-      .insert(transactionTags)
-      .values({ transactionId: value.id, tagId: tag.id })
-      .onConflictDoNothing();
-  }
+  await assignTransactionTags(db, userId, value.id, tagNames, tagIds);
   const credit = await adjustCreditSpend(db, {
     userId,
     accountId: value.accountId,
@@ -214,7 +208,7 @@ export async function updateTransaction(
   };
   await validateReferences(env, userId, merged);
   const db = createDatabase(env.DB);
-  const { tags: tagNames, creditFacilityId, ...data } = input;
+  const { tags: tagNames, tagIds, creditFacilityId, ...data } = input;
   delete data.recurring;
   const nextFacilityId =
     creditFacilityId ??
@@ -225,22 +219,7 @@ export async function updateTransaction(
     .update(transactions)
     .set({ ...data, creditFacilityId: nextFacilityId, updatedAt: now() })
     .where(and(eq(transactions.id, id), eq(transactions.userId, userId)));
-  if (tagNames) {
-    await db.delete(transactionTags).where(eq(transactionTags.transactionId, id));
-    for (const name of [...new Set(tagNames)]) {
-      let tag = await db.query.tags.findFirst({
-        where: and(eq(tags.userId, userId), eq(tags.name, name)),
-      });
-      if (!tag) {
-        tag = { id: newId(), userId, name, createdAt: now() };
-        await db.insert(tags).values(tag);
-      }
-      await db
-        .insert(transactionTags)
-        .values({ transactionId: id, tagId: tag.id })
-        .onConflictDoNothing();
-    }
-  }
+  if (tagNames || tagIds) await assignTransactionTags(db, userId, id, tagNames, tagIds);
   await adjustCreditSpend(db, {
     userId,
     accountId: existing.accountId,

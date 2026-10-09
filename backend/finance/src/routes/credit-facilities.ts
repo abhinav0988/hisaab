@@ -9,7 +9,9 @@ import {
   listCreditFacilities,
   payCreditFacility,
   updateCreditFacility,
+  listFacilityPayments,
 } from "../services/service";
+import { parseIdempotencyKey } from "../idempotency";
 
 export const creditFacilityRoutes = new Hono<{ Bindings: Env; Variables: { userId: string } }>();
 creditFacilityRoutes.get("/", async (c) => {
@@ -26,8 +28,19 @@ creditFacilityRoutes.post("/", async (c) => {
 creditFacilityRoutes.get("/dashboard", async (c) =>
   ok(c, await getCreditDashboard(c.env, c.get("userId"))),
 );
+creditFacilityRoutes.get("/:id/payments", async (c) =>
+  ok(c, await listFacilityPayments(c.env, c.get("userId"), c.req.param("id"))),
+);
 creditFacilityRoutes.post("/:id/pay", async (c) =>
-  ok(c, await payCreditFacility(c.env, c.get("userId"), c.req.param("id"))),
+  ok(
+    c,
+    await payCreditFacility(
+      c.env,
+      c.get("userId"),
+      c.req.param("id"),
+      parseIdempotencyKey(c.req.header("Idempotency-Key")),
+    ),
+  ),
 );
 creditFacilityRoutes.get("/:id", async (c) =>
   ok(c, await getCreditFacility(c.env, c.get("userId"), c.req.param("id"))),

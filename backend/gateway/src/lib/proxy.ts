@@ -16,7 +16,7 @@ export function domainFetcher(env: Env, path: string): Fetcher | null {
   if (path.startsWith("/api/v1/profile")) return env.PROFILE;
   if (path.startsWith("/api/v1/accounts")) return env.ACCOUNTS;
   if (path.startsWith("/api/v1/categories")) return env.CATEGORIES;
-  if (path.startsWith("/api/v1/transactions")) return env.TRANSACTIONS;
+  if (path.startsWith("/api/v1/transactions") || path.startsWith("/api/v1/tags")) return env.TRANSACTIONS;
   if (path.startsWith("/api/v1/budgets") || path.startsWith("/api/v1/goals")) return env.BUDGETS;
   if (path.startsWith("/api/v1/recurring-transactions")) return env.RECURRING;
   if (
@@ -25,7 +25,9 @@ export function domainFetcher(env: Env, path: string): Fetcher | null {
     path.startsWith("/api/v1/loans") ||
     path.startsWith("/api/v1/credit-facilities") ||
     path.startsWith("/api/v1/lend-records") ||
-    path.startsWith("/api/v1/split-money")
+    path.startsWith("/api/v1/split-money") ||
+    path.startsWith("/api/v1/files") ||
+    path.startsWith("/api/v1/ocr")
   )
     return env.FINANCE;
   if (path.startsWith("/api/v1/dashboard") || path.startsWith("/api/v1/reports"))

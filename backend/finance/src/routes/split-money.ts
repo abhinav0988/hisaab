@@ -1,4 +1,4 @@
-import { created, fromZod, noContent, ok } from "@hisaab/worker-lib";
+import { AppError, created, fromZod, noContent, ok } from "@hisaab/worker-lib";
 import {
   splitAdjustmentSchema,
   splitExpensePatchSchema,
@@ -38,6 +38,8 @@ import {
   updateGroup,
   updatePerson,
   uploadReceipt,
+  attachExpenseReceipt,
+  deleteExpenseReceipt,
 } from "../services/split-money";
 
 type Vars = { Bindings: Env; Variables: { userId: string } };
@@ -193,6 +195,24 @@ splitMoneyRoutes.post("/expenses/:id/convert-lend", async (c) =>
   ok(c, await convertExpenseToLend(c.env, c.get("userId"), c.req.param("id"))),
 );
 
+splitMoneyRoutes.post("/expenses/:id/receipts", async (c) => {
+  const parsed = splitReceiptUploadSchema.safeParse(await c.req.json());
+  if (!parsed.success) throw fromZod(parsed.error);
+  if (!parsed.data.fileId) {
+    throw new AppError(400, "VALIDATION_ERROR", "Upload the file first and send its fileId.");
+  }
+  return created(
+    c,
+    await attachExpenseReceipt(c.env, c.get("userId"), c.req.param("id"), {
+      fileId: parsed.data.fileId,
+      description: parsed.data.description,
+    }),
+  );
+});
+splitMoneyRoutes.delete("/expenses/:id/receipts/:receiptId", async (c) => {
+  await deleteExpenseReceipt(c.env, c.get("userId"), c.req.param("id"), c.req.param("receiptId"));
+  return noContent(c);
+});
 splitMoneyRoutes.post("/receipts", async (c) => {
   const parsed = splitReceiptUploadSchema.safeParse(await c.req.json());
   if (!parsed.success) throw fromZod(parsed.error);

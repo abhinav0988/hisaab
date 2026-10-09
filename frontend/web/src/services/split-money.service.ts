@@ -72,5 +72,16 @@ export const splitMoneyService = {
       totalMinor: number | null;
       ocrStatus: string;
     }>("/api/v1/split-money/receipts", body),
+  uploadFile: (file: File) => {
+    const body = new FormData();
+    body.append("file", file);
+    return api<import("@hisaab/types").StoredFile>("/api/v1/files", { method: "POST", body });
+  },
+  scanReceipt: (fileId: string) =>
+    post<import("@hisaab/types").OcrReceiptResult>("/api/v1/ocr/receipt", { fileId }),
+  attachReceipt: (expenseId: string, fileId: string) =>
+    post<import("@hisaab/types").SplitReceipt>(`/api/v1/split-money/expenses/${expenseId}/receipts`, { fileId }),
+  deleteReceipt: (expenseId: string, receiptId: string) =>
+    api(`/api/v1/split-money/expenses/${expenseId}/receipts/${receiptId}`, { method: "DELETE" }),
   simplifyAll: () => post("/api/v1/split-money/simplify", {}),
 };

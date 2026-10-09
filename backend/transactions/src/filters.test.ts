@@ -69,4 +69,10 @@ describe("buildTransactionFilterSql", () => {
     expect(filter.offset).toBe(40);
     expect(filter.limit).toBe(20);
   });
+
+  it("filters by a normalized tag name", () => {
+    const filter = buildTransactionFilterSql("user-1", { ...base, tag: "Travel" });
+    expect(filter.where).toContain("tg.normalized_name = ?");
+    expect(filter.values).toContain("travel");
+  });
 });

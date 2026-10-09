@@ -1,5 +1,5 @@
 import type { Transaction } from "@hisaab/types";
-import { StyleSheet, Text, View } from "react-native";
+import { Pressable, StyleSheet, Text, View } from "react-native";
 import { colors } from "../../theme/tokens";
 import { money, signedMoney } from "../../lib/format";
 import { IconBox } from "../ui/icon-box";
@@ -20,10 +20,12 @@ export function TransactionList({
   items,
   limit,
   currency = "INR",
+  onPress,
 }: {
   items: Transaction[];
   limit?: number;
   currency?: string;
+  onPress?: (transaction: Transaction) => void;
 }) {
   const rows = typeof limit === "number" ? items.slice(0, limit) : items;
   if (!rows.length) {
@@ -33,7 +35,7 @@ export function TransactionList({
   return (
     <View style={styles.list}>
       {rows.map((row) => (
-        <View key={row.id} style={styles.txn}>
+        <Pressable key={row.id} onPress={() => onPress?.(row)} disabled={!onPress} style={styles.txn}>
           <IconBox name={iconFor(row)} />
           <View style={{ flex: 1 }}>
             <Text style={styles.title}>{row.merchant || row.categoryName || "Transaction"}</Text>
@@ -41,6 +43,12 @@ export function TransactionList({
               {row.accountName ?? "Account"}
               {row.categoryName ? ` · ${row.categoryName}` : ""}
             </Text>
+            {row.tags?.length ? (
+              <Text style={styles.small} numberOfLines={1}>
+                {row.tags.slice(0, 3).map((tag) => `#${tag}`).join("  ")}
+                {row.tags.length > 3 ? `  +${row.tags.length - 3}` : ""}
+              </Text>
+            ) : null}
           </View>
           <Text
             style={{
@@ -50,7 +58,7 @@ export function TransactionList({
           >
             {signedMoney(row.amountMinor, currency || row.currency, row.type)}
           </Text>
-        </View>
+        </Pressable>
       ))}
     </View>
   );

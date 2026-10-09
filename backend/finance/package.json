@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@hisaab/database": "workspace:*",
+    "@hisaab/types": "workspace:*",
     "@hisaab/validation": "workspace:*",
     "@hisaab/worker-lib": "workspace:*",
     "drizzle-orm": "0.45.2",

@@ -44,11 +44,11 @@ type RecurringRow = {
   isActive?: boolean;
 };
 
-const quickActions: { title: string; icon: IconName; toolId?: string; add?: boolean }[] = [
+const quickActions: { title: string; icon: IconName; destination?: keyof AppStackParamList; add?: boolean }[] = [
   { title: "Add Money", icon: "wallet-outline", add: true },
   { title: "Send Money", icon: "swap-horizontal-outline", add: true },
-  { title: "Budgets", icon: "speedometer-outline", toolId: "budgets" },
-  { title: "My Cards", icon: "card-outline", toolId: "cards" },
+  { title: "Budgets", icon: "speedometer-outline", destination: "Budgets" },
+  { title: "My Cards", icon: "card-outline", destination: "CreditCards" },
 ];
 
 function greetingLabel() {
@@ -222,7 +222,7 @@ export function HomeScreen({ navigation }: Props) {
           </View>
           <Pressable
             style={styles.notifyBtn}
-            onPress={() => navigation.navigate("Feature", { toolId: "bills" })}
+            onPress={() => navigation.navigate("Recurring")}
             hitSlop={8}
           >
             <Icon name="notifications-outline" size={22} color={colors.white} />
@@ -318,8 +318,8 @@ export function HomeScreen({ navigation }: Props) {
               key={action.title}
               style={styles.quickItem}
               onPress={() => {
-                if (action.add) navigation.navigate("Add");
-                else if (action.toolId) navigation.navigate("Feature", { toolId: action.toolId });
+                if (action.add) navigation.navigate("AddTransaction");
+                else if (action.destination) navigation.navigate(action.destination as any);
               }}
             >
               <View style={styles.quickOrb}>
@@ -332,7 +332,7 @@ export function HomeScreen({ navigation }: Props) {
 
         <View style={styles.sectionHead}>
           <Text style={styles.sectionTitle}>Quick Overview</Text>
-          <Pressable onPress={() => navigation.navigate("Feature", { toolId: "reports" })}>
+          <Pressable onPress={() => navigation.navigate("Analytics")}>
             <Text style={styles.seeAll}>See All</Text>
           </Pressable>
         </View>

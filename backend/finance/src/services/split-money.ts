@@ -32,7 +32,7 @@ import {
   type splitPersonSchema,
   type splitReceiptUploadSchema,
 } from "@hisaab/validation";
-import { AppError, newId, notFound, now } from "@hisaab/worker-lib";
+import { AppError, fileUrl, newId, notFound, now, requireOwnedFile } from "@hisaab/worker-lib";
 import { and, asc, desc, eq, inArray, sql } from "drizzle-orm";
 import type { z } from "zod";
 
@@ -560,7 +560,7 @@ export async function getExpense(env: Env, userId: string, id: string) {
   });
   if (!expense) throw notFound("Expense");
 
-  const [participants, payers, payments, adjustments, activities, reminders, items, people] =
+  const [participants, payers, payments, adjustments, activities, reminders, items, people, receipts] =
     await Promise.all([
       db.select().from(splitParticipants).where(eq(splitParticipants.expenseId, id)),
       db.select().from(splitExpensePayers).where(eq(splitExpensePayers.expenseId, id)),
@@ -578,6 +578,7 @@ export async function getExpense(env: Env, userId: string, id: string) {
       db.select().from(splitReminders).where(eq(splitReminders.expenseId, id)),
       db.select().from(splitItems).where(eq(splitItems.expenseId, id)),
       db.select().from(splitPeople).where(eq(splitPeople.userId, userId)),
+      db.select().from(splitReceipts).where(and(eq(splitReceipts.expenseId, id), eq(splitReceipts.userId, userId))),
     ]);
   const peopleMap = new Map(people.map((p) => [p.id, p]));
   const itemIds = items.map((i) => i.id);
@@ -609,6 +610,7 @@ export async function getExpense(env: Env, userId: string, id: string) {
     adjustments,
     activities,
     reminders,
+    receipts,
     items: items.map((item) => ({
       ...item,
       personIds: itemParts.filter((ip) => ip.itemId === item.id).map((ip) => ip.personId),
@@ -762,8 +764,12 @@ export async function scheduleReminder(
 }
 
 export async function uploadReceipt(env: Env, userId: string, input: ReceiptInput) {
+  if (input.fileUrl && /^(file|content|blob|data):/i.test(input.fileUrl)) {
+    throw new AppError(400, "LOCAL_FILE_REJECTED", "Upload the file and send its fileId.");
+  }
+  const owned = input.fileId ? await requireOwnedFile(env.DB, userId, input.fileId) : null;
   const db = createDatabase(env.DB);
-  const useMock = (env as { SPLIT_RECEIPT_OCR?: string }).SPLIT_RECEIPT_OCR === "mock";
+  const useMock = !owned && (env as { SPLIT_RECEIPT_OCR?: string }).SPLIT_RECEIPT_OCR === "mock";
   const parser = useMock ? createMockReceiptParser() : null;
   const extracted = parser
     ? {
@@ -789,16 +795,60 @@ export async function uploadReceipt(env: Env, userId: string, input: ReceiptInpu
     id: newId(),
     userId,
     expenseId: null as string | null,
-    fileUrl: input.fileUrl,
-    fileName: input.fileName ?? null,
-    mimeType: input.mimeType ?? null,
-    fileSizeBytes: input.fileSizeBytes ?? null,
+    fileId: owned?.id ?? null,
+    fileUrl: owned ? fileUrl(owned.id) : input.fileUrl!,
+    description: input.description ?? null,
+    fileName: owned?.originalName ?? input.fileName ?? null,
+    mimeType: owned?.mimeType ?? input.mimeType ?? null,
+    fileSizeBytes: owned?.sizeBytes ?? input.fileSizeBytes ?? null,
     ...extracted,
     createdAt: now(),
     updatedAt: now(),
   };
   await db.insert(splitReceipts).values(value);
   return value;
+}
+
+export async function attachExpenseReceipt(
+  env: Env,
+  userId: string,
+  expenseId: string,
+  input: { fileId: string; description?: string },
+) {
+  await getExpense(env, userId, expenseId);
+  const owned = await requireOwnedFile(env.DB, userId, input.fileId);
+  const db = createDatabase(env.DB);
+  const value = {
+    id: newId(),
+    userId,
+    expenseId,
+    fileId: owned.id,
+    fileUrl: fileUrl(owned.id),
+    description: input.description ?? null,
+    fileName: owned.originalName,
+    mimeType: owned.mimeType,
+    fileSizeBytes: owned.sizeBytes,
+    merchant: null as string | null,
+    receiptDate: null as string | null,
+    subtotalMinor: null as number | null,
+    taxMinor: null as number | null,
+    totalMinor: null as number | null,
+    ocrStatus: "pending" as const,
+    ocrPayload: null as string | null,
+    createdAt: now(),
+    updatedAt: now(),
+  };
+  await db.insert(splitReceipts).values(value);
+  return value;
+}
+
+export async function deleteExpenseReceipt(env: Env, userId: string, expenseId: string, receiptId: string) {
+  const db = createDatabase(env.DB);
+  const receipt = await db.query.splitReceipts.findFirst({
+    where: and(eq(splitReceipts.id, receiptId), eq(splitReceipts.userId, userId), eq(splitReceipts.expenseId, expenseId)),
+  });
+  if (!receipt) throw notFound("Receipt");
+  await db.delete(splitReceipts).where(eq(splitReceipts.id, receipt.id));
 }
 
 export async function getDashboard(env: Env, userId: string) {

@@ -57,6 +57,7 @@ import {
 } from "recharts";
 import { toast } from "sonner";
 import { Modal } from "@/components/layout/modal";
+import { FacilityPaymentHistory } from "@/components/finance/record-panels";
 import { EmptyState, ErrorState, PageSkeleton } from "@/components/layout/states";
 import { ApiError } from "@/lib/api-client";
 import { displayDateLong, isoPlusDays, isoToday, sumMinor } from "@/lib/finance-modules";
@@ -553,6 +554,11 @@ export function CardsView() {
             />
             <RewardsPanel currency={currency} rewardsMinor={rewardsMinor} />
           </section>
+          {selectedCard ? (
+            <Card className="p-4">
+              <FacilityPaymentHistory key={selectedCard.id} facilityId={selectedCard.id} currency={selectedCard.currency} />
+            </Card>
+          ) : null}
 
           <section className="c38-lower">
             <RecentCardTransactions currency={currency} items={recentItems} />

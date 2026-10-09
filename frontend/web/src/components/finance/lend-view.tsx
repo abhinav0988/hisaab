@@ -42,6 +42,7 @@ import {
 } from "@/lib/finance-modules";
 import { money } from "@/lib/format";
 import { financeService } from "@/services/finance.service";
+import { LendReminderPanel, LendRepaymentPanel, repaymentLabel } from "@/components/finance/record-panels";
 import { profileService } from "@/services/profile.service";
 import "../../app/lend38.css";
 
@@ -246,20 +247,20 @@ export function LendView() {
   const lentMinor = useMemo(
     () => sumMinor(
       openList.filter((item) => item.kind === "lent"),
-      (item) => item.amountMinor,
+      (item) => item.remainingMinor ?? item.amountMinor,
     ),
     [openList],
   );
   const borrowedMinor = useMemo(
     () => sumMinor(
       openList.filter((item) => item.kind === "borrowed"),
-      (item) => item.amountMinor,
+      (item) => item.remainingMinor ?? item.amountMinor,
     ),
     [openList],
   );
   const overdueList = useMemo(() => openList.filter((item) => isOverdue(item, today)), [openList, today]);
   const overdueMinor = useMemo(
-    () => sumMinor(overdueList, (item) => item.amountMinor),
+    () => sumMinor(overdueList, (item) => item.remainingMinor ?? item.amountMinor),
     [overdueList],
   );
   const upcoming = useMemo(() => {
@@ -455,12 +456,13 @@ export function LendView() {
                           </small>
                         </div>
                         <div className="l38-row-meta">
-                          <b>{money(item.amountMinor, item.currency)}</b>
+                          <b>{money(Math.max(item.remainingMinor ?? item.amountMinor, 0), item.currency)}</b>
                           <span
                             className={`l38-status is-${item.status === "settled" ? "settled" : overdue ? "due" : "pending"}`}
                           >
                             {item.status === "settled" ? "settled" : overdue ? "due" : item.status}
                           </span>
+                          <small>{repaymentLabel(item.repaymentStatus)}</small>
                         </div>
                       </button>
                     </li>
@@ -567,7 +569,7 @@ export function LendView() {
                       <div>
                         <strong>{item.person}</strong>
                         <small>
-                          {displayDate(item.dueOn)} · {money(item.amountMinor, item.currency)}
+                          {displayDate(item.dueOn)} · {money(item.remainingMinor ?? item.amountMinor, item.currency)}
                         </small>
                       </div>
                     </button>
@@ -655,7 +657,7 @@ export function LendView() {
           onSwitchKind={(kind) => setOpen(kind === "borrowed" ? "borrow" : "lend")}
         />
       </Modal>
-      <Modal open={Boolean(editing)} onClose={() => setEditing(null)} title={editing ? editing.person : "Record"}>
+      <Modal open={Boolean(editing)} onClose={() => setEditing(null)} title={editing ? editing.person : "Record"} size="lg">
         {editing ? (
           <LendDetailForm
             key={editing.id}
@@ -670,6 +672,12 @@ export function LendView() {
               setDeleting(item);
             }}
           />
+        ) : null}
+        {editing ? (
+          <div className="mt-5 grid gap-6 border-t border-[var(--border)] pt-5">
+            <LendRepaymentPanel key={`repay-${editing.id}`} record={editing} />
+            <LendReminderPanel key={`remind-${editing.id}`} record={editing} />
+          </div>
         ) : null}
       </Modal>
       <ConfirmDialog

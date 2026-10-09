@@ -19,6 +19,24 @@ type Props = CompositeScreenProps<
 
 export function FinanceScreen({ navigation }: Props) {
   function openTool(tool: FinanceTool) {
+    if (tool.id === "categories") {
+      navigation.navigate("Categories");
+      return;
+    }
+    if (tool.id === "accounts" || tool.id === "bank") {
+      navigation.navigate("Accounts");
+      return;
+    }
+    if (tool.id === "budgets") { navigation.navigate("Budgets"); return; }
+    if (tool.id === "goals") { navigation.navigate("Goals"); return; }
+    if (tool.id === "bills") { navigation.navigate("Recurring"); return; }
+    if (tool.id === "lend") { navigation.navigate("BorrowLend"); return; }
+    if (tool.id === "loans") { navigation.navigate("Loans"); return; }
+    if (tool.id === "cards") { navigation.navigate("CreditCards"); return; }
+    if (tool.id === "upi") { navigation.navigate("UpiCredit"); return; }
+    if (tool.id === "investments") { navigation.navigate("Investments"); return; }
+    if (tool.id === "ipo") { navigation.navigate("Ipos"); return; }
+    if (tool.id === "reports") { navigation.navigate("Analytics"); return; }
     if (tool.id === "premium") {
       navigation.navigate("Subscription");
       return;

@@ -1,6 +1,6 @@
 import { INTERNAL_HEADER, USER_ID_HEADER } from "@hisaab/worker-lib";
 import { describe, expect, it } from "vitest";
-import { proxyTo } from "./lib/proxy";
+import { domainFetcher, proxyTo } from "./lib/proxy";
 
 describe("proxy header isolation", () => {
   it("drops client-supplied internal identity headers", async () => {
@@ -38,5 +38,22 @@ describe("proxy header isolation", () => {
     );
     expect(seen?.get(INTERNAL_HEADER)).toBe("1");
     expect(seen?.get(USER_ID_HEADER)).toBe("user-123");
+  });
+});
+
+describe("domain routing", () => {
+  const env = {
+    TRANSACTIONS: { name: "transactions" },
+    FINANCE: { name: "finance" },
+  } as unknown as Env;
+
+  it("sends new file, OCR, and tag routes to the owning workers", () => {
+    expect(domainFetcher(env, "/api/v1/files")).toBe(env.FINANCE);
+    expect(domainFetcher(env, "/api/v1/ocr/receipt")).toBe(env.FINANCE);
+    expect(domainFetcher(env, "/api/v1/loans/abc/payments")).toBe(env.FINANCE);
+    expect(domainFetcher(env, "/api/v1/credit-facilities/abc/payments")).toBe(env.FINANCE);
+    expect(domainFetcher(env, "/api/v1/lend-records/abc/repayments")).toBe(env.FINANCE);
+    expect(domainFetcher(env, "/api/v1/tags")).toBe(env.TRANSACTIONS);
+    expect(domainFetcher(env, "/api/v1/transactions/abc/attachments")).toBe(env.TRANSACTIONS);
   });
 });

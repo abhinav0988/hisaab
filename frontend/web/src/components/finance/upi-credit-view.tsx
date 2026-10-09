@@ -24,6 +24,7 @@ import { useTheme } from "next-themes";
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { toast } from "sonner";
 import { ConfirmDialog, Modal } from "@/components/layout/modal";
+import { FacilityPayPanel } from "@/components/finance/record-panels";
 import { ErrorState, PageSkeleton } from "@/components/layout/states";
 import { ApiError } from "@/lib/api-client";
 import { sumMinor } from "@/lib/finance-modules";
@@ -513,7 +514,7 @@ export function UpiCreditView() {
       <Modal open={open} onClose={() => setOpen(false)} title="Add UPI credit line">
         <UpiForm currency={currency} pending={create.isPending} onSave={(body) => create.mutate(body)} />
       </Modal>
-      <Modal open={Boolean(editing)} onClose={() => setEditing(null)} title="Edit UPI credit line">
+      <Modal open={Boolean(editing)} onClose={() => setEditing(null)} title="Edit UPI credit line" size="lg">
         {editing ? (
           <UpiForm
             key={editing.id}
@@ -522,6 +523,11 @@ export function UpiCreditView() {
             pending={update.isPending}
             onSave={(body) => update.mutate({ id: editing.id, body })}
           />
+        ) : null}
+        {editing ? (
+          <div className="mt-5 border-t border-[var(--border)] pt-5">
+            <FacilityPayPanel key={`pay-${editing.id}`} facility={editing} />
+          </div>
         ) : null}
       </Modal>
       <ConfirmDialog

@@ -250,11 +250,15 @@ export const tags = sqliteTable(
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
     name: text("name").notNull(),
+    normalizedName: text("normalized_name").notNull().default(""),
     createdAt: text("created_at")
       .notNull()
       .$defaultFn(() => new Date().toISOString()),
   },
-  (table) => [uniqueIndex("tags_user_name_unique").on(table.userId, table.name)],
+  (table) => [
+    uniqueIndex("tags_user_name_unique").on(table.userId, table.name),
+    uniqueIndex("tags_user_normalized_unique").on(table.userId, table.normalizedName),
+  ],
 );
 export const transactionTags = sqliteTable(
   "transaction_tags",
@@ -890,6 +894,8 @@ export const splitReceipts = sqliteTable(
       .references(() => users.id, { onDelete: "cascade" }),
     expenseId: text("expense_id").references(() => splitExpenses.id, { onDelete: "set null" }),
     fileUrl: text("file_url").notNull(),
+    fileId: text("file_id"),
+    description: text("description"),
     fileName: text("file_name"),
     mimeType: text("mime_type"),
     fileSizeBytes: integer("file_size_bytes"),
@@ -991,4 +997,179 @@ export const splitSettlementSuggestions = sqliteTable(
     index("split_settlement_suggestions_user_idx").on(table.userId),
     check("split_settlement_suggestions_amount_positive", sql`${table.amountMinor} > 0`),
   ],
+);
+
+export const storedFiles = sqliteTable(
+  "stored_files",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    storageKey: text("storage_key").notNull(),
+    originalName: text("original_name").notNull(),
+    mimeType: text("mime_type").notNull(),
+    sizeBytes: integer("size_bytes").notNull(),
+    createdAt: text("created_at")
+      .notNull()
+      .$defaultFn(() => new Date().toISOString()),
+  },
+  (table) => [
+    uniqueIndex("stored_files_key_unique").on(table.storageKey),
+    index("stored_files_user_idx").on(table.userId),
+    check("stored_files_size_positive", sql`${table.sizeBytes} > 0`),
+  ],
+);
+
+export const transactionAttachments = sqliteTable(
+  "transaction_attachments",
+  {
+    id: text("id").primaryKey(),
+    transactionId: text("transaction_id")
+      .notNull()
+      .references(() => transactions.id, { onDelete: "cascade" }),
+    fileId: text("file_id")
+      .notNull()
+      .references(() => storedFiles.id),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    createdAt: text("created_at")
+      .notNull()
+      .$defaultFn(() => new Date().toISOString()),
+  },
+  (table) => [
+    uniqueIndex("transaction_attachments_tx_file_unique").on(table.transactionId, table.fileId),
+    index("transaction_attachments_user_idx").on(table.userId),
+  ],
+);
+
+export const lendRepayments = sqliteTable(
+  "lend_repayments",
+  {
+    id: text("id").primaryKey(),
+    lendRecordId: text("lend_record_id")
+      .notNull()
+      .references(() => lendRecords.id, { onDelete: "cascade" }),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    amountMinor: integer("amount_minor").notNull(),
+    paidAt: text("paid_at").notNull(),
+    note: text("note"),
+    createdAt: text("created_at")
+      .notNull()
+      .$defaultFn(() => new Date().toISOString()),
+  },
+  (table) => [
+    index("lend_repayments_record_idx").on(table.lendRecordId),
+    check("lend_repayments_amount_positive", sql`${table.amountMinor} > 0`),
+  ],
+);
+
+export const loanPayments = sqliteTable(
+  "loan_payments",
+  {
+    id: text("id").primaryKey(),
+    loanId: text("loan_id")
+      .notNull()
+      .references(() => loans.id, { onDelete: "cascade" }),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    installmentNumber: integer("installment_number"),
+    amountMinor: integer("amount_minor").notNull(),
+    paidAt: text("paid_at").notNull(),
+    paymentType: text("payment_type").notNull(),
+    createdAt: text("created_at")
+      .notNull()
+      .$defaultFn(() => new Date().toISOString()),
+  },
+  (table) => [
+    index("loan_payments_loan_idx").on(table.loanId),
+    check("loan_payments_amount_positive", sql`${table.amountMinor} > 0`),
+    check("loan_payments_type_valid", sql`${table.paymentType} IN ('EMI')`),
+  ],
+);
+
+export const facilityPayments = sqliteTable(
+  "facility_payments",
+  {
+    id: text("id").primaryKey(),
+    creditFacilityId: text("credit_facility_id")
+      .notNull()
+      .references(() => creditFacilities.id, { onDelete: "cascade" }),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    amountMinor: integer("amount_minor").notNull(),
+    paidAt: text("paid_at").notNull(),
+    statementPeriod: text("statement_period"),
+    kind: text("kind").notNull(),
+    createdAt: text("created_at")
+      .notNull()
+      .$defaultFn(() => new Date().toISOString()),
+  },
+  (table) => [
+    index("facility_payments_facility_idx").on(table.creditFacilityId),
+    check("facility_payments_amount_positive", sql`${table.amountMinor} > 0`),
+    check("facility_payments_kind_valid", sql`${table.kind} IN ('CARD', 'UPI')`),
+  ],
+);
+
+export const lendReminders = sqliteTable(
+  "lend_reminders",
+  {
+    id: text("id").primaryKey(),
+    lendRecordId: text("lend_record_id")
+      .notNull()
+      .references(() => lendRecords.id, { onDelete: "cascade" }),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    enabled: integer("enabled", { mode: "boolean" }).notNull().default(true),
+    remindAt: text("remind_at").notNull(),
+    frequency: text("frequency").notNull(),
+    lastSentAt: text("last_sent_at"),
+    nextRunAt: text("next_run_at").notNull(),
+    createdAt: text("created_at").notNull(),
+    updatedAt: text("updated_at").notNull(),
+  },
+  (table) => [
+    uniqueIndex("lend_reminders_record_unique").on(table.lendRecordId),
+    index("lend_reminders_due_idx").on(table.enabled, table.nextRunAt),
+    check("lend_reminders_frequency_valid", sql`${table.frequency} IN ('ONCE', 'DAILY', 'WEEKLY', 'BEFORE_DUE')`),
+  ],
+);
+
+export const lendReminderDeliveries = sqliteTable(
+  "lend_reminder_deliveries",
+  {
+    id: text("id").primaryKey(),
+    reminderId: text("reminder_id")
+      .notNull()
+      .references(() => lendReminders.id, { onDelete: "cascade" }),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    slot: text("slot").notNull(),
+    channel: text("channel").notNull(),
+    createdAt: text("created_at").notNull(),
+  },
+  (table) => [
+    uniqueIndex("lend_reminder_deliveries_slot_unique").on(table.reminderId, table.slot, table.channel),
+    index("lend_reminder_deliveries_user_idx").on(table.userId),
+  ],
+);
+
+export const idempotencyKeys = sqliteTable(
+  "idempotency_keys",
+  {
+    userId: text("user_id").notNull(),
+    scope: text("scope").notNull(),
+    key: text("key").notNull(),
+    responseJson: text("response_json").notNull(),
+    createdAt: text("created_at").notNull(),
+  },
+  (table) => [primaryKey({ columns: [table.userId, table.scope, table.key] })],
 );

@@ -104,9 +104,13 @@ function asRows(payload: unknown): NseIpoRow[] {
   return Array.isArray(payload) ? (payload as NseIpoRow[]) : [];
 }
 
+const runtimeCache = () => (caches as unknown as { default?: Cache }).default;
+
 async function readCache(): Promise<UpcomingIpoFeed | null> {
   try {
-    const cached = await caches.default.match(CACHE_KEY);
+    const cache = runtimeCache();
+    if (!cache) return null;
+    const cached = await cache.match(CACHE_KEY);
     if (!cached) return null;
     return (await cached.json()) as UpcomingIpoFeed;
   } catch {
@@ -116,7 +120,9 @@ async function readCache(): Promise<UpcomingIpoFeed | null> {
 
 async function writeCache(feed: UpcomingIpoFeed) {
   try {
-    await caches.default.put(
+    const cache = runtimeCache();
+    if (!cache) return;
+    await cache.put(
       CACHE_KEY,
       new Response(JSON.stringify(feed), {
         headers: {

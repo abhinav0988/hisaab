@@ -178,15 +178,30 @@ export const splitAdjustmentSchema = z.object({
   reason: z.string().trim().max(200).nullable().optional(),
 });
 
-export const splitReceiptUploadSchema = z.object({
-  fileUrl: z.string().trim().min(1).max(500),
-  fileName: z.string().trim().max(180).nullable().optional(),
-  mimeType: z
-    .enum(["image/jpeg", "image/png", "application/pdf"])
-    .nullable()
-    .optional(),
-  fileSizeBytes: z.number().int().positive().max(10_485_760).nullable().optional(),
-});
+export const splitReceiptUploadSchema = z
+  .object({
+    fileId: idSchema.optional(),
+    fileUrl: z.string().trim().min(1).max(500).optional(),
+    fileName: z.string().trim().max(180).nullable().optional(),
+    mimeType: z
+      .enum(["image/jpeg", "image/png", "application/pdf"])
+      .nullable()
+      .optional(),
+    fileSizeBytes: z.number().int().positive().max(10_485_760).nullable().optional(),
+    description: z.string().trim().max(200).optional(),
+  })
+  .refine((value) => Boolean(value.fileId) || Boolean(value.fileUrl), {
+    message: "Provide a fileId or fileUrl.",
+    path: ["fileId"],
+  });
+
+/** Public DTO types keep native clients aligned with the server validators. */
+export type SplitExpenseInput = z.infer<typeof splitExpenseSchema>;
+export type SplitPersonInput = z.infer<typeof splitPersonSchema>;
+export type SplitGroupInput = z.infer<typeof splitGroupSchema>;
+export type SplitPaymentInput = z.infer<typeof splitPaymentSchema>;
+export type SplitAdjustmentInput = z.infer<typeof splitAdjustmentSchema>;
+export type SplitReceiptUploadInput = z.infer<typeof splitReceiptUploadSchema>;
 
 /** Largest-remainder allocation so shares always sum exactly to totalMinor. */
 export function allocateEqual(totalMinor: number, count: number): number[] {

@@ -6,6 +6,7 @@ import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 import { Calendar, Clock } from "lucide-react";
 import { useMemo, useState } from "react";
+import { TagSelector } from "@/components/finance/record-panels";
 import { ApiError } from "@/lib/api-client";
 import {
   accountDisplayName,
@@ -122,7 +123,7 @@ export function TransactionForm({
   const initialStamp = localParts(initial?.transactionAt ?? new Date().toISOString());
   const [date, setDate] = useState(initialStamp.date);
   const [time, setTime] = useState(initialStamp.time);
-  const [tags, setTags] = useState(initial?.tags?.join(", ") ?? "");
+  const [tags, setTags] = useState<string[]>(initial?.tags ?? []);
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
   const [creditFacilityId, setCreditFacilityId] = useState("");
@@ -295,10 +296,7 @@ export function TransactionForm({
         merchant: merchant || null,
         notes: notes || null,
         transactionAt: new Date(`${date}T${time || "00:00"}`).toISOString(),
-        tags: tags
-          .split(",")
-          .map((tag) => tag.trim())
-          .filter(Boolean),
+        tags,
         ...(selectedFacility && !isTransfer ? { creditFacilityId: selectedFacility.id } : {}),
         ...(isTransfer ? { destinationAccountId } : {}),
       };
@@ -666,9 +664,9 @@ export function TransactionForm({
                   ) : null}
                 </div>
               ) : null}
-              <Field label="Tags (comma separated)">
-                <Input value={tags} onChange={(event) => setTags(event.target.value)} />
-              </Field>
+              <div className="full">
+                <TagSelector value={tags} onChange={setTags} />
+              </div>
             </div>
           </section>
           <section className="tx-card">

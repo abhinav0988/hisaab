@@ -1,5 +1,5 @@
 import { API_URL } from "../config/env";
-import { api } from "./api-client";
+import { api, rawFetch } from "./api-client";
 
 export type DailyReport = {
   totalIncome: number;
@@ -21,4 +21,9 @@ export const reportService = {
   categories: (range: string) => api<ReportBreakdown>(`/api/v1/reports/categories?${range}`),
   accounts: (range: string) => api<ReportBreakdown>(`/api/v1/reports/accounts?${range}`),
   exportUrl: (range: string) => `${API_URL}/api/v1/reports/export.csv?${range}`,
+  exportCsv: async (range: string) => {
+    const response = await rawFetch(`/api/v1/reports/export.csv?${range}`);
+    if (!response.ok) throw new Error("Could not export transactions.");
+    return response.text();
+  },
 };

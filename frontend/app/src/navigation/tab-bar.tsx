@@ -14,7 +14,7 @@ const items: {
 }[] = [
   { name: "Home", icon: "home-outline", iconActive: "home" },
   { name: "Finance", icon: "stats-chart-outline", iconActive: "stats-chart" },
-  { name: "Add", icon: "add", iconActive: "add", add: true },
+  { name: "Split", icon: "people-outline", iconActive: "people" },
   { name: "Transactions", icon: "document-text-outline", iconActive: "document-text" },
   { name: "Profile", icon: "person-outline", iconActive: "person" },
 ];

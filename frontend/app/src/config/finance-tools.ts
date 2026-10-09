@@ -56,6 +56,14 @@ export const financeTools: FinanceTool[] = [
     group: "grow",
   },
   {
+    id: "categories",
+    title: "Categories",
+    subtitle: "Organize transactions",
+    icon: "pricetags-outline",
+    href: "/categories",
+    group: "everyday",
+  },
+  {
     id: "investments",
     title: "Investments",
     subtitle: "MF, stocks & gold",

@@ -20,7 +20,17 @@ app.use("/api/*", rateLimit);
 
 app.get("/health", (c) => ok(c, { service: "hisaab-gateway", status: "ok" }));
 
-app.all("/api/auth/*", (c) => proxyTo(c.env.AUTH, c.req.raw));
+app.all("/api/auth/*", (c) => {
+  const platform = c.req.header("x-client-platform");
+  if (platform !== "android" && platform !== "ios") return proxyTo(c.env.AUTH, c.req.raw);
+  const headers = new Headers(c.req.raw.headers);
+  headers.delete("sec-fetch-site");
+  headers.delete("sec-fetch-mode");
+  headers.delete("sec-fetch-dest");
+  const origin = headers.get("origin");
+  if (!origin || origin === "null") headers.set("origin", "hisaab://app");
+  return proxyTo(c.env.AUTH, new Request(c.req.raw, { headers }));
+});
 
 app.all("/api/v1/*", async (c) => {
   const session = await resolveUserId(c);

@@ -55,6 +55,12 @@ export function buildTransactionFilterSql(userId: string, query: Query): Transac
     const term = `%${query.search.replace(/[\\%_]/g, "\\$&")}%`;
     values.push(term, term, term, term, term, term);
   }
+  if (query.tag) {
+    conditions.push(
+      "EXISTS (SELECT 1 FROM transaction_tags tt JOIN tags tg ON tg.id = tt.tag_id WHERE tt.transaction_id = t.id AND tg.user_id = ? AND tg.normalized_name = ?)",
+    );
+    values.push(userId, query.tag.trim().toLowerCase().replace(/\s+/g, " "));
+  }
 
   return {
     where: conditions.join(" AND "),

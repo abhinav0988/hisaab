@@ -7,7 +7,9 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { authService } from "../services/auth.service";
+import { onUnauthorized } from "../services/session-events";
 
 export type SessionUser = {
   id: string;
@@ -27,6 +29,7 @@ type SessionContextValue = {
 const SessionContext = createContext<SessionContextValue | null>(null);
 
 export function SessionProvider({ children }: { children: ReactNode }) {
+  const queryClient = useQueryClient();
   const [ready, setReady] = useState(false);
   const [user, setUser] = useState<SessionUser | null>(null);
 
@@ -49,19 +52,28 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     })();
   }, [refresh]);
 
+  useEffect(() => onUnauthorized(() => {
+    queryClient.clear();
+    setUser(null);
+  }), [queryClient]);
+
   const value = useMemo(
     () => ({
       ready,
       signedIn: Boolean(user),
       user,
       refresh,
-      signIn: refresh,
+      signIn: async () => {
+        queryClient.clear();
+        await refresh();
+      },
       signOut: async () => {
         await authService.signOut();
+        queryClient.clear();
         setUser(null);
       },
     }),
-    [ready, user, refresh],
+    [ready, user, refresh, queryClient],
   );
 
   return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>;

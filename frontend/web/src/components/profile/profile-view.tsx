@@ -41,14 +41,10 @@ function ProfileForm({ initial, onSaved }: { initial: Profile; onSaved: () => vo
   const [defaultCurrency, setCurrency] = useState(initial.defaultCurrency);
   const [timezone, setTimezone] = useState(initial.timezone);
   const [language, setLanguage] = useState(initial.language ?? "en");
-  const [theme, setThemeValue] = useState<"light" | "dark">(() =>
-    liveTheme === "dark" || liveTheme === "light"
-      ? liveTheme
-      : initial.theme === "dark"
-        ? "dark"
-        : initial.theme === "light"
-          ? "light"
-          : "dark",
+  const [theme, setThemeValue] = useState<"light" | "dark" | "system">(() =>
+    initial.theme === "dark" || initial.theme === "light" || initial.theme === "system"
+      ? initial.theme
+      : "system",
   );
   const [smartNotifications, setSmart] = useState(initial.smartNotifications ?? true);
   const [weeklySummary, setWeekly] = useState(initial.weeklySummary ?? true);
@@ -60,7 +56,6 @@ function ProfileForm({ initial, onSaved }: { initial: Profile; onSaved: () => vo
   const [trackedTheme, setTrackedTheme] = useState(liveTheme);
   if (liveTheme !== trackedTheme) {
     setTrackedTheme(liveTheme);
-    if (liveTheme === "dark" || liveTheme === "light") setThemeValue(liveTheme);
   }
   const mutation = useMutation({
     mutationFn: () =>
@@ -196,11 +191,12 @@ function ProfileForm({ initial, onSaved }: { initial: Profile; onSaved: () => vo
                 aria-label="Theme"
                 value={theme}
                 onChange={(event) => {
-                  const next = event.target.value === "dark" ? "dark" : "light";
+                  const next = event.target.value === "dark" ? "dark" : event.target.value === "light" ? "light" : "system";
                   setThemeValue(next);
-                  setTheme(next);
+                  if (next === "dark" || next === "light") setTheme(next);
                 }}
               >
+                <option value="system">System</option>
                 <option value="light">Light</option>
                 <option value="dark">Dark</option>
               </Select>

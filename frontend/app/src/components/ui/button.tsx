@@ -10,6 +10,7 @@ export function AppButton({
   tone = "neon",
   icon = "arrow-forward",
   leftIcon,
+  disabled = false,
 }: {
   label: string;
   onPress: () => void;
@@ -17,13 +18,18 @@ export function AppButton({
   tone?: "neon" | "forest";
   icon?: IconName;
   leftIcon?: IconName;
+  disabled?: boolean;
 }) {
   const forest = tone === "forest" && !outline;
   const iconColor = outline ? colors.green : forest ? colors.white : colors.ink;
   return (
     <Pressable
-      onPress={onPress}
-      style={[styles.button, outline && styles.outline, forest && styles.forest]}
+      accessibilityRole="button"
+      accessibilityState={{ disabled }}
+      onPress={() => {
+        if (!disabled) onPress();
+      }}
+      style={[styles.button, outline && styles.outline, forest && styles.forest, disabled && styles.disabled]}
     >
       {leftIcon ? <Icon name={leftIcon} color={iconColor} /> : null}
       <Text style={[styles.text, outline && { color: colors.green }, forest && styles.forestText]}>
@@ -54,6 +60,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.green,
   },
+  disabled: { opacity: 0.55 },
   text: {
     fontSize: 16,
     fontWeight: "900",

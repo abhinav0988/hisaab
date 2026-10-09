@@ -71,6 +71,7 @@ export function ReceiptImportView({
   const [category, setCategory] = useState("Food & Dining");
   const [description, setDescription] = useState("");
   const [expenseDate, setExpenseDate] = useState(todayIso());
+  const binary = useRef<File | null>(null);
   const [receiptId, setReceiptId] = useState<string | null>(null);
 
   const [payerId, setPayerId] = useState("");
@@ -145,13 +146,34 @@ export function ReceiptImportView({
   const nameOf = (id: string) => people.find((p) => p.id === id)?.fullName ?? "Unknown";
 
   const uploadMutation = useMutation({
-    mutationFn: () =>
-      splitMoneyService.uploadReceipt({
-        fileUrl: fileUrl || (file ? `local://${file.name}` : "local://receipt-placeholder"),
-        fileName: file?.name ?? "receipt.jpg",
-        mimeType: file?.mime ?? "image/jpeg",
-        fileSizeBytes: file?.size && file.size > 0 ? file.size : 120_000,
-      }),
+    mutationFn: async () => {
+      if (binary.current) {
+        const stored = await splitMoneyService.uploadFile(binary.current);
+        const receipt = await splitMoneyService.uploadReceipt({ fileId: stored.id });
+        try {
+          const scan = await splitMoneyService.scanReceipt(stored.id);
+          return {
+            ...receipt,
+            merchant: scan.merchant,
+            receiptDate: scan.date,
+            taxMinor: scan.taxMinor,
+            totalMinor: scan.totalMinor,
+            subtotalMinor: null,
+          };
+        } catch {
+          return receipt;
+        }
+      }
+      if (fileUrl.startsWith("https://") || fileUrl.startsWith("http://")) {
+        return splitMoneyService.uploadReceipt({
+          fileUrl,
+          fileName: file?.name ?? "receipt.jpg",
+          mimeType: file?.mime ?? "image/jpeg",
+          fileSizeBytes: file?.size && file.size > 0 ? file.size : undefined,
+        });
+      }
+      throw new Error("Choose a receipt file. A local path is not stored.");
+    },
     onSuccess: (receipt) => {
       setReceiptId(receipt.id);
       setExtracted({
@@ -242,10 +264,11 @@ export function ReceiptImportView({
       toast.error("Use a JPG, PNG or PDF receipt");
       return;
     }
-    if (f.size > 10_485_760) {
-      toast.error("Receipt must be 10MB or smaller");
+    if (f.size > 8 * 1024 * 1024) {
+      toast.error("Receipt must be 8MB or smaller");
       return;
     }
+    binary.current = f;
     setFile({ name: f.name, mime, size: f.size });
     setPreviewUrl(mime === "application/pdf" ? null : URL.createObjectURL(f));
     startUpload();
@@ -254,6 +277,7 @@ export function ReceiptImportView({
   const reset = () => {
     setStep(1);
     setFile(null);
+    binary.current = null;
     setPreviewUrl(null);
     setFileUrl("");
     setExtracted(null);

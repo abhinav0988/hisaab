@@ -44,6 +44,7 @@ import { useTheme } from "next-themes";
 import { forwardRef, useEffect, useId, useMemo, useRef, useState, useSyncExternalStore, type InputHTMLAttributes, type ReactNode } from "react";
 import { toast } from "sonner";
 import { Modal } from "@/components/layout/modal";
+import { LoanPaymentHistory } from "@/components/finance/record-panels";
 import { EmptyState, ErrorState, PageSkeleton } from "@/components/layout/states";
 import { ApiError } from "@/lib/api-client";
 import { displayDateLong, isoToday } from "@/lib/finance-modules";
@@ -351,6 +352,7 @@ export function LoansView() {
     onSuccess: async (loan) => {
       await client.invalidateQueries({ queryKey: ["loans"] });
       await client.invalidateQueries({ queryKey: ["loans", loan.id, "schedule"] });
+      await client.invalidateQueries({ queryKey: ["dashboard"] });
       toast.success("EMI marked as paid");
       setPaying(null);
       setDetails((current) => (current?.id === loan.id ? loan : current));
@@ -1372,6 +1374,7 @@ function LoanDetails({
           </Button>
         ) : null}
       </div>
+      <LoanPaymentHistory loanId={loan.id} currency={currency} />
     </div>
   );
 }

@@ -60,6 +60,7 @@ import { categoryService } from "@/services/category.service";
 import { profileService } from "@/services/profile.service";
 import { transactionService } from "@/services/transaction.service";
 import { TransactionForm } from "./transaction-form";
+import { TransactionAttachmentsPanel } from "@/components/finance/record-panels";
 import "../../app/tx16.css";
 
 const FEATURED_CATEGORY_NAMES = [
@@ -217,6 +218,8 @@ export function TransactionsView() {
   const [type, setType] = useState("");
   const [category, setCategory] = useState("");
   const [account, setAccount] = useState("");
+  const [tag, setTag] = useState("");
+  const tagList = useQuery({ queryKey: ["tags"], queryFn: transactionService.listTags });
   const [period, setPeriod] = useState("all");
   const [sort, setSort] = useState("newest");
   const [page, setPage] = useState(1);
@@ -249,11 +252,12 @@ export function TransactionsView() {
     if (type) value.set("type", type);
     if (category) value.set("category_id", category);
     if (account) value.set("account_id", account);
+    if (tag) value.set("tag", tag);
     if (from) value.set("from", isoDayStart(from));
     if (to) value.set("to", isoDayEndExclusive(to));
     value.set("sort", sort);
     return value.toString();
-  }, [debouncedSearch, type, category, account, from, to, sort]);
+  }, [debouncedSearch, type, category, account, tag, from, to, sort]);
   const filters = useMemo(() => {
     const value = new URLSearchParams(filterSignature);
     value.set("page", String(page));
@@ -266,8 +270,9 @@ export function TransactionsView() {
     if (type) value.set("type", type);
     if (category) value.set("category_id", category);
     if (account) value.set("account_id", account);
+    if (tag) value.set("tag", tag);
     return value.toString();
-  }, [debouncedSearch, type, category, account]);
+  }, [debouncedSearch, type, category, account, tag]);
   const transactions = useQuery({
     queryKey: ["transactions", filters],
     queryFn: () => transactionService.list(filters),
@@ -343,6 +348,7 @@ export function TransactionsView() {
       credit ? creditSpendCopy(credit, currency) : bankMessage ?? "Transaction saved",
     );
     void queryClient.invalidateQueries({ queryKey: ["transactions"] });
+    void queryClient.invalidateQueries({ queryKey: ["tags"] });
     void queryClient.invalidateQueries({ queryKey: ["transactions-month"] });
     void queryClient.invalidateQueries({ queryKey: ["transactions-lookback"] });
     void queryClient.invalidateQueries({ queryKey: ["dashboard"] });
@@ -356,6 +362,7 @@ export function TransactionsView() {
     setType("");
     setCategory("");
     setAccount("");
+    setTag("");
     setPeriod("all");
     setPage(1);
   };
@@ -559,6 +566,14 @@ export function TransactionsView() {
                 </option>
               ))}
             </Select>
+            <Select aria-label="Tag" value={tag} onChange={(event) => { setTag(event.target.value); setPage(1); }}>
+              <option value="">All tags</option>
+              {(tagList.data ?? []).map((item) => (
+                <option key={item.id} value={item.name}>
+                  #{item.name}
+                </option>
+              ))}
+            </Select>
           </div>
           <div className="tx16-cats">
             <CategoryFilterChip
@@ -666,6 +681,7 @@ export function TransactionsView() {
                                 <small>
                                   <u />
                                   {item.categoryName}
+                                  {item.tags?.length ? ` · ${item.tags.slice(0, 3).map((name) => `#${name}`).join(" ")}${item.tags.length > 3 ? ` +${item.tags.length - 3}` : ""}` : ""}
                                 </small>
                               </div>
                             </div>
@@ -844,6 +860,11 @@ export function TransactionsView() {
           initial={editing ?? undefined}
           onSaved={saved}
         />
+        {editing ? (
+          <div className="mt-5 border-t border-[var(--border)] pt-5">
+            <TransactionAttachmentsPanel key={editing.id} transactionId={editing.id} />
+          </div>
+        ) : null}
       </Modal>
       <ConfirmDialog
         open={Boolean(deleting)}

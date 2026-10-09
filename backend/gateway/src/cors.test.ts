@@ -47,6 +47,24 @@ describe("browser CORS", () => {
     expect(allowed).toContain("x-hisaab-country");
   });
 
+  it("allows idempotent money writes and reminder PUTs from the web origin", async () => {
+    const response = await app().request(
+      "https://gateway.test/api/v1/lend-records/abc/repayments",
+      {
+        method: "OPTIONS",
+        headers: {
+          Origin: APP_ORIGIN,
+          "Access-Control-Request-Method": "PUT",
+          "Access-Control-Request-Headers": "content-type,idempotency-key",
+        },
+      },
+      env,
+    );
+    expect(response.status).toBe(204);
+    expect(response.headers.get("Access-Control-Allow-Headers")?.toLowerCase()).toContain("idempotency-key");
+    expect(response.headers.get("Access-Control-Allow-Methods")).toContain("PUT");
+  });
+
   it("stamps CORS on proxied auth and domain JSON responses", async () => {
     const auth = await app().request(
       "https://gateway.test/api/auth/get-session",
@@ -101,6 +119,10 @@ describe("CSRF guard", () => {
 
   it("still rejects cross-site when Sec-Fetch-Site is present without origin", () => {
     expect(mutationIsCsrfSafe("POST", undefined, "cross-site", csrfEnv)).toBe(false);
+  });
+
+  it("allows the native app origin", () => {
+    expect(mutationIsCsrfSafe("POST", "hisaab://app", "none", csrfEnv)).toBe(true);
   });
 
   it("blocks forged origin on the gateway", async () => {

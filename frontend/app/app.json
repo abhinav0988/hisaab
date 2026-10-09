@@ -18,7 +18,15 @@
       "edgeToEdgeEnabled": true
     },
     "plugins": [
-      "expo-secure-store"
+      "expo-secure-store",
+      [
+        "expo-image-picker",
+        {
+          "cameraPermission": "Allow Hisaab to use your camera to select a receipt.",
+          "photosPermission": "Allow Hisaab to access your photos to select a receipt.",
+          "microphonePermission": false
+        }
+      ]
     ]
   }
 }

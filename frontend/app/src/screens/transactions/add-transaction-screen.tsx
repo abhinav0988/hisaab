@@ -1,10 +1,10 @@
 import { useMemo, useState } from "react";
 import { Alert, Pressable, StyleSheet, Text, View } from "react-native";
-import type { BottomTabScreenProps } from "@react-navigation/bottom-tabs";
+import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { majorToMinor } from "@hisaab/validation";
 import { colors } from "../../theme/tokens";
-import type { MainTabParamList } from "../../navigation/types";
+import type { AppStackParamList } from "../../navigation/types";
 import { AppButton } from "../../components/ui/button";
 import { Card } from "../../components/ui/card";
 import { Field } from "../../components/ui/field";
@@ -18,15 +18,19 @@ import { accountService } from "../../services/account.service";
 import { categoryService } from "../../services/category.service";
 import { profileService } from "../../services/profile.service";
 import { transactionService } from "../../services/transaction.service";
+import { TagPicker } from "../../components/finance/tag-picker";
+import { useSingleFlight } from "../../lib/single-flight";
 
-type Props = BottomTabScreenProps<MainTabParamList, "Add">;
+type Props = NativeStackScreenProps<AppStackParamList, "AddTransaction">;
 const kinds = ["Expense", "Income", "Transfer"] as const;
 
-export function AddTransactionScreen({ navigation }: Props) {
+export function AddTransactionScreen({ navigation, route }: Props) {
   const client = useQueryClient();
+  const flight = useSingleFlight();
   const [kind, setKind] = useState<(typeof kinds)[number]>("Expense");
-  const [amount, setAmount] = useState("");
-  const [note, setNote] = useState("");
+  const [amount, setAmount] = useState(route.params?.amount ?? "");
+  const [note, setNote] = useState(route.params?.note ?? "");
+  const [tags, setTags] = useState<string[]>([]);
   const [accountId, setAccountId] = useState<string | null>(null);
   const [categoryId, setCategoryId] = useState<string | null>(null);
   const [destinationId, setDestinationId] = useState<string | null>(null);
@@ -74,6 +78,7 @@ export function AddTransactionScreen({ navigation }: Props) {
         currency: profile.data?.defaultCurrency ?? "INR",
         merchant: note.trim() || null,
         notes: note.trim() || null,
+        tags,
         transactionAt: new Date().toISOString(),
         ...(type === "TRANSFER" ? { destinationAccountId: selectedDestination } : {}),
       });
@@ -81,11 +86,12 @@ export function AddTransactionScreen({ navigation }: Props) {
     onSuccess: async () => {
       await Promise.all([
         client.invalidateQueries({ queryKey: ["transactions"] }),
+        client.invalidateQueries({ queryKey: ["tags"] }),
         client.invalidateQueries({ queryKey: ["dashboard"] }),
         client.invalidateQueries({ queryKey: ["accounts"] }),
       ]);
       Alert.alert("Saved", "Your transaction was added.");
-      navigation.navigate("Transactions");
+      navigation.goBack();
     },
     onError: (error) => {
       Alert.alert(
@@ -93,6 +99,7 @@ export function AddTransactionScreen({ navigation }: Props) {
         error instanceof ApiError || error instanceof Error ? error.message : "Try again.",
       );
     },
+    onSettled: () => flight.end(),
   });
 
   if (accounts.isLoading || categories.isLoading) {
@@ -190,9 +197,11 @@ export function AddTransactionScreen({ navigation }: Props) {
           </>
         )}
         <Field label="Note" placeholder="Add an optional note" value={note} onChangeText={setNote} />
+        <TagPicker value={tags} onChange={setTags} />
         <AppButton
           label={save.isPending ? "Saving…" : "Save transaction"}
-          onPress={() => save.mutate()}
+          disabled={save.isPending}
+          onPress={() => flight.run(save.isPending, () => save.mutate())}
         />
       </Card>
       <SectionTitle title="Tip" />

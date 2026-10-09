@@ -124,6 +124,9 @@ export function SettingsScreen({ navigation }: Props) {
           { name: "Country", icon: "flag-outline", value: data.countryCode },
           { name: "Timezone", icon: "time-outline", value: data.timezone },
         ]}
+        onPress={(item) => {
+          if (["Personal Information", "Default Currency", "Language", "Theme", "Country", "Timezone"].includes(item)) navigation.navigate("EditProfile");
+        }}
       />
       <SectionTitle title="SECURITY & ALERTS" />
       <View style={styles.list}>
@@ -161,20 +164,13 @@ export function SettingsScreen({ navigation }: Props) {
       <MenuGroup
         title="DATA"
         items={[
-          { name: "Export Transactions", icon: "download-outline" },
-          { name: "Backup & Sync", icon: "cloud-upload-outline" },
-          { name: "Delete Account", icon: "trash-outline" },
+          { name: "Transaction export", icon: "download-outline" },
         ]}
         onPress={(item) => {
-          if (item === "Export Transactions") {
-            Alert.alert("Export", "Transaction export is available on web for now.");
-          } else if (item === "Delete Account") {
-            Alert.alert("Delete account", "Contact support or use web settings to delete your account.");
-          } else {
-            Alert.alert("Coming soon", "Cloud backup will sync with your Hisaab account.");
-          }
+          if (item === "Transaction export") Alert.alert("Export", "Open Analytics to export the current report CSV.");
         }}
       />
+      <MenuGroup title="ACCOUNT & LEGAL" items={[{ name: "Subscription", icon: "diamond-outline" }, { name: "Terms of Service", icon: "document-text-outline" }, { name: "Privacy Policy", icon: "shield-checkmark-outline" }]} onPress={(item) => { if (item === "Subscription") navigation.navigate("Subscription"); if (item === "Terms of Service") navigation.navigate("Terms"); if (item === "Privacy Policy") navigation.navigate("Privacy"); }} />
     </Screen>
   );
 }
