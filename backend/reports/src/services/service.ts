@@ -1,5 +1,13 @@
 import { createDatabase, userPreferences } from "@hisaab/database";
-import { addLocalDays, currentMonth, monthBounds, zonedDateKey, zonedMonthKey, zonedParts } from "@hisaab/worker-lib";
+import {
+  addLocalDays,
+  currentMonth,
+  monthBounds,
+  zonedDateKey,
+  zonedDateToUtc,
+  zonedMonthKey,
+  zonedParts,
+} from "@hisaab/worker-lib";
 import { eq } from "drizzle-orm";
 import { incomeExpenseFor } from "../ledger";
 
@@ -134,12 +142,40 @@ export async function monthly(
   return [...buckets.values()].sort((left, right) => left.month.localeCompare(right.month));
 }
 
+export function previousMonth(month: string) {
+  const [yearText, monthText] = month.split("-");
+  const year = Number(yearText);
+  const value = Number(monthText);
+  return value === 1 ? `${year - 1}-12` : `${year}-${String(value - 1).padStart(2, "0")}`;
+}
+
+export async function expensePeriods(
+  env: Env,
+  userId: string,
+  month: string,
+  monthTo: string,
+  timezone: string,
+) {
+  const lastMonth = monthBounds(previousMonth(month), timezone);
+  const yearFrom = zonedDateToUtc(Number(month.slice(0, 4)), 1, 1, timezone).toISOString();
+  const from = lastMonth.from < yearFrom ? lastMonth.from : yearFrom;
+  const row = await env.DB.prepare(
+    "SELECT coalesce(sum(CASE WHEN transaction_at>=? AND transaction_at<? THEN amount_minor ELSE 0 END),0) AS lastMonth, coalesce(sum(CASE WHEN transaction_at>=? THEN amount_minor ELSE 0 END),0) AS thisYear FROM transactions WHERE user_id=? AND deleted_at IS NULL AND type='EXPENSE' AND transaction_at>=? AND transaction_at<?",
+  )
+    .bind(lastMonth.from, lastMonth.to, yearFrom, userId, from, monthTo)
+    .first<{ lastMonth: number; thisYear: number }>();
+  return {
+    spentLastMonth: Number(row?.lastMonth ?? 0),
+    spentThisYear: Number(row?.thisYear ?? 0),
+  };
+}
+
 export async function dashboard(env: Env, userId: string) {
   const context = await reportingContext(env, userId);
   const nowDate = new Date();
   const todayStart = addLocalDays(nowDate, context.timezone, 0);
   const sevenStart = addLocalDays(nowDate, context.timezone, -6);
-  const [summary, categorySpending, monthlyComparison, recent, todayRow, sevenDay, budget] =
+  const [summary, categorySpending, monthlyComparison, recent, todayRow, sevenDay, budget, periods] =
     await Promise.all([
       totals(env, userId, context.from, context.to),
       byCategory(env, userId, context.from, context.to),
@@ -166,6 +202,7 @@ export async function dashboard(env: Env, userId: string) {
       )
         .bind(userId, context.month)
         .first<{ amount: number }>(),
+      expensePeriods(env, userId, context.month, context.to, context.timezone),
     ]);
   const budgetTotal = Number(budget?.amount ?? 0);
   const spent = summary.totalExpenses;
@@ -175,6 +212,8 @@ export async function dashboard(env: Env, userId: string) {
   );
   return {
     spentThisMonth: spent,
+    spentLastMonth: periods.spentLastMonth,
+    spentThisYear: periods.spentThisYear,
     incomeThisMonth: summary.totalIncome,
     netSavings: summary.netSavings,
     todaySpending: Number(todayRow?.amount ?? 0),

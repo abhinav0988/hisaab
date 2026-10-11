@@ -590,6 +590,8 @@ export interface SplitHistory {
 }
 export interface DashboardSummary {
   spentThisMonth: number;
+  spentLastMonth?: number;
+  spentThisYear?: number;
   incomeThisMonth: number;
   netSavings: number;
   todaySpending: number;

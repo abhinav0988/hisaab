@@ -6443,6 +6443,14 @@ html[data-theme="dark"] .loan-section-num {
   grid-template-columns: repeat(4, 1fr);
   gap: 10px;
 }
+.premium-dash .pd-expense-periods .pd-week-grid {
+  grid-template-columns: repeat(3, 1fr);
+}
+@media (max-width: 560px) {
+  .premium-dash .pd-expense-periods .pd-week-grid {
+    grid-template-columns: 1fr;
+  }
+}
 .premium-dash .pd-week-stat {
   position: relative;
   overflow: hidden;

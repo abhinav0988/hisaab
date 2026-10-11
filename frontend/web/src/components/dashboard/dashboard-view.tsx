@@ -193,6 +193,9 @@ export function DashboardView() {
     .slice(0, 5);
   const upcomingTotal = upcoming.reduce((sum, item) => sum + item.amountMinor, 0);
   const monthLabel = new Intl.DateTimeFormat(undefined, { month: "long" }).format(new Date());
+  const lastMonthLabel = new Intl.DateTimeFormat(undefined, { month: "long", year: "numeric" }).format(
+    new Date(new Date().getFullYear(), new Date().getMonth() - 1, 1),
+  );
   const catalog = uniqueCatalogAccounts(accounts.data ?? []);
   const totalBalance = catalog.reduce((sum, item) => sum + item.currentBalanceMinor, 0);
   const bankRows = banks.data?.length
@@ -396,6 +399,32 @@ export function DashboardView() {
           <div className="pd-kpi-foot">{trendSpan(saveDelta)} vs last month net</div>
           <PdSpark values={netSpark.length ? netSpark : [0]} color="#3a83ff" />
         </article>
+      </section>
+
+      <section className="pd-week pd-expense-periods" aria-label="Total expenses by period">
+        <div className="pd-section-title">
+          <div>
+            <h3>Total Expenses</h3>
+            <p>This month, last month and this year</p>
+          </div>
+        </div>
+        <div className="pd-week-grid">
+          <div className="pd-week-stat out">
+            <div className="lbl">This Month</div>
+            <div className="num">{money(data.spentThisMonth, currency)}</div>
+            <div className="meta">{monthLabel} so far</div>
+          </div>
+          <div className="pd-week-stat out">
+            <div className="lbl">Last Month</div>
+            <div className="num">{money(data.spentLastMonth ?? 0, currency)}</div>
+            <div className="meta">{lastMonthLabel}</div>
+          </div>
+          <div className="pd-week-stat out">
+            <div className="lbl">This Year</div>
+            <div className="num">{money(data.spentThisYear ?? 0, currency)}</div>
+            <div className="meta">Since 1 January {now.getFullYear()}</div>
+          </div>
+        </div>
       </section>
 
       <section className="pd-week">

@@ -358,6 +358,15 @@ export function HomeScreen({ navigation }: Props) {
           />
         </View>
 
+        <View style={styles.sectionHead}>
+          <Text style={styles.sectionTitle}>Total Expenses</Text>
+        </View>
+        <View style={styles.overviewRow} accessibilityLabel="Total expenses by period">
+          <ExpenseTile label="This Month" value={money(summary.spentThisMonth, currency)} />
+          <ExpenseTile label="Last Month" value={money(summary.spentLastMonth ?? 0, currency)} />
+          <ExpenseTile label="This Year" value={money(summary.spentThisYear ?? 0, currency)} />
+        </View>
+
         <View style={styles.flowCard}>
           <View style={styles.sectionHead}>
             <Text style={styles.sectionTitle}>Cash Flow This Month</Text>
@@ -389,6 +398,22 @@ export function HomeScreen({ navigation }: Props) {
         <TransactionList items={recent} limit={5} currency={currency} />
       </ScrollView>
     </SafeAreaView>
+  );
+}
+
+function ExpenseTile({ label, value }: { label: string; value: string }) {
+  return (
+    <View
+      style={[styles.overviewTile, styles.expenseTile, { borderColor: `${colors.red}33` }]}
+      accessible
+      accessibilityLabel={`${label} expenses ${value}`}
+    >
+      <View style={[styles.overviewDot, { backgroundColor: colors.red }]} />
+      <Text style={styles.overviewLabel}>{label}</Text>
+      <Text style={styles.overviewValue} numberOfLines={1} adjustsFontSizeToFit>
+        {value}
+      </Text>
+    </View>
   );
 }
 
@@ -608,6 +633,7 @@ const styles = StyleSheet.create({
     padding: 12,
     justifyContent: "space-between",
   },
+  expenseTile: { minHeight: 84 },
   overviewDot: { width: 8, height: 8, borderRadius: 4, marginBottom: 6 },
   overviewLabel: { color: colors.muted, fontSize: 11, fontWeight: "700", marginBottom: 4 },
   overviewValue: { color: colors.white, fontSize: 14, fontWeight: "800", letterSpacing: -0.3 },
