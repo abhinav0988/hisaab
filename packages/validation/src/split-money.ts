@@ -162,6 +162,55 @@ export const splitExpenseSchema = z
     }
   });
 
+/** Create-wizard step that owns a field: 1 details, 2 who paid, 3 split with, 4 method, 5 due date & reminder. */
+export type SplitWizardStep = 1 | 2 | 3 | 4 | 5;
+export type SplitWizardIssue = { step: SplitWizardStep; field: string; label: string; message: string; path: string };
+
+const SPLIT_FIELD_OWNERS: Record<string, { step: SplitWizardStep; field: string; label: string }> = {
+  title: { step: 1, field: "title", label: "Title" },
+  description: { step: 1, field: "title", label: "Description" },
+  category: { step: 1, field: "category", label: "Category" },
+  totalAmountMinor: { step: 1, field: "amount", label: "Amount" },
+  currency: { step: 1, field: "amount", label: "Currency" },
+  expenseDate: { step: 1, field: "date", label: "Date" },
+  expenseTime: { step: 1, field: "date", label: "Time" },
+  groupId: { step: 1, field: "group", label: "Group" },
+  receiptId: { step: 1, field: "receipt", label: "Receipt" },
+  payers: { step: 2, field: "payer", label: "Who paid" },
+  participants: { step: 3, field: "people", label: "Split with" },
+  splitMethod: { step: 4, field: "method", label: "Split method" },
+  items: { step: 4, field: "method", label: "Items" },
+  allowPartialPayments: { step: 4, field: "method", label: "Partial payments" },
+  sendNotifications: { step: 4, field: "method", label: "Notifications" },
+  dueDate: { step: 5, field: "due", label: "Due date" },
+  noteForParticipants: { step: 5, field: "due", label: "Note for participants" },
+  reminder: { step: 5, field: "reminder", label: "Reminder" },
+};
+
+/**
+ * Turns `fieldErrors` from the API (or a local `safeParse`) into wizard steps and readable messages,
+ * earliest step first, so a failed create can jump straight to the field that needs fixing.
+ */
+export function splitWizardIssues(fieldErrors: Record<string, string[] | undefined>): SplitWizardIssue[] {
+  const issues: SplitWizardIssue[] = [];
+  for (const [path, messages] of Object.entries(fieldErrors)) {
+    const root = path.split(".")[0] ?? "";
+    const owner = SPLIT_FIELD_OWNERS[root] ?? { step: 1 as const, field: "form", label: "Expense" };
+    for (const message of messages ?? []) issues.push({ ...owner, message, path });
+  }
+  return issues.sort((a, b) => a.step - b.step);
+}
+
+/** Same shape the server's `fromZod` produces, for validating a payload before it is sent. */
+export function zodFieldErrors(error: z.ZodError): Record<string, string[]> {
+  const fieldErrors: Record<string, string[]> = {};
+  for (const issue of error.issues) {
+    const key = issue.path.join(".") || "form";
+    fieldErrors[key] = [...(fieldErrors[key] ?? []), issue.message];
+  }
+  return fieldErrors;
+}
+
 export const splitExpensePatchSchema = z.object({
   title: z.string().trim().min(1).max(120).optional(),
   description: z.string().trim().max(200).nullable().optional(),

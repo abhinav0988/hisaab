@@ -8,6 +8,10 @@ import {
   allocateEqual,
   allocateExact,
   computeParticipantShares,
+  computeSplitLedger,
+  splitExpenseSchema,
+  splitWizardIssues,
+  zodFieldErrors,
 } from "@hisaab/validation";
 import {
   ArrowLeft,
@@ -40,6 +44,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { ImmersedNotifyButton, ImmersedThemeButton } from "@/components/layout/immersed-chrome";
+import { ApiError } from "@/lib/api-client";
 import { money } from "@/lib/format";
 import { splitMoneyService } from "@/services/split-money.service";
 import {
@@ -49,6 +54,7 @@ import {
   initials,
   loadDraft,
   majorStringToMinor,
+  reconcileDraftPeople,
   saveDraft,
   type SplitWizardDraft,
 } from "./split-format";
@@ -346,6 +352,25 @@ export function CreateSplitWizard({
       return next;
     });
   };
+  /** Fields rendered next to their own input; everything else is listed in the step banner. */
+  const INLINE_ERROR_FIELDS = new Set(["title", "amount", "category", "date", "payer", "people", "method"]);
+  const unplacedErrors = Object.entries(errors).filter(([field]) => !INLINE_ERROR_FIELDS.has(field));
+  const goTo = (step: number) => {
+    setErrors({});
+    update({ step });
+  };
+
+  if (self?.id && peopleQuery.isSuccess) {
+    const reconciled = reconcileDraftPeople(draft, self.id, new Set(people.map((p) => p.id)));
+    if (reconciled === null) {
+      const fresh = { ...defaultDraft(), ownerId: self.id };
+      saveDraft(fresh);
+      setDraft(fresh);
+    } else if (reconciled !== draft) {
+      saveDraft(reconciled);
+      setDraft(reconciled);
+    }
+  }
 
   // Keep self in the draft participant list so UI "Added" state and toggles stay in sync.
   // Done during render (not in an effect) so the first paint already shows "You" as added.
@@ -441,29 +466,20 @@ export function CreateSplitWizard({
     }
   }, [draft, totalMinor]);
 
-  const createMutation = useMutation({
-    mutationFn: async (isDraft: boolean) => {
-      if (!self) throw new Error("Load people first");
-      let uploadedReceiptId: string | null = null;
-      if (receipt?.file) {
-        const stored = await splitMoneyService.uploadFile(receipt.file);
-        const uploaded = await splitMoneyService.uploadReceipt({ fileId: stored.id });
-        uploadedReceiptId = uploaded.id;
-      }
-      const payers =
-        draft.payerMode === "single"
-          ? [
-              {
-                personId: draft.payerIds[0] || self.id,
-                paidAmountMinor: totalMinor,
-              },
-            ]
-          : draft.payerIds.map((id) => ({
-              personId: id,
-              paidAmountMinor: majorStringToMinor(draft.payerAmounts[id] || "0"),
-            }));
-
-      return splitMoneyService.createExpense({
+  const buildPayload = (isDraft: boolean, receiptId: string | null, selfId: string) => {
+    const payers =
+      draft.payerMode === "single"
+        ? [{ personId: draft.payerIds[0] || selfId, paidAmountMinor: totalMinor }]
+        : draft.payerIds.map((id) => {
+            let paidAmountMinor = 0;
+            try {
+              paidAmountMinor = majorStringToMinor(draft.payerAmounts[id] || "0");
+            } catch {
+              paidAmountMinor = Number.NaN;
+            }
+            return { personId: id, paidAmountMinor };
+          });
+    return {
         title: draft.title.trim(),
         description: draft.description || null,
         category: draft.category,
@@ -478,7 +494,7 @@ export function CreateSplitWizard({
         allowPartialPayments: draft.allowPartialPayments,
         sendNotifications: draft.sendNotifications,
         isDraft,
-        receiptId: uploadedReceiptId,
+        receiptId,
         payers,
         participants: sharePreview.map((s) => ({
           personId: s.personId,
@@ -507,7 +523,35 @@ export function CreateSplitWizard({
               message: draft.reminderMessage || null,
             }
           : { enabled: false },
-      });
+    };
+  };
+
+  const showIssues = (fieldErrors: Record<string, string[] | undefined>) => {
+    const issues = splitWizardIssues(fieldErrors);
+    const first = issues[0];
+    if (!first) return false;
+    const next: Record<string, string> = {};
+    for (const issue of issues) {
+      if (issue.step === first.step && !next[issue.field]) next[issue.field] = `${issue.label}: ${issue.message}`;
+    }
+    setErrors(next);
+    update({ step: first.step });
+    const more = issues.length > 1 ? ` (+${issues.length - 1} more)` : "";
+    toast.error(`Step ${first.step} · ${STEPS[first.step - 1]![0]} — ${first.label}: ${first.message}${more}`);
+    if (typeof window !== "undefined") window.scrollTo({ top: 0, behavior: "smooth" });
+    return true;
+  };
+
+  const createMutation = useMutation({
+    mutationFn: async (isDraft: boolean) => {
+      if (!self) throw new Error("Load people first");
+      let uploadedReceiptId: string | null = null;
+      if (receipt?.file) {
+        const stored = await splitMoneyService.uploadFile(receipt.file);
+        const uploaded = await splitMoneyService.uploadReceipt({ fileId: stored.id });
+        uploadedReceiptId = uploaded.id;
+      }
+      return splitMoneyService.createExpense(buildPayload(isDraft, uploadedReceiptId, self.id));
     },
     onSuccess: (expense, isDraft) => {
       clearDraft();
@@ -521,8 +565,28 @@ export function CreateSplitWizard({
       toast.success("Split expense created successfully.");
       setDoneId(expense.id);
     },
-    onError: (error: Error) => toast.error(error.message || "Could not create expense"),
+    onError: (error: Error) => {
+      if (error instanceof ApiError && error.fieldErrors && showIssues(error.fieldErrors)) return;
+      toast.error(error.message || "Could not create expense");
+    },
   });
+
+  /** Re-checks every step and the exact API payload, so a restored or edited draft cannot fail only on the server. */
+  const submit = (isDraft: boolean) => {
+    if (!self) return;
+    if (!isDraft) {
+    for (const step of [1, 2, 3, 4] as const) {
+      if (!validateStep(step)) {
+        update({ step });
+          toast.error(`Step ${step} · ${STEPS[step - 1]![0]} needs attention.`);
+          return;
+        }
+      }
+    }
+    const parsed = splitExpenseSchema.safeParse(buildPayload(isDraft, null, self.id));
+    if (!parsed.success && showIssues(zodFieldErrors(parsed.error))) return;
+    createMutation.mutate(isDraft);
+  };
 
   const validateStep = (step: number) => {
     const next: Record<string, string> = {};
@@ -577,11 +641,11 @@ export function CreateSplitWizard({
   };
 
   const goNext = () => {
-    if (!validateStep(draft.step)) return;
     if (draft.step === 6) {
-      createMutation.mutate(false);
+      submit(false);
       return;
     }
+    if (!validateStep(draft.step)) return;
     if (draft.step === 2 && draft.payerMode === "single" && self && draft.payerIds.length === 0) {
       update({ payerIds: [self.id] });
     }
@@ -639,6 +703,40 @@ export function CreateSplitWizard({
   const selectedGroup = groups.find((g) => g.id === draft.groupId);
   const nameOf = (id: string) => people.find((p) => p.id === id)?.fullName ?? "—";
   const toneOf = (id: string) => avatarTone(Math.max(0, people.findIndex((p) => p.id === id)));
+
+  const previewLedger = (() => {
+    if (!self || totalMinor <= 0 || !sharePreview.length) return null;
+    const payers = buildPayload(false, null, self.id).payers.filter(
+      (p) => Number.isFinite(p.paidAmountMinor) && p.paidAmountMinor > 0,
+    );
+    if (payers.reduce((sum, p) => sum + p.paidAmountMinor, 0) !== totalMinor) return null;
+    try {
+      return computeSplitLedger({
+        totalAmountMinor: totalMinor,
+        payers,
+        participants: sharePreview.map((s) => ({ id: s.personId, personId: s.personId, shareAmountMinor: s.shareAmountMinor })),
+      });
+    } catch {
+      return null;
+    }
+  })();
+  const shortName = (id: string) => (id === self?.id ? "you" : (nameOf(id).split(" ")[0] ?? nameOf(id)));
+  /** Who this person settles with once the expense exists — derived from the shared ledger, never guessed from the first payer. */
+  const previewRole = (personId: string) => {
+    const balance = previewLedger?.balances.find((b) => b.personId === personId);
+    const debts = previewLedger?.obligations.filter((edge) => edge.debtorPersonId === personId) ?? [];
+    if (debts.length) {
+      const amount = debts.reduce((sum, edge) => sum + edge.amountMinor, 0);
+      const to = debts.map((edge) => shortName(edge.creditorPersonId)).join(", ");
+      return { owes: true, badge: `Owes ${to}`, detail: `Owes ${money(amount)} to ${to}` };
+    }
+    const receivable = balance?.receivableMinor ?? 0;
+    if (receivable > 0) {
+      return { owes: false, badge: "Paid upfront", detail: `Paid ${money(balance!.upfrontPaidMinor)} · gets back ${money(receivable)}` };
+    }
+    if ((balance?.upfrontPaidMinor ?? 0) > 0) return { owes: false, badge: "Paid own share", detail: "Paid exactly their share" };
+    return { owes: false, badge: "Nothing owed", detail: "No balance on this expense" };
+  };
   const selectedPeople = participantIds
     .map((id) => people.find((p) => p.id === id))
     .filter((p): p is NonNullable<typeof p> => !!p);
@@ -719,7 +817,7 @@ export function CreateSplitWizard({
     <section className="sm-rail-card">
       <header className="sm-rail-card-head">
         <h3>Expense Summary</h3>
-        <button type="button" className="sm-mini-btn" onClick={() => update({ step: 1 })}>
+        <button type="button" className="sm-mini-btn" onClick={() => goTo(1)}>
           Edit
         </button>
       </header>
@@ -769,7 +867,7 @@ export function CreateSplitWizard({
               disabled={createMutation.isPending}
               onClick={() => {
                 if (!validateStep(1)) return;
-                createMutation.mutate(true);
+                submit(true);
               }}
             >
               <ReceiptText size={16} /> Save Draft
@@ -796,7 +894,7 @@ export function CreateSplitWizard({
                 type="button"
                 className={draft.step === n ? "current" : draft.step > n ? "done" : ""}
                 aria-current={draft.step === n ? "step" : undefined}
-                onClick={() => n < draft.step && update({ step: n })}
+                onClick={() => n < draft.step && goTo(n)}
               >
                 <span>{draft.step > n ? <Check size={14} /> : n}</span>
                 <b>{label}</b>
@@ -810,6 +908,16 @@ export function CreateSplitWizard({
       <div className="sm-wizard-layout">
         <div className="sm-wizard-main">
           <section className="sm-form-card">
+            {unplacedErrors.length > 0 && (
+              <div className="sm-callout danger" role="alert" data-testid="split-step-errors">
+                <b>Fix {unplacedErrors.length === 1 ? "this" : "these"} before continuing:</b>
+                <ul>
+                  {unplacedErrors.map(([field, message]) => (
+                    <li key={field}>{message}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
             {/* ───────────── STEP 1 ───────────── */}
             {draft.step === 1 && (
               <>
@@ -1454,7 +1562,7 @@ export function CreateSplitWizard({
                     <span>Status</span>
                   </div>
                   {sharePreview.map((s) => {
-                    const isPayer = payerId === s.personId;
+                    const role = previewRole(s.personId);
                     return (
                       <div key={s.personId} className="sm-breakdown-row">
                         <span className="sm-bd-person">
@@ -1464,14 +1572,14 @@ export function CreateSplitWizard({
                               {nameOf(s.personId)}
                               {self?.id === s.personId ? " (You)" : ""}
                             </b>
-                            <small>{isPayer ? "Paid the full amount" : "Owes you this amount"}</small>
+                            <small>{role.detail}</small>
                           </span>
                         </span>
                         <span>{(s.sharePercentageBps / 100).toFixed(0)}%</span>
                         <strong>{money(s.shareAmountMinor)}</strong>
-                        <em className={isPayer ? "paid" : "owes"}>
-                          {isPayer ? <Check size={11} /> : <Clock size={11} />}
-                          {isPayer ? "Paid" : "Owes you"}
+                        <em className={role.owes ? "owes" : "paid"}>
+                          {role.owes ? <Clock size={11} /> : <Check size={11} />}
+                          {role.badge}
                         </em>
                       </div>
                     );
@@ -1714,7 +1822,7 @@ export function CreateSplitWizard({
                 <section className="sm-review-block">
                   <header>
                     <h3>Expense Details</h3>
-                    <button type="button" className="sm-mini-btn" onClick={() => update({ step: 1 })}>
+                    <button type="button" className="sm-mini-btn" onClick={() => goTo(1)}>
                       Edit
                     </button>
                   </header>
@@ -1790,8 +1898,8 @@ export function CreateSplitWizard({
                       <span>Notification</span>
                     </div>
                     {sharePreview.map((s) => {
-                      const isPayer = payerId === s.personId;
-                      const willSend = !isPayer && draft.sendNotifications;
+                      const role = previewRole(s.personId);
+                      const willSend = role.owes && s.personId !== self?.id && draft.sendNotifications;
                       return (
                         <div key={s.personId} className="sm-table-row">
                           <span className="sm-bd-person">
@@ -1803,9 +1911,9 @@ export function CreateSplitWizard({
                           </span>
                           <span>{(s.sharePercentageBps / 100).toFixed(0)}%</span>
                           <strong>{money(s.shareAmountMinor)}</strong>
-                          <em className={isPayer ? "paid" : "owes"}>
-                            {isPayer ? <Check size={11} /> : <Clock size={11} />}
-                            {isPayer ? "Paid" : "Not paid yet"}
+                          <em className={role.owes ? "owes" : "paid"} title={role.detail}>
+                            {role.owes ? <Clock size={11} /> : <Check size={11} />}
+                            {role.badge}
                           </em>
                           <span className={willSend ? "notify" : "notify off"}>
                             <Bell size={12} /> {willSend ? "Will send" : "Won't send"}
@@ -1823,7 +1931,7 @@ export function CreateSplitWizard({
             <button
               className="sm-outline"
               type="button"
-              onClick={() => (draft.step === 1 ? onClose() : update({ step: draft.step - 1 }))}
+              onClick={() => (draft.step === 1 ? onClose() : goTo(draft.step - 1))}
             >
               <ArrowLeft size={16} /> Back
             </button>
@@ -1904,7 +2012,9 @@ export function CreateSplitWizard({
                             {nameOf(id)}
                             {self?.id === id ? " (You)" : ""}
                           </b>
-                          <small>{paid > 0 ? "Paid the full amount" : "Not paid yet"}</small>
+                          <small>
+                            {paid <= 0 ? "Did not pay the bill" : paid === totalMinor ? "Paid the full bill" : "Paid part of the bill"}
+                          </small>
                         </span>
                         <strong>{money(paid)}</strong>
                       </div>
@@ -1955,7 +2065,7 @@ export function CreateSplitWizard({
               <section className="sm-rail-card sm-split-type">
                 <header className="sm-rail-card-head">
                   <h3>Split Type</h3>
-                  <button type="button" className="sm-mini-btn" onClick={() => update({ step: 4 })}>
+                  <button type="button" className="sm-mini-btn" onClick={() => goTo(4)}>
                     Edit
                   </button>
                 </header>
@@ -2062,7 +2172,7 @@ export function CreateSplitWizard({
               <section className="sm-rail-card">
                 <header className="sm-rail-card-head">
                   <h3>Expense Summary</h3>
-                  <button type="button" className="sm-mini-btn" onClick={() => update({ step: 1 })}>
+                  <button type="button" className="sm-mini-btn" onClick={() => goTo(1)}>
                     Edit
                   </button>
                 </header>
@@ -2089,42 +2199,31 @@ export function CreateSplitWizard({
               </section>
               <section className="sm-rail-card">
                 <h3>Participants Summary</h3>
-                <p className="sm-rail-sub">Here&apos;s who still needs to pay.</p>
+                <p className="sm-rail-sub">Here&apos;s who settles with whom once created.</p>
                 <dl className="sm-rail-dl">
                   <dt>Total amount</dt>
                   <dd className="strong">{money(totalMinor)}</dd>
-                  <dt>Paid</dt>
+                  <dt>Paid upfront</dt>
+                  <dd>{money(previewLedger?.summary.upfrontPaidMinor ?? 0)}</dd>
+                  <dt>To be repaid</dt>
                   <dd>
-                    {payerId && participantIds.includes(payerId) ? 1 : 0} person ·{" "}
-                    {money(
-                      sharePreview
-                        .filter((s) => s.personId === payerId)
-                        .reduce((a, s) => a + s.shareAmountMinor, 0),
-                    )}
-                  </dd>
-                  <dt>Pending</dt>
-                  <dd>
-                    {sharePreview.filter((s) => s.personId !== payerId).length} people ·{" "}
-                    {money(
-                      sharePreview
-                        .filter((s) => s.personId !== payerId)
-                        .reduce((a, s) => a + s.shareAmountMinor, 0),
-                    )}
+                    {new Set(previewLedger?.obligations.map((edge) => edge.debtorPersonId) ?? []).size} people ·{" "}
+                    {money(previewLedger?.summary.collectibleMinor ?? 0)}
                   </dd>
                 </dl>
                 <div className="sm-payer-list">
                   {sharePreview.map((s) => {
-                    const isPayer = s.personId === payerId;
+                    const role = previewRole(s.personId);
                     return (
                       <div key={s.personId}>
                         <Avatar name={nameOf(s.personId)} tone={toneOf(s.personId)} small />
                         <span>
                           <b>{nameOf(s.personId)}</b>
                           <small>
-                            {isPayer ? "Paid" : "Pending"} · {money(s.shareAmountMinor)}
+                            Share {money(s.shareAmountMinor)} · {role.detail}
                           </small>
                         </span>
-                        <em className={isPayer ? "paid" : "owes"}>{isPayer ? "Settled" : "Pending"}</em>
+                        <em className={role.owes ? "owes" : "paid"}>{role.owes ? "To repay" : "Nothing owed"}</em>
                       </div>
                     );
                   })}

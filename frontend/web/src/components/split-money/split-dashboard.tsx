@@ -104,6 +104,7 @@ function formatDue(date: string | null) {
 
 function displayStatus(status: string, settledPercent?: number) {
   if (status === "settled" || status === "paid") return "Settled";
+  if (status === "overpaid") return "Needs Review";
   if (status === "partially_paid" || status === "partially_settled") {
     if ((settledPercent ?? 0) >= 80) return "Almost Settled";
     return "Partially Settled";
@@ -187,14 +188,16 @@ export function SplitDashboard({
     );
   }
 
+  // Progress is measured against money others actually owe on the bills, never the bills' gross total.
   const settledPct = summary?.settledPercent ?? 0;
-  const total = summary?.totalSharedMinor || 1;
-  const paidPct = Math.min(100, Math.round(((summary?.collectedMinor ?? 0) / total) * 100));
-  const overduePct = Math.min(
-    100 - paidPct,
-    Math.round(((summary?.overdueMinor ?? 0) / total) * 100),
-  );
-  const pendingPct = Math.max(0, 100 - paidPct - overduePct);
+  const collectible = summary?.collectibleMinor ?? 0;
+  const collected = summary?.collectedMinor ?? 0;
+  const stillOwed = summary?.outstandingDebtMinor ?? Math.max(0, collectible - collected);
+  const correctionDue = summary?.correctionDueMinor ?? 0;
+  const base = collectible || 1;
+  const paidPct = Math.min(100, Math.floor((collected / base) * 100));
+  const overduePct = Math.min(100 - paidPct, Math.round(((summary?.overdueMinor ?? 0) / base) * 100));
+  const pendingPct = collectible ? Math.max(0, 100 - paidPct - overduePct) : 0;
 
   const rightRail = (
     <aside className="sm-rail">
@@ -243,23 +246,29 @@ export function SplitDashboard({
             <p className="sm-muted-note">None due soon.</p>
           )}
           {upcoming.map((u, idx) => {
+            const edge = u.obligations?.[0];
             const person = u.participants[0];
+            const debtor = edge?.debtor?.isSelf ? "You" : (edge?.debtor?.fullName ?? person?.name ?? "Participant");
+            const creditor = edge?.creditor?.isSelf ? "you" : edge?.creditor?.fullName;
+            const extra = (u.obligations?.length ?? 0) - 1;
             return (
               <button
-                key={`${u.expenseId}-${person?.personId ?? idx}`}
+                key={`${u.expenseId}-${idx}`}
                 type="button"
                 className="sm-upcoming-row"
                 onClick={() => onOpenExpense(u.expenseId)}
               >
-                <span className={`sm-avatar small ${avatarTone(idx + 1)}`}>
-                  {initials(person?.name ?? u.title)}
-                </span>
+                <span className={`sm-avatar small ${avatarTone(idx + 1)}`}>{initials(debtor)}</span>
                 <div>
-                  <b>{person?.name ?? "Participant"}</b>
-                  <small>{u.title}</small>
+                  <b>{creditor ? `${debtor} → ${creditor}` : debtor}</b>
+                  <small>
+                    {u.title}
+                    {extra > 0 ? ` · +${extra} more` : ""}
+                    {(u.correctionDueMinor ?? 0) > 0 ? " · refund due" : ""}
+                  </small>
                 </div>
                 <em>{formatDue(u.dueDate)}</em>
-                <strong>{money(person?.pendingMinor ?? u.pendingMinor)}</strong>
+                <strong>{money(edge?.amountMinor ?? person?.pendingMinor ?? u.pendingMinor)}</strong>
               </button>
             );
           })}
@@ -375,7 +384,9 @@ export function SplitDashboard({
             hasActivity && summary?.payChangePct != null
               ? `${summary.payChangePct >= 0 ? "+" : ""}${summary.payChangePct}%`
               : hasActivity
-                ? `${money(summary?.pendingMinor ?? 0)} still outstanding`
+                ? correctionDue > 0
+                  ? `Includes refunds for overpayments`
+                  : "What you owe others"
                 : null
           }
           noteTone={(summary?.payChangePct ?? 0) < 0 ? "down" : "up"}
@@ -453,9 +464,8 @@ export function SplitDashboard({
               </div>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <h3>Settlement Progress</h3>
-                <p>
-                  <strong>{money(summary?.collectedMinor ?? 0)}</strong> collected of{" "}
-                  {money(summary?.totalSharedMinor ?? 0)}
+                <p data-testid="split-progress-caption">
+                  <strong>{money(collected)}</strong> repaid of {money(collectible)} owed on shared bills
                 </p>
                 <div className="sm-bar" aria-hidden>
                   <i className="seg-paid" style={{ width: `${paidPct}%` }} />
@@ -465,16 +475,22 @@ export function SplitDashboard({
                 <div className="sm-legend">
                   <span>
                     <i className="paid" />
-                    Paid <b>{money(summary?.collectedMinor ?? 0)}</b>
+                    Repaid <b>{money(collected)}</b>
                   </span>
                   <span>
                     <i className="pending" />
-                    Pending <b>{money(summary?.pendingMinor ?? 0)}</b>
+                    Still owed <b>{money(stillOwed)}</b>
                   </span>
                   <span>
                     <i className="overdue" />
                     Overdue <b>{money(summary?.overdueMinor ?? 0)}</b>
                   </span>
+                  {correctionDue > 0 ? (
+                    <span data-testid="split-progress-refund">
+                      <i className="overdue" />
+                      Refunds due <b>{money(correctionDue)}</b>
+                    </span>
+                  ) : null}
                 </div>
               </div>
             </article>
@@ -564,7 +580,7 @@ export function SplitDashboard({
                 <span>People</span>
                 <span>Your share</span>
                 <span>Collected</span>
-                <span>Pending</span>
+                <span>Still owed</span>
                 <span>Progress</span>
                 <span>Status</span>
                 <span />
@@ -614,14 +630,15 @@ export function SplitDashboard({
                         </small>
                       </div>
                     </div>
-                    <b>{money(x.totalAmountMinor)}</b>
+                    <b data-label="Total">{money(x.totalAmountMinor)}</b>
                     <div className="sm-payer-cell">
-                      {payer ? (
-                        <span className={`sm-avatar small ${avatarTone(0)}`}>
-                          {initials(payer.fullName)}
+                      {(x.youPaidMinor ?? 0) > 0 ? (
+                        <b>{money(x.youPaidMinor ?? 0)}</b>
+                      ) : (
+                        <span className="sm-cell-note" title={payer ? `Paid by ${payer.fullName}` : undefined}>
+                          {payer ? `Paid by ${payer.fullName.split(" ")[0]}` : "—"}
                         </span>
-                      ) : null}
-                      <b>{money(x.youPaidMinor ?? 0)}</b>
+                      )}
                     </div>
                     <div className="sm-people-cell">
                       <div className="sm-avatar-stack">
@@ -640,8 +657,16 @@ export function SplitDashboard({
                     </div>
                     <b>{money(x.yourShareMinor ?? 0)}</b>
                     <b className="success">{money(x.collectedMinor ?? 0)}</b>
-                    <b className={(x.pendingMinor ?? 0) === 0 ? "success" : "danger"}>
-                      {money(x.pendingMinor ?? 0)}
+                    <b
+                      data-label="Still owed"
+                      className={(x.outstandingDebtMinor ?? x.pendingMinor ?? 0) === 0 ? "success" : "danger"}
+                    >
+                      {money(x.outstandingDebtMinor ?? x.pendingMinor ?? 0)}
+                      {(x.correctionDueMinor ?? 0) > 0 ? (
+                        <span className="sm-cell-note danger" title="Refund due for an overpayment">
+                          +{money(x.correctionDueMinor ?? 0)} refund
+                        </span>
+                      ) : null}
                     </b>
                     <div className="sm-progress-cell">
                       <div className="sm-mini-bar">

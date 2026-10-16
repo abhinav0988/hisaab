@@ -565,6 +565,173 @@ describe.sequential("Split Money financial integration", () => {
   });
 });
 
+describe.sequential("Split Money identity and cross-endpoint reconciliation", () => {
+  const ownerId = "split-user-identity-01";
+  const ownerEmail = "Owner.Identity@Example.com";
+
+  beforeAll(async () => {
+    const now = new Date().toISOString();
+    await env.DB.batch([
+      env.DB.prepare(
+        "INSERT OR IGNORE INTO user (id, name, email, emailVerified, createdAt, updatedAt) VALUES (?, 'abhinav mangal', ?, 1, ?, ?)",
+      ).bind(ownerId, ownerEmail, now, now),
+      env.DB.prepare(
+        "INSERT OR IGNORE INTO user_preferences (id, user_id, timezone, default_currency, created_at, updated_at) VALUES (?, ?, 'Asia/Kolkata', 'INR', ?, ?)",
+      ).bind(`prefs-${ownerId}`, ownerId, now, now),
+    ]);
+  });
+
+  it("refuses to create or edit a contact that carries the account holder's own email", async () => {
+    await expect(
+      createPerson(env, ownerId, { ...person("abhinav mangal"), email: "  owner.identity@example.COM " }),
+    ).rejects.toMatchObject({ code: "PERSON_IS_SELF", fieldErrors: { email: expect.any(Array) } });
+
+    const friend = await createPerson(env, ownerId, { ...person("Satyaki I"), email: "satyaki@example.com" });
+    const { updatePerson } = await import("./services/split-money");
+    await expect(updatePerson(env, ownerId, friend.id, { email: ownerEmail })).rejects.toMatchObject({
+      code: "PERSON_IS_SELF",
+    });
+  });
+
+  it("persists ₹100 / 3 with exact allocations and never schedules a reminder in the past", async () => {
+    const self = (await ensureSelfPerson(env, ownerId)).id;
+    const rohit = await createPerson(env, ownerId, person("Rohit I"));
+    const priya = await createPerson(env, ownerId, person("Priya I"));
+    const today = new Date().toISOString().slice(0, 10);
+    const before = Date.now();
+    const { expense } = await createExpense(env, ownerId, {
+      ...equalExpense("Snacks 100", 10_000, self, [rohit.id, priya.id], [{ personId: rohit.id, paidAmountMinor: 10_000 }]),
+      dueDate: today,
+      reminder: { enabled: true, firstReminderDaysBefore: 2, frequencyDays: 2, channels: ["in_app"] },
+    });
+
+    const rows = await env.DB.prepare(
+      "SELECT person_id, share_amount_minor FROM split_participants WHERE expense_id = ? ORDER BY share_amount_minor DESC",
+    )
+      .bind(expense.id)
+      .all<{ person_id: string; share_amount_minor: number }>();
+    expect(rows.results.map((row) => row.share_amount_minor)).toEqual([3_334, 3_333, 3_333]);
+    expect(rows.results.reduce((sum, row) => sum + row.share_amount_minor, 0)).toBe(10_000);
+    expect(expense.youOweMinor).toBe(rows.results.find((row) => row.person_id === self)!.share_amount_minor);
+    expect(expense.obligations!.every((edge) => edge.creditorPersonId === rohit.id)).toBe(true);
+
+    const reminders = await env.DB.prepare("SELECT scheduled_at FROM split_reminders WHERE expense_id = ?")
+      .bind(expense.id)
+      .all<{ scheduled_at: string }>();
+    expect(reminders.results.length).toBeGreaterThan(0);
+    for (const reminder of reminders.results) {
+      expect(Date.parse(reminder.scheduled_at)).toBeGreaterThanOrEqual(before - 1_000);
+    }
+  });
+
+  it("replays the legacy production water bill and agrees across expense, dashboard, person and history", async () => {
+    const selfId = (await ensureSelfPerson(env, ownerId)).id;
+    const now = Date.parse("2026-10-13T10:00:00.000Z");
+    const at = (ms: number) => new Date(now + ms).toISOString();
+    const expenseId = "legacy-water-bill";
+    const duplicateId = "legacy-self-duplicate";
+    const satyakiId = "legacy-satyaki";
+
+    // Pre-0018 writes: a contact holding the account email, four self-transfers and a double-submitted repayment.
+    const rows = [
+      env.DB.prepare(
+        "INSERT INTO split_people (id, user_id, full_name, email, country_code, relationship, is_self, created_at, updated_at) VALUES (?, ?, 'abhinav mangal', ?, 'IN', 'friend', 0, ?, ?), (?, ?, 'satyaki', NULL, 'IN', 'friend', 0, ?, ?)",
+      ).bind(duplicateId, ownerId, ownerEmail.toLowerCase(), at(0), at(0), satyakiId, ownerId, at(0), at(0)),
+      env.DB.prepare(
+        `INSERT INTO split_expenses (id, user_id, title, category, total_amount_minor, currency, expense_date, split_method, status, allow_partial_payments, send_notifications, is_draft, ledger_version, created_at, updated_at)
+         VALUES (?, ?, 'water bill', 'Utilities', 50000, 'INR', '2026-10-13', 'equal', 'pending', 1, 1, 0, 0, ?, ?)`,
+      ).bind(expenseId, ownerId, at(0), at(0)),
+      env.DB.prepare("INSERT INTO split_expense_payers (id, expense_id, person_id, paid_amount_minor) VALUES ('lw-payer', ?, ?, 50000)").bind(
+        expenseId,
+        selfId,
+      ),
+      env.DB.prepare(
+        `INSERT INTO split_participants (id, expense_id, person_id, share_percentage_bps, share_value, share_amount_minor, adjusted_share_amount_minor, paid_amount_minor, pending_amount_minor, status)
+         VALUES ('lw-self', ?, ?, 3333, 1, 16667, 16667, 0, 0, 'pending'),
+                ('lw-dup', ?, ?, 3333, 1, 16667, 16667, 0, 0, 'pending'),
+                ('lw-sat', ?, ?, 3334, 1, 16666, 16666, 0, 0, 'pending')`,
+      ).bind(expenseId, selfId, expenseId, duplicateId, expenseId, satyakiId),
+    ];
+    const payments: Array<[string, string, string, string, number, number]> = [
+      ["lw-p1", "lw-self", selfId, selfId, 16_667, 1_000],
+      ["lw-p2", "lw-self", selfId, selfId, 16_667, 1_500],
+      ["lw-p3", "lw-self", selfId, selfId, 16_667, 2_000],
+      ["lw-p4", "lw-self", selfId, selfId, 16_667, 2_500],
+      ["lw-p5", "lw-dup", duplicateId, selfId, 15_500, 10_000],
+      ["lw-p6", "lw-dup", duplicateId, selfId, 15_500, 11_600],
+      ["lw-p7", "lw-sat", satyakiId, selfId, 16_666, 30_000],
+    ];
+    for (const [id, participantId, payer, receiver, amount, offset] of payments) {
+      rows.push(
+        env.DB.prepare(
+          "INSERT INTO split_payments (id, expense_id, participant_id, payer_person_id, receiver_person_id, amount_minor, method, payment_date, status, is_final_settlement, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, 'upi', '2026-10-13', 'completed', 0, ?, ?)",
+        ).bind(id, expenseId, participantId, payer, receiver, amount, at(offset), at(offset)),
+      );
+    }
+    await env.DB.batch(rows);
+
+    const view = await getExpense(env, ownerId, expenseId);
+    expect(view.selfDuplicatePersonIds).toEqual([duplicateId]);
+    const flagsById = Object.fromEntries(view.payments!.map((p) => [p.id, p.flags]));
+    expect(flagsById["lw-p1"]).toEqual(["self_transfer"]);
+    expect(flagsById["lw-p2"]).toEqual(["self_transfer", "possible_duplicate"]);
+    expect(flagsById["lw-p5"]).toEqual([]);
+    expect(flagsById["lw-p6"]).toEqual(["possible_duplicate"]);
+    expect(flagsById["lw-p7"]).toEqual([]);
+
+    // The bill itself is fully repaid; only the duplicate ₹155 repayment must be refunded.
+    expect(view.ledger).toMatchObject({
+      collectibleMinor: 33_333,
+      collectedMinor: 33_333,
+      outstandingDebtMinor: 0,
+      correctionDueMinor: 14_333,
+      remainingMinor: 14_333,
+    });
+    expect(view.status).toBe("overpaid");
+    expect(view.youOweMinor).toBe(14_333);
+    expect(view.youAreOwedMinor).toBe(0);
+    expect(view.obligations).toEqual([
+      expect.objectContaining({ debtorPersonId: selfId, creditorPersonId: duplicateId, amountMinor: 14_333 }),
+    ]);
+
+    // Self-transfers are not money movement: they must not reach the ledger as a debt in either direction.
+    const selfRow = view.balances!.find((row) => row.personId === selfId)!;
+    expect(selfRow.netMinor + view.balances!.filter((row) => row.personId !== selfId).reduce((s, r) => s + r.netMinor, 0)).toBe(0);
+
+    const dashboard = await getDashboard(env, ownerId);
+    const views = (await getHistory(env, ownerId)).expenses;
+    const sum = (pick: (v: (typeof views)[number]) => number) => views.reduce((total, v) => total + pick(v), 0);
+    expect(dashboard.summary.moneyToPayMinor).toBe(sum((v) => v.youOweMinor));
+    expect(dashboard.summary.moneyToReceiveMinor).toBe(sum((v) => v.youAreOwedMinor));
+    expect(dashboard.summary.collectibleMinor).toBe(sum((v) => v.collectibleMinor));
+    expect(dashboard.summary.collectedMinor).toBe(sum((v) => v.collectedMinor));
+    expect(dashboard.summary.correctionDueMinor).toBe(sum((v) => v.correctionDueMinor));
+    expect(dashboard.summary.pendingMinor).toBe(dashboard.summary.outstandingDebtMinor + dashboard.summary.correctionDueMinor);
+    expect(dashboard.summary.collectedMinor).toBeLessThanOrEqual(dashboard.summary.collectibleMinor);
+
+    const duplicate = await getPersonDetails(env, ownerId, duplicateId);
+    expect(duplicate.youOweMinor).toBe(14_333);
+
+    // Correction procedure: voiding the double submit and self-transfers removes the refund. The first ₹155 was
+    // short of the ₹166.67 share, so ₹11.67 is genuinely still owed — the correction must not invent a settlement.
+    let corrected = view;
+    for (const id of ["lw-p1", "lw-p2", "lw-p3", "lw-p4", "lw-p6"]) {
+      corrected = (await voidPayment(env, ownerId, expenseId, id, "Legacy correction")).expense;
+    }
+    expect(corrected.status).toBe("almost_settled");
+    expect(corrected.ledger).toMatchObject({
+      collectedMinor: 32_166,
+      outstandingDebtMinor: 1_167,
+      correctionDueMinor: 0,
+      remainingMinor: 1_167,
+    });
+    expect(corrected.obligations).toEqual([
+      expect.objectContaining({ debtorPersonId: duplicateId, creditorPersonId: selfId, amountMinor: 1_167 }),
+    ]);
+    expect(corrected.payments!.filter((p) => p.status === "completed").every((p) => p.flags.length === 0)).toBe(true);
+  });
+});
+
 async function getSelfId() {
   const row = await env.DB.prepare(
     "SELECT id FROM split_people WHERE user_id = ? AND is_self = 1 LIMIT 1",

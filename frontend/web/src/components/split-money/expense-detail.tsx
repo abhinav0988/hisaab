@@ -2,7 +2,7 @@
 
 import { useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, Check } from "lucide-react";
+import { ArrowLeft, Check, Info } from "lucide-react";
 import { toast } from "sonner";
 import type { SplitObligation, SplitPaymentMethod } from "@hisaab/types";
 import { money } from "@/lib/format";
@@ -259,7 +259,16 @@ export function ExpenseDetail({
   const remaining = ledger?.remainingMinor ?? expense.pendingMinor ?? 0;
   const settledPct = ledger?.settledPercent ?? expense.settledPercent ?? 0;
   const upfront = ledger?.upfrontPaidMinor ?? expense.totalAmountMinor;
+  const recorded = ledger?.repaymentsRecordedMinor ?? collected;
+  const outstanding = ledger?.outstandingDebtMinor ?? remaining;
+  const correctionDue = ledger?.correctionDueMinor ?? 0;
   const currency = expense.currency;
+  const flagged = (expense.payments ?? []).filter((p) => p.status === "completed" && (p.flags?.length ?? 0) > 0);
+  const selfDuplicates = new Set(expense.selfDuplicatePersonIds ?? []);
+  const balanceOf = (personId: string) => expense.balances?.find((row) => row.personId === personId);
+  /** An edge whose debtor never owed anything on the bill only exists to return an overpayment. */
+  const isRefundEdge = (edge: { debtorPersonId: string }) => (balanceOf(edge.debtorPersonId)?.originalDebtMinor ?? 1) === 0;
+  const needsReview = flagged.length > 0 || selfDuplicates.size > 0 || correctionDue > 0;
   const busy =
     payMutation.isPending ||
     adjMutation.isPending ||
@@ -339,7 +348,8 @@ export function ExpenseDetail({
           <button
             className="sm-primary"
             type="button"
-            disabled={busy || remaining <= 0 || settleMutation.isPending}
+            disabled={busy || remaining <= 0 || flagged.length > 0 || settleMutation.isPending}
+            title={flagged.length > 0 ? "Review the flagged repayments before settling" : undefined}
             onClick={() => settleMutation.mutate()}
           >
             {settleMutation.isPending ? "Settling…" : "Mark Settled"}
@@ -413,7 +423,7 @@ export function ExpenseDetail({
         </section>
       ) : null}
 
-      <section className="sm-stat-grid" aria-label="Expense summary">
+      <section className="sm-stat-grid sm-stat-grid-auto" aria-label="Expense summary">
         <article className="sm-stat green">
           <div>
             <b>{money(expense.totalAmountMinor, currency)}</b>
@@ -429,16 +439,58 @@ export function ExpenseDetail({
         <article className="sm-stat gold">
           <div>
             <b>{money(collected, currency)}</b>
-            <p>Repayments received</p>
+            <p>Collected toward bill</p>
+            {recorded !== collected ? <small>{money(recorded, currency)} repayments recorded</small> : null}
           </div>
         </article>
         <article className="sm-stat">
           <div>
-            <b>{money(remaining, currency)}</b>
-            <p>Repayment remaining</p>
+            <b>{money(outstanding, currency)}</b>
+            <p>Still owed on bill</p>
           </div>
         </article>
+        {correctionDue > 0 ? (
+          <article className="sm-stat red" data-testid="split-correction-due">
+            <div>
+              <b>{money(correctionDue, currency)}</b>
+              <p>Refund / correction due</p>
+              <small>Repayments exceeded what was owed</small>
+            </div>
+          </article>
+        ) : null}
       </section>
+
+      {needsReview ? (
+        <section className="sm-callout danger" role="alert" style={{ marginBottom: 16 }} data-testid="split-review-banner">
+          <Info size={16} />
+          <div>
+            <b>This expense needs review</b>
+            <ul style={{ margin: "6px 0 0 16px" }}>
+              {selfDuplicates.size > 0 ? (
+                <li>
+                  {[...selfDuplicates].map((id) => balanceOf(id)?.person?.fullName ?? "A contact").join(", ")} uses your
+                  own account email, so you appear twice on this expense.
+                </li>
+              ) : null}
+              {flagged.some((p) => p.flags?.includes("self_transfer")) ? (
+                <li>Some repayments were recorded from a person to themselves. They move no money.</li>
+              ) : null}
+              {flagged.some((p) => p.flags?.includes("possible_duplicate")) ? (
+                <li>Some repayments look like double submits (same people and amount within a minute).</li>
+              ) : null}
+              {correctionDue > 0 ? (
+                <li>
+                  {money(correctionDue, currency)} was repaid beyond what was owed and shows as a refund below.
+                </li>
+              ) : null}
+            </ul>
+            <small style={{ display: "block", marginTop: 6 }}>
+              Nothing is changed automatically. Void the flagged repayments in Payment history if they were mistakes;
+              the voided records stay in the audit trail.
+            </small>
+          </div>
+        </section>
+      ) : null}
 
       <section className="sm-form-card" style={{ marginBottom: 16 }} aria-label="Settlement progress">
         <div style={{ display: "flex", justifyContent: "space-between", gap: 12, marginBottom: 8 }}>
@@ -481,9 +533,12 @@ export function ExpenseDetail({
             {expense.obligations!.map((edge) => (
               <div key={obligationKey(edge)}>
                 <b>{edge.debtor?.fullName ?? "Someone"}</b>
-                <span>owes</span>
+                <span>{isRefundEdge(edge) ? "must refund" : "owes"}</span>
                 <strong>{money(edge.amountMinor, currency)}</strong>
-                <em>to {edge.creditor?.fullName ?? "someone"}</em>
+                <em>
+                  to {edge.creditor?.fullName ?? "someone"}
+                  {isRefundEdge(edge) ? " · overpayment" : ""}
+                </em>
               </div>
             ))}
           </div>
@@ -531,13 +586,18 @@ export function ExpenseDetail({
               return (
                 <div key={"personId" in row ? row.personId : i}>
                   <span className={`sm-avatar ${avatarTone(i)} small`}>{initials(name)}</span>
-                  <b>{name}</b>
+                  <b>
+                    {name}
+                    {"personId" in row && selfDuplicates.has(row.personId) ? (
+                      <small className="sm-pill danger" style={{ marginLeft: 6 }}>Same email as you</small>
+                    ) : null}
+                  </b>
                   <span>share {money(share, currency)}</span>
                   <strong>
                     {owed > 0
                       ? `owes ${money(owed, currency)}`
                       : receivable > 0
-                        ? `owed ${money(receivable, currency)}`
+                        ? `gets back ${money(receivable, currency)}`
                         : "settled"}
                   </strong>
                   <em>
@@ -688,6 +748,16 @@ export function ExpenseDetail({
                   {money(p.amountMinor, currency)} via {p.method.replace("_", " ")}
                   {p.status === "voided" ? " (voided)" : ""}
                 </b>
+                {p.status === "completed" && p.flags?.length ? (
+                  <span style={{ display: "flex", gap: 6, flexWrap: "wrap", margin: "4px 0" }}>
+                    {p.flags.includes("self_transfer") ? (
+                      <em className="sm-pill danger" data-testid="flag-self-transfer">Self-transfer · moves no money</em>
+                    ) : null}
+                    {p.flags.includes("possible_duplicate") ? (
+                      <em className="sm-pill danger" data-testid="flag-duplicate">Possible duplicate · review &amp; void</em>
+                    ) : null}
+                  </span>
+                ) : null}
                 <small>
                   {p.paymentDate}
                   {p.referenceId ? ` · ${p.referenceId}` : ""}

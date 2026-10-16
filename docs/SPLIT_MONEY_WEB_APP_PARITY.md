@@ -44,3 +44,12 @@ Both platforms call the same finance API (`/api/v1/split-money/*`); the backend 
 | Signed adjustment payload (`participantId`, `type`, `amountMinor`, `reason`) | Yes | Yes | **PASS** |
 | In-app reminder payload (`channels: ["in_app"]`, `frequency`, `firstReminderDaysBefore`, `message`) | Yes | Yes | **PASS** |
 | `hasMoneyHistory` (`payments.length > 0 \|\| adjustments.length > 0`) vs `hasActiveRepayments` (`completedPayments.length > 0`) | Yes | Yes | **PASS** |
+
+## Oct 16 defect round — parity additions
+
+| Feature | Implementation Status | Backend Status | Web Status | Android Status | Tests Executed | Actual Result | Remaining Issue / Blocker |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| Create: step-mapped validation errors (`splitWizardIssues`) | Complete | **PASS** | **PASS** | Typecheck only | Unit + E2E | Both jump to the failing step with the exact message | Android runtime blocked |
+| Create review: ledger-derived "Owes X / Paid upfront" | Complete | n/a | **PASS** | Typecheck only | E2E | Both use shared `computeSplitLedger` | Android runtime blocked |
+| Expense detail: collected / still owed / refund due, payment flags, self-duplicate tag, settle blocked while flagged | Complete | **PASS** | **PASS** | Typecheck only | D1 + E2E | Same fields from the API on both platforms | Android runtime blocked |
+| Dashboard: collectible-based progress, refunds separate | Complete | **PASS** | **PASS** | Typecheck only | D1 + E2E | Same summary fields | Android runtime blocked |

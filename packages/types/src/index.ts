@@ -454,10 +454,17 @@ export interface SplitLedgerSummary {
   repaymentsRecordedMinor: number;
   collectedMinor: number;
   remainingMinor: number;
+  /** Original bill debt that has not been repaid yet. */
+  outstandingDebtMinor: number;
+  /** Money that must move back only because repayments exceeded or bypassed what was owed. */
+  correctionDueMinor: number;
   settledBps: number;
   settledPercent: number;
   hasOverpayment: boolean;
 }
+
+/** `self_transfer`: payer and receiver are the same person. `possible_duplicate`: same edge and amount within a minute. */
+export type SplitPaymentFlag = "self_transfer" | "possible_duplicate";
 
 export interface SplitObligation {
   debtorPersonId: string;
@@ -627,7 +634,11 @@ export interface SplitExpense {
   collectibleMinor?: number;
   collectedMinor?: number;
   pendingMinor?: number;
+  outstandingDebtMinor?: number;
+  correctionDueMinor?: number;
   settledPercent?: number;
+  /** Contacts on this expense that hold the account holder's own email. */
+  selfDuplicatePersonIds?: string[];
   receipts?: SplitReceipt[];
   createdAt: string;
   updatedAt: string;
@@ -651,6 +662,7 @@ export interface SplitPayment {
   voidReason?: string | null;
   payer?: SplitPerson | null;
   receiver?: SplitPerson | null;
+  flags?: SplitPaymentFlag[];
   createdAt: string;
   updatedAt: string;
 }
@@ -673,6 +685,8 @@ export interface SplitCurrencyTotals {
   collectibleMinor: number;
   collectedMinor: number;
   pendingMinor: number;
+  outstandingDebtMinor?: number;
+  correctionDueMinor?: number;
   overdueMinor: number;
   pendingSettlements: number;
   settledPercent: number;
@@ -693,6 +707,8 @@ export interface SplitDashboard {
     currency?: string;
     dueDate: string | null;
     pendingMinor: number;
+    outstandingDebtMinor?: number;
+    correctionDueMinor?: number;
     obligations?: SplitObligation[];
     participants: Array<{ personId: string; name: string; pendingMinor: number }>;
   }>;

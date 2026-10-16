@@ -61,6 +61,8 @@ export type SplitWizardDraft = {
   noteForParticipants: string;
   allowPartialPayments: boolean;
   sendNotifications: boolean;
+  /** Self person id of the account that wrote the draft; drafts never cross accounts on a shared browser. */
+  ownerId?: string;
 };
 
 export function defaultDraft(): SplitWizardDraft {
@@ -98,12 +100,93 @@ export function defaultDraft(): SplitWizardDraft {
   };
 }
 
+const clampInt = (value: unknown, min: number, max: number, fallback: number) =>
+  typeof value === "number" && Number.isFinite(value) ? Math.min(max, Math.max(min, Math.round(value))) : fallback;
+const uniqueStrings = (value: unknown) =>
+  Array.isArray(value) ? [...new Set(value.filter((id): id is string => typeof id === "string" && id.length > 0))] : [];
+const stringRecord = (value: unknown) =>
+  value && typeof value === "object" && !Array.isArray(value)
+    ? Object.fromEntries(Object.entries(value).filter((entry): entry is [string, string] => typeof entry[1] === "string"))
+    : {};
+
+/** Stored drafts outlive releases and edits; coerce every field so a stale draft cannot reach the API malformed. */
+export function sanitizeDraft(raw: unknown): SplitWizardDraft {
+  const base = defaultDraft();
+  const value = (raw && typeof raw === "object" ? raw : {}) as Partial<Record<keyof SplitWizardDraft, unknown>>;
+  const str = (key: keyof SplitWizardDraft, fallback: string) =>
+    typeof value[key] === "string" ? (value[key] as string) : fallback;
+  const bool = (key: keyof SplitWizardDraft, fallback: boolean) =>
+    typeof value[key] === "boolean" ? (value[key] as boolean) : fallback;
+  const methods: SplitWizardDraft["method"][] = ["equal", "exact", "percentage", "shares", "itemwise"];
+  const time = str("expenseTime", base.expenseTime).slice(0, 5);
+  return {
+    step: clampInt(value.step, 1, 6, 1),
+    title: str("title", ""),
+    amountMajor: str("amountMajor", ""),
+    category: str("category", base.category) || base.category,
+    expenseDate: /^\d{4}-\d{2}-\d{2}$/.test(str("expenseDate", "")) ? str("expenseDate", "") : base.expenseDate,
+    expenseTime: /^\d{2}:\d{2}$/.test(time) ? time : "",
+    groupId: str("groupId", ""),
+    description: str("description", ""),
+    payerMode: value.payerMode === "multiple" ? "multiple" : "single",
+    payerIds: uniqueStrings(value.payerIds),
+    payerAmounts: stringRecord(value.payerAmounts),
+    participantIds: uniqueStrings(value.participantIds),
+    method: methods.includes(value.method as SplitWizardDraft["method"]) ? (value.method as SplitWizardDraft["method"]) : "equal",
+    exactAmounts: stringRecord(value.exactAmounts),
+    percentages: stringRecord(value.percentages),
+    shares: stringRecord(value.shares),
+    items: Array.isArray(value.items)
+      ? (value.items as SplitWizardDraft["items"])
+          .filter((item) => item && typeof item === "object")
+          .map((item) => ({
+            name: typeof item.name === "string" ? item.name : "",
+            quantity: clampInt(item.quantity, 1, 9999, 1),
+            priceMajor: typeof item.priceMajor === "string" ? item.priceMajor : "",
+            kind: item.kind === "tax" || item.kind === "tip" ? item.kind : "item",
+            personIds: uniqueStrings(item.personIds),
+          }))
+      : [],
+    dueDate: /^\d{4}-\d{2}-\d{2}$/.test(str("dueDate", "")) ? str("dueDate", "") : "",
+    remindersEnabled: bool("remindersEnabled", base.remindersEnabled),
+    reminderChannels: ["in_app"],
+    firstReminderDays: clampInt(value.firstReminderDays, 0, 30, base.firstReminderDays),
+    frequencyDays: clampInt(value.frequencyDays, 1, 30, base.frequencyDays),
+    recurring: bool("recurring", base.recurring),
+    stopAfterSettlement: bool("stopAfterSettlement", base.stopAfterSettlement),
+    reminderMessage: str("reminderMessage", "").slice(0, 200),
+    noteForParticipants: str("noteForParticipants", "").slice(0, 200),
+    allowPartialPayments: bool("allowPartialPayments", base.allowPartialPayments),
+    sendNotifications: bool("sendNotifications", base.sendNotifications),
+    ownerId: typeof value.ownerId === "string" ? value.ownerId : undefined,
+  };
+}
+
+/** Drops people that no longer exist (or are archived) for this account, and the draft itself if it belongs to another account. */
+export function reconcileDraftPeople(draft: SplitWizardDraft, selfId: string, activeIds: Set<string>): SplitWizardDraft | null {
+  if (draft.ownerId && draft.ownerId !== selfId) return null;
+  const keep = (ids: string[]) => ids.filter((id) => activeIds.has(id));
+  const payerIds = keep(draft.payerIds);
+  const participantIds = keep(draft.participantIds);
+  const lostPayer = payerIds.length !== draft.payerIds.length;
+  const lostParticipant = participantIds.length !== draft.participantIds.length;
+  if (draft.ownerId === selfId && !lostPayer && !lostParticipant) return draft;
+  return {
+    ...draft,
+    ownerId: selfId,
+    payerIds,
+    participantIds,
+    items: draft.items.map((item) => ({ ...item, personIds: keep(item.personIds) })),
+    step: lostPayer ? Math.min(draft.step, 2) : lostParticipant ? Math.min(draft.step, 3) : draft.step,
+  };
+}
+
 export function loadDraft(): SplitWizardDraft | null {
   if (typeof window === "undefined") return null;
   try {
     const raw = localStorage.getItem(DRAFT_KEY);
     if (!raw) return null;
-    return { ...defaultDraft(), ...(JSON.parse(raw) as SplitWizardDraft) };
+    return sanitizeDraft(JSON.parse(raw));
   } catch {
     return null;
   }

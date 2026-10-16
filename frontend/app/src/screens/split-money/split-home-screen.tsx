@@ -35,7 +35,13 @@ export function SplitMoneyHomeScreen({ navigation }: Props) {
           <Text style={styles.kicker}>TOTAL SHARED EXPENSES</Text>
           <Text style={styles.total}>{money(summary.totalSharedMinor)}</Text>
           <View style={styles.progress}><View style={[styles.progressFill, { width: `${Math.min(100, Math.max(0, summary.settledPercent))}%` }]} /></View>
-          <Text style={styles.muted}>{summary.settledPercent}% settled · {summary.pendingSettlements} pending settlements</Text>
+          <Text style={styles.muted}>
+            {money(summary.collectedMinor)} repaid of {money(summary.collectibleMinor)} owed on shared bills · {summary.settledPercent}% settled
+          </Text>
+          <Text style={styles.muted}>
+            Still owed {money(summary.outstandingDebtMinor ?? summary.pendingMinor)} · {summary.pendingSettlements} pending settlements
+            {(summary.correctionDueMinor ?? 0) > 0 ? ` · Refunds due ${money(summary.correctionDueMinor ?? 0)}` : ""}
+          </Text>
         </Card>
         <View style={styles.metricRow}>
           <Metric label="YOU ARE OWED" value={money(summary.moneyToReceiveMinor)} color={colors.green} />
@@ -48,7 +54,7 @@ export function SplitMoneyHomeScreen({ navigation }: Props) {
           </Pressable>
         ))}
         <Text style={styles.heading}>Upcoming settlements</Text>
-        {data.upcomingSettlements.length === 0 ? <Text style={styles.muted}>Nothing is due soon.</Text> : data.upcomingSettlements.map((item) => <Card key={item.expenseId} style={styles.upcoming}><Text style={styles.name}>{item.title}</Text><Text style={styles.muted}>Due {item.dueDate ?? "—"} · {money(item.pendingMinor)} pending</Text></Card>)}
+        {data.upcomingSettlements.length === 0 ? <Text style={styles.muted}>Nothing is due soon.</Text> : data.upcomingSettlements.map((item) => <Card key={item.expenseId} style={styles.upcoming}><Text style={styles.name}>{item.title}</Text><Text style={styles.muted}>Due {item.dueDate ?? "—"} · {money(item.outstandingDebtMinor ?? item.pendingMinor)} still owed{(item.correctionDueMinor ?? 0) > 0 ? ` · ${money(item.correctionDueMinor ?? 0)} refund due` : ""}</Text></Card>)}
       </ScrollView>
     </View>
   );

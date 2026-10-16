@@ -176,6 +176,65 @@ describe("adjustments", () => {
   });
 });
 
+describe("legacy pre-0018 records (production water bill and demart)", () => {
+  const CONTACT = "p-dup-self";
+  const SATYAKI = "p-satyaki1";
+
+  it("water bill: ignores self-transfers and reports the ₹143.33 overpayment as a correction, not a shortfall", () => {
+    const ledger = computeSplitLedger({
+      totalAmountMinor: 50_000,
+      payers: [{ personId: YOU, paidAmountMinor: 50_000 }],
+      participants: [part(YOU, 16_667), part(CONTACT, 16_667), part(SATYAKI, 16_666)],
+      payments: [
+        ...Array.from({ length: 4 }, () => ({ payerPersonId: YOU, receiverPersonId: YOU, amountMinor: 16_667 })),
+        { payerPersonId: CONTACT, receiverPersonId: YOU, amountMinor: 15_500 },
+        { payerPersonId: CONTACT, receiverPersonId: YOU, amountMinor: 15_500 },
+        { payerPersonId: SATYAKI, receiverPersonId: YOU, amountMinor: 16_666 },
+      ],
+    });
+    expect(ledger.summary).toMatchObject({
+      collectibleMinor: 33_333,
+      repaymentsRecordedMinor: 47_666,
+      collectedMinor: 33_333,
+      outstandingDebtMinor: 0,
+      correctionDueMinor: 14_333,
+      remainingMinor: 14_333,
+    });
+    expect(ledger.obligations).toEqual([{ debtorPersonId: YOU, creditorPersonId: CONTACT, amountMinor: 14_333 }]);
+    expect(ledger.obligations.some((edge) => edge.debtorPersonId === edge.creditorPersonId)).toBe(false);
+    expect(ledgerExpenseStatus({ summary: ledger.summary, today: "2026-10-16" })).toBe("overpaid");
+  });
+
+  it("demart: a duplicated ₹100 repayment to one of two payers leaves ₹150 to move, with nothing owed on the bill", () => {
+    const ledger = computeSplitLedger({
+      totalAmountMinor: 10_000,
+      payers: [
+        { personId: CONTACT, paidAmountMinor: 5_000 },
+        { personId: SATYAKI, paidAmountMinor: 5_000 },
+      ],
+      participants: [part(YOU, 10_000)],
+      payments: [
+        { payerPersonId: YOU, receiverPersonId: CONTACT, amountMinor: 10_000 },
+        { payerPersonId: YOU, receiverPersonId: CONTACT, amountMinor: 10_000 },
+      ],
+    });
+    expect(ledger.summary).toMatchObject({
+      collectibleMinor: 10_000,
+      collectedMinor: 10_000,
+      outstandingDebtMinor: 0,
+      correctionDueMinor: 15_000,
+      remainingMinor: 15_000,
+    });
+    expect(ledger.obligations).toEqual(
+      expect.arrayContaining([
+        { debtorPersonId: CONTACT, creditorPersonId: YOU, amountMinor: 10_000 },
+        { debtorPersonId: CONTACT, creditorPersonId: SATYAKI, amountMinor: 5_000 },
+      ]),
+    );
+    expect(balance(ledger, YOU)).toMatchObject({ owedMinor: 0, receivableMinor: 10_000, overpaidMinor: 10_000 });
+  });
+});
+
 describe("statuses", () => {
   const ledger = computeSplitLedger({
     totalAmountMinor: 10_000,

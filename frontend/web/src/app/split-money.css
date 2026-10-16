@@ -1096,6 +1096,62 @@ button.sm-row:hover {
   font-weight: 700;
   margin-left: 2px;
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Grid items default to min-width:auto; without this, long cells spill into their neighbours. */
+.sm-row > * {
+  min-width: 0;
+}
+.sm-row > b {
+  white-space: nowrap;
+}
+.sm-thead > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.sm-cell-note {
+  display: block;
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--muted-foreground);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.sm-cell-note.danger {
+  color: #ff8a95;
+}
+
+.sm-stat-grid-auto {
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+}
+.sm-stat small {
+  display: block;
+  margin-top: 2px;
+  font-size: 11px;
+  color: var(--muted-foreground);
+}
+
+.sm-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-style: normal;
+  font-weight: 800;
+  background: color-mix(in srgb, var(--border) 60%, transparent);
+}
+.sm-pill.danger {
+  background: color-mix(in srgb, #ff5c6c 18%, transparent);
+  color: #ff8a95;
+}
+.light .sm-pill.danger,
+.light .sm-cell-note.danger {
+  color: #c2364a;
 }
 
 .sm-avatar-stack {
@@ -1962,9 +2018,10 @@ button.sm-row:hover {
   width: 100%;
 }
 
-@media (max-width: 1280px) {
+/* The list shares the row with the right rail, so it is narrow well above tablet widths. */
+@media (max-width: 1600px) {
   .sm-row {
-    grid-template-columns: minmax(160px, 2fr) 0.75fr 0.8fr 0.75fr 0.75fr 0.85fr 1fr 28px;
+    grid-template-columns: minmax(150px, 2fr) 0.75fr 0.8fr 0.75fr 0.75fr 0.85fr 1fr 28px;
   }
   .sm-row > :nth-child(4),
   .sm-thead > :nth-child(4),
@@ -4725,5 +4782,46 @@ button.sm-hist-row.active {
     max-width: 100% !important;
     min-width: 0 !important;
     overflow-x: clip;
+  }
+}
+
+/* Phone expense list: stacked cards instead of a squeezed table. */
+@media (max-width: 560px) {
+  .sm-expense-table .sm-thead {
+    display: none;
+  }
+  .sm-expense-table button.sm-row {
+    grid-template-columns: minmax(0, 1fr) auto 24px;
+    grid-template-areas:
+      "exp exp menu"
+      "total status status"
+      "pending pending pending";
+    row-gap: 8px;
+    column-gap: 10px;
+    padding: 12px 6px;
+  }
+  .sm-expense-table .sm-row > :nth-child(1) {
+    grid-area: exp;
+  }
+  .sm-expense-table .sm-row > :nth-child(2) {
+    grid-area: total;
+  }
+  .sm-expense-table .sm-row > :nth-child(7) {
+    grid-area: pending;
+    white-space: normal;
+  }
+  .sm-expense-table .sm-row > :nth-child(9) {
+    grid-area: status;
+    justify-self: end;
+  }
+  .sm-expense-table .sm-row > :nth-child(10) {
+    grid-area: menu;
+    justify-self: end;
+  }
+  .sm-expense-table .sm-row > [data-label]::before {
+    content: attr(data-label) " ";
+    color: var(--muted-foreground);
+    font-weight: 700;
+    font-size: 11px;
   }
 }

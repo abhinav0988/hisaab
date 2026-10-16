@@ -119,3 +119,45 @@ Statuses used: `PASS` · `FAIL` · `BLOCKED` · `NOT TESTED`. Only executed evid
 5. **Rollback / Recovery Procedure:**
    - All changes in `0018_split_ledger_integrity.sql` are strictly additive (`ADD COLUMN` with `NULL` or safe `DEFAULT` values and `CREATE INDEX IF NOT EXISTS`).
    - Rolling back application code (`wrangler rollback` on `finance` and `recurring`) is backwards-compatible without dropping columns. If full database restoration is ever required, import the pre-migration SQL dump created in Step 1.
+
+---
+
+## 6. Critical Defect Round — Create Failure, Identity, Dashboard Consistency (Oct 16)
+
+Local only. Nothing committed, pushed, deployed, or written to production. Production was read with `SELECT` only.
+
+| # | Defect | Root cause | Fix (file / function) | Repro & evidence | Status |
+| --- | --- | --- | --- | --- | --- |
+| 1 | Create Split showed only "Please correct the highlighted fields." | The web wizard restored its `localStorage` draft without checking it, only re-validated the step you were on, and `onError` dropped the server's `fieldErrors`. A clean ₹100 / 3 draft succeeds (201); stale drafts (multi-payer with empty amounts, `HH:MM:SS` time, deleted people, out-of-range reminders) could only fail on the server. | `split-format.ts` `sanitizeDraft` / `reconcileDraftPeople` (drafts are owned by one account); `create-split-wizard.tsx` `submit` re-checks steps 1–4 and `safeParse`s the exact payload; `showIssues` jumps to the failing step. Shared `splitWizardIssues` / `zodFieldErrors` in `@hisaab/validation`, also used by Android `split-create-screen.tsx`. | E2E `split-money-regression.spec.ts` ("stale saved draft…") — no POST is sent, step 2 is shown with the exact message; unit tests in `split-money.test.ts` | FIXED (verified locally) |
+| 2 | ₹100 / 3 allocations | — | — | E2E + D1 integration: persisted 3334 / 3333 / 3333 = 10000; obligations go to the chosen payer | VERIFIED |
+| 3 | Reminder scheduled in the past (due today − 2 days) | `createExpense` subtracted the lead time with no lower bound | `services/split-money.ts` `createExpense` clamps `scheduledAt` to now | D1 integration "never schedules a reminder in the past" | FIXED |
+| 4 | "abhinav mangal" contact duplicates the account holder ("You owe ₹143.33" to yourself) | `createPerson` / `updatePerson` accepted the account's own email | `assertNotAccountHolder` → `400 PERSON_IS_SELF` with `fieldErrors.email`; `selfDuplicatePersonIds` on expense views; "Same email as you" tag on web and Android | D1 integration + E2E "adding yourself as a contact is refused" | FIXED for new data; existing record needs correction (below) |
+| 5 | "You → You" repayments and double-submitted repayments | Legacy pre-0018 writes (current guards reject `SELF_PAYMENT` / overpayment) | `paymentFlags` adds `self_transfer` / `possible_duplicate` (same edge and amount within 60 s); badges, a review banner, and blocked "Mark Settled" on web and Android | D1 replay of the production water bill; E2E desktop screenshot | FLAGGED (history kept, not rewritten) |
+| 6 | "₹190 collected", demart "Pending ₹150" on a ₹100 bill, "collected of ₹600" | `collectedMinor` was derived from remaining (which includes refunds); the dashboard used gross expense total as the base | `split-ledger.ts`: `collectedMinor` = repayments applied to original debt; new `outstandingDebtMinor` and `correctionDueMinor`; status `overpaid`. Dashboard progress uses collectible; "Still owed" and "Refunds due" are shown separately | Legacy unit replays (`split-ledger.test.ts`); D1 test checks dashboard = sum of history views and `pending = outstanding + correction` | FIXED |
+| 7 | Review rows labelled "Paid" / "Owes you" when someone else paid | Labels were inferred from the first payer | Preview from shared `computeSplitLedger` ("Owes Rohit", "Paid upfront") on web and Android | E2E ₹100 / 3 test asserts the labels | FIXED |
+| 8 | 320px dashboard rows overlapping; desktop amounts truncated | Grid items had `min-width:auto`; too many columns next to the rail | `split-money.css` stacked card layout ≤560px, 8-column grid ≤1600px, no ellipsis on amounts | E2E geometric no-overlap assertion at 320px; screenshots `after-legacy-*` | FIXED |
+
+**Card scopes.**
+- Money to receive / Money to pay are the current user's obligation edges, including refunds.
+- Repaid / Still owed / Refunds due / settled % are expense-wide, measured against collectible (not the gross bill).
+- Pending = Still owed + Refunds due.
+
+**Production correction procedure (not executed — needs your approval).**
+- *Water bill:*
+  - Void the four You → You repayments.
+  - Void the second ₹155 repayment from "abhinav mangal", recorded 1.6 s after the first.
+  - Result: ₹11.67 is still genuinely owed by that contact (₹166.67 share − ₹155).
+- *Demart:* void the duplicate You → contact ₹100 repayment, recorded 1 s after the first.
+- *Duplicate contact:* decide whether "abhinav mangal" is really you.
+  - If it is, the open balance should be waived with an adjustment.
+  - After that the contact can be archived. There is no merge tool.
+
+All voids keep the audit trail; the D1 test replays this procedure end-to-end.
+
+**Verification run.**
+- Validation: 64/64.
+- Finance D1 integration: 19/19.
+- E2E: split-money + regression 8/8 (desktop and 320px).
+- `pnpm typecheck`: 18/18.
+- Split Money lint is clean. The remaining repo lint errors are in untouched bank / cards / transactions files.
+- Android: typecheck passes. Runtime is still blocked (no `/dev/kvm`).

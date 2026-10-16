@@ -137,6 +137,14 @@ export function SplitExpenseScreen({ navigation, route }: Props) {
   const remaining = item.ledger?.remainingMinor ?? item.pendingMinor ?? 0;
   const settledPct = item.ledger?.settledPercent ?? item.settledPercent ?? 0;
   const balances = item.balances ?? [];
+  const recorded = item.ledger?.repaymentsRecordedMinor ?? collected;
+  const outstanding = item.ledger?.outstandingDebtMinor ?? remaining;
+  const correctionDue = item.ledger?.correctionDueMinor ?? 0;
+  const flagged = (item.payments ?? []).filter((p) => p.status === "completed" && (p.flags?.length ?? 0) > 0);
+  const selfDuplicates = new Set(item.selfDuplicatePersonIds ?? []);
+  const isRefundEdge = (edge: { debtorPersonId: string }) =>
+    (balances.find((row) => row.personId === edge.debtorPersonId)?.originalDebtMinor ?? 1) === 0;
+  const needsReview = flagged.length > 0 || selfDuplicates.size > 0 || correctionDue > 0;
   const cancelled = item.status === "cancelled";
   const hasActiveRepayments = (item.payments ?? []).some((p) => p.status === "completed");
   const hasMoneyHistory =
@@ -189,20 +197,50 @@ export function SplitExpenseScreen({ navigation, route }: Props) {
         <Text style={styles.label}>TOTAL EXPENSE</Text>
         <Text style={styles.big}>{money(item.totalAmountMinor, currency)}</Text>
         <Text style={styles.sub}>
-          Upfront {money(item.ledger?.upfrontPaidMinor ?? item.totalAmountMinor, currency)} · Repayments{" "}
+          Paid upfront {money(item.ledger?.upfrontPaidMinor ?? item.totalAmountMinor, currency)} · Collected toward bill{" "}
           {money(collected, currency)} of {money(collectible, currency)} · {settledPct}% settled
         </Text>
         <View style={styles.progressTrack}>
           <View style={[styles.progressFill, { width: `${Math.min(100, Math.max(0, settledPct))}%` }]} />
         </View>
         <Text style={styles.sub}>
-          You owe {money(item.youOweMinor ?? 0, currency)} · You are owed {money(item.youAreOwedMinor ?? 0, currency)} · Remaining{" "}
-          {money(remaining, currency)}
+          Still owed on bill {money(outstanding, currency)}
+          {correctionDue > 0 ? ` · Refund / correction due ${money(correctionDue, currency)}` : ""}
+          {recorded !== collected ? ` · ${money(recorded, currency)} repayments recorded` : ""}
+        </Text>
+        <Text style={styles.sub}>
+          You owe {money(item.youOweMinor ?? 0, currency)} · You are owed {money(item.youAreOwedMinor ?? 0, currency)}
         </Text>
         <Text style={styles.hint}>
           Upfront bill payments are separate from repayments. Recording a repayment does not transfer money.
         </Text>
       </Card>
+
+      {needsReview ? (
+        <Card style={styles.review}>
+          <Text style={styles.reviewTitle}>This expense needs review</Text>
+          {selfDuplicates.size > 0 ? (
+            <Text style={styles.reviewText}>
+              • {balances.filter((row) => selfDuplicates.has(row.personId)).map((row) => row.person?.fullName ?? "A contact").join(", ")} uses your
+              own account email, so you appear twice on this expense.
+            </Text>
+          ) : null}
+          {flagged.some((p) => p.flags?.includes("self_transfer")) ? (
+            <Text style={styles.reviewText}>• Some repayments were recorded from a person to themselves. They move no money.</Text>
+          ) : null}
+          {flagged.some((p) => p.flags?.includes("possible_duplicate")) ? (
+            <Text style={styles.reviewText}>• Some repayments look like double submits (same people and amount within a minute).</Text>
+          ) : null}
+          {correctionDue > 0 ? (
+            <Text style={styles.reviewText}>
+              • {money(correctionDue, currency)} was repaid beyond what was owed and shows as a refund below.
+            </Text>
+          ) : null}
+          <Text style={styles.hint}>
+            Nothing is changed automatically. Long-press a flagged repayment to void it; voided records stay in history.
+          </Text>
+        </Card>
+      ) : null}
 
       {(item.obligations?.length ?? 0) > 0 ? (
         <>
@@ -213,6 +251,7 @@ export function SplitExpenseScreen({ navigation, route }: Props) {
                 <Text style={styles.name}>
                   {edge.debtor?.fullName ?? "Someone"} → {edge.creditor?.fullName ?? "Someone"}
                 </Text>
+                {isRefundEdge(edge) ? <Text style={styles.flag}>Refund for overpayment</Text> : null}
               </View>
               <Text style={styles.amount}>{money(edge.amountMinor, currency)}</Text>
             </Card>
@@ -226,6 +265,7 @@ export function SplitExpenseScreen({ navigation, route }: Props) {
             <Card key={row.personId} style={styles.row}>
               <View style={{ flex: 1 }}>
                 <Text style={styles.name}>{row.person?.fullName ?? "Person"}</Text>
+                {selfDuplicates.has(row.personId) ? <Text style={styles.flag}>Same email as your account</Text> : null}
                 <Text style={styles.sub}>
                   Share {money(row.adjustedShareMinor, currency)} · Upfront {money(row.upfrontPaidMinor, currency)} · Repaid{" "}
                   {money(row.repaymentSentMinor, currency)}
@@ -234,7 +274,7 @@ export function SplitExpenseScreen({ navigation, route }: Props) {
                   {row.owedMinor > 0
                     ? `Owes ${money(row.owedMinor, currency)}`
                     : row.receivableMinor > 0
-                      ? `Owed ${money(row.receivableMinor, currency)}`
+                      ? `Gets back ${money(row.receivableMinor, currency)}`
                       : "Settled"}{" "}
                   · {row.status.replaceAll("_", " ")}
                   {row.lastPaymentDate ? ` · last ${row.lastPaymentDate}` : ""}
@@ -286,6 +326,12 @@ export function SplitExpenseScreen({ navigation, route }: Props) {
                   {payment.note ? ` · ${payment.note}` : ""}
                 </Text>
                 <Text style={styles.hint}>Recorded {new Date(payment.createdAt).toLocaleString()}</Text>
+                {payment.status === "completed" && payment.flags?.includes("self_transfer") ? (
+                  <Text style={styles.flag}>Self-transfer · moves no money</Text>
+                ) : null}
+                {payment.status === "completed" && payment.flags?.includes("possible_duplicate") ? (
+                  <Text style={styles.flag}>Possible duplicate · review &amp; void</Text>
+                ) : null}
               </View>
               <Text style={styles.amount}>{money(payment.amountMinor, currency)}</Text>
             </Card>
@@ -345,10 +391,10 @@ export function SplitExpenseScreen({ navigation, route }: Props) {
           onPress={() => navigation.navigate("SplitAdjustment", { id })}
         />
         <AppButton
-          label={settle.isPending ? "Settling…" : "Settle all"}
+          label={settle.isPending ? "Settling…" : flagged.length > 0 ? "Review flagged repayments first" : "Settle all"}
           icon="checkmark-circle-outline"
           outline
-          disabled={busy || cancelled || remaining <= 0}
+          disabled={busy || cancelled || remaining <= 0 || flagged.length > 0}
           onPress={() =>
             settleFlight.run(settle.isPending, () => {
               Alert.alert(
@@ -612,6 +658,10 @@ const styles = StyleSheet.create({
   title: { color: colors.white, fontWeight: "900", fontSize: 29 },
   sub: { color: colors.muted, fontSize: 12, lineHeight: 18 },
   hint: { color: colors.muted, fontSize: 11, lineHeight: 16, marginTop: 4 },
+  flag: { color: colors.red, fontSize: 11, fontWeight: "800", marginTop: 4 },
+  review: { gap: 6, borderColor: colors.red, borderWidth: 1 },
+  reviewTitle: { color: colors.red, fontWeight: "900", fontSize: 14 },
+  reviewText: { color: colors.white, fontSize: 12, lineHeight: 18 },
   label: { color: colors.muted, fontSize: 10, fontWeight: "800", letterSpacing: 0.6 },
   total: { gap: 8, backgroundColor: colors.panel2 },
   big: { color: colors.white, fontWeight: "900", fontSize: 31 },

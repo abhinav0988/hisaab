@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
+  splitWizardIssues,
+  zodFieldErrors,
   allocateByPercentage,
   allocateByShares,
   allocateEqual,
@@ -218,5 +220,45 @@ describe("splitExpenseSchema", () => {
         payers: [{ personId: "person01", paidAmountMinor: 100 }],
       }).success,
     ).toBe(false);
+  });
+});
+
+describe("create wizard issue mapping", () => {
+  const valid = {
+    title: "Snacks",
+    category: "Food",
+    totalAmountMinor: 10_000,
+    expenseDate: "2026-10-16",
+    expenseTime: "20:30",
+    payers: [{ personId: "person-rohit-01", paidAmountMinor: 10_000 }],
+    participants: [{ personId: "person-self-01" }, { personId: "person-rohit-01" }, { personId: "person-priya-01" }],
+    reminder: { enabled: true, channels: ["in_app"], firstReminderDaysBefore: 2, frequencyDays: 2 },
+  };
+
+  it("accepts the ₹100 / 3 payload the web wizard sends", () => {
+    expect(splitExpenseSchema.safeParse(valid).success).toBe(true);
+  });
+
+  it("routes every failing field to the wizard step that owns it, earliest first", () => {
+    const parsed = splitExpenseSchema.safeParse({
+      ...valid,
+      expenseTime: "20:30:00",
+      payers: [{ personId: "person-rohit-01", paidAmountMinor: 0 }],
+      participants: [{ personId: "person-self-01" }, { personId: "person-self-01" }],
+      reminder: { enabled: true, frequencyDays: 0 },
+    });
+    expect(parsed.success).toBe(false);
+    const issues = splitWizardIssues(zodFieldErrors(parsed.error!));
+    expect(issues.map((issue) => issue.step)).toEqual([...issues.map((issue) => issue.step)].sort());
+    expect(issues[0]).toMatchObject({ step: 1, field: "date", label: "Time", path: "expenseTime" });
+    expect(issues.find((issue) => issue.path === "payers.0.paidAmountMinor")).toMatchObject({ step: 2, field: "payer" });
+    expect(issues.find((issue) => issue.path === "participants")).toMatchObject({ step: 3, field: "people" });
+    expect(issues.find((issue) => issue.path === "reminder.frequencyDays")).toMatchObject({ step: 5, field: "reminder" });
+  });
+
+  it("maps server field errors with unknown roots to the details step instead of dropping them", () => {
+    expect(splitWizardIssues({ form: ["Something is off"] })).toEqual([
+      { step: 1, field: "form", label: "Expense", message: "Something is off", path: "form" },
+    ]);
   });
 });

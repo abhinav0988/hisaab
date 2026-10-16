@@ -252,10 +252,24 @@ async function requireActivePerson(env: Env, userId: string, id: string) {
 
 const normalise = (value: string | null | undefined) => (value ?? "").trim().toLowerCase();
 
+/** The signed-in user is already "You"; a contact with the account email would split one identity in two. */
+async function assertNotAccountHolder(env: Env, userId: string, email: string | null | undefined) {
+  if (!email) return;
+  const account = await env.DB.prepare("SELECT email FROM user WHERE id = ?")
+    .bind(userId)
+    .first<{ email: string | null }>();
+  if (account?.email && normalise(account.email) === normalise(email)) {
+    throw new AppError(400, "PERSON_IS_SELF", "This email belongs to your own account. You are already included as “You”.", {
+      email: ["This is your own email. You are already included as “You”."],
+    });
+  }
+}
+
 export async function createPerson(env: Env, userId: string, input: PersonInput, idem: Idem = NO_IDEM) {
   const scope = "split-person";
   const previous = await idempotentReplay<PersonRow & { existing?: boolean }>(env, userId, scope, idem);
   if (previous) return { ...(await getPerson(env, userId, previous.id)), existing: true };
+  await assertNotAccountHolder(env, userId, input.email);
   const people = await listPeople(env, userId);
   const duplicate = people.find(
     (person) =>
@@ -286,6 +300,7 @@ export async function createPerson(env: Env, userId: string, input: PersonInput,
 
 export async function updatePerson(env: Env, userId: string, id: string, input: PersonPatch) {
   const existing = await getPerson(env, userId, id);
+  if (!existing.isSelf) await assertNotAccountHolder(env, userId, input.email);
   // `isSelf` is immutable after creation; strip it before writing.
   const rest: Omit<PersonPatch, "isSelf"> & { isSelf?: boolean } = { ...input };
   delete rest.isSelf;
@@ -415,22 +430,57 @@ type ViewContext = {
   groups: Map<string, GroupRow>;
   selfId: string;
   today: string;
+  /** Contacts that carry the account holder's own email, i.e. a second copy of "You". */
+  selfDuplicateIds: Set<string>;
 };
+
+async function accountEmail(env: Env, userId: string) {
+  const row = await env.DB.prepare("SELECT email FROM user WHERE id = ?").bind(userId).first<{ email: string | null }>();
+  return row?.email ? normalise(row.email) : null;
+}
 
 async function viewContext(env: Env, userId: string): Promise<ViewContext> {
   const self = await ensureSelfPerson(env, userId);
   const db = createDatabase(env.DB);
-  const [people, groups, today] = await Promise.all([
+  const [people, groups, today, email] = await Promise.all([
     db.select().from(splitPeople).where(eq(splitPeople.userId, userId)),
     db.select().from(splitGroups).where(eq(splitGroups.ownerId, userId)),
     userToday(env, userId),
+    accountEmail(env, userId),
   ]);
   return {
     people: new Map(people.map((person) => [person.id, person])),
     groups: new Map(groups.map((group) => [group.id, group])),
     selfId: self.id,
     today,
+    selfDuplicateIds: new Set(
+      people.filter((person) => !person.isSelf && email && normalise(person.email) === email).map((person) => person.id),
+    ),
   };
+}
+
+/** Same sender, receiver and amount recorded within this window is almost always a double submit. */
+const DUPLICATE_PAYMENT_WINDOW_MS = 60_000;
+
+function paymentFlags(payments: PaymentRow[]) {
+  const flags = new Map<string, Array<"self_transfer" | "possible_duplicate">>();
+  const completed = payments
+    .filter((payment) => payment.status === "completed")
+    .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+  for (const [index, payment] of completed.entries()) {
+    const list: Array<"self_transfer" | "possible_duplicate"> = [];
+    if (payment.payerPersonId === payment.receiverPersonId) list.push("self_transfer");
+    const earlier = completed.slice(0, index).some(
+      (other) =>
+        other.payerPersonId === payment.payerPersonId &&
+        other.receiverPersonId === payment.receiverPersonId &&
+        other.amountMinor === payment.amountMinor &&
+        Date.parse(payment.createdAt) - Date.parse(other.createdAt) <= DUPLICATE_PAYMENT_WINDOW_MS,
+    );
+    if (earlier) list.push("possible_duplicate");
+    if (list.length) flags.set(payment.id, list);
+  }
+  return flags;
 }
 
 function personSummary(people: Map<string, PersonRow>, id: string) {
@@ -454,9 +504,16 @@ function expenseView(state: ExpenseState, ctx: ViewContext) {
   const self = balanceMap.get(ctx.selfId);
   const { summary } = ledger;
   const status = statusFor(state, ledger, ctx.today);
+  const flags = paymentFlags(state.payments);
+  const involved = new Set([
+    ...state.payers.map((payer) => payer.personId),
+    ...state.participants.map((participant) => participant.personId),
+  ]);
   return {
     ...state.expense,
     status,
+    /** Contacts on this expense that are really the signed-in user under another record. */
+    selfDuplicatePersonIds: [...ctx.selfDuplicateIds].filter((id) => involved.has(id)),
     group: state.expense.groupId ? (ctx.groups.get(state.expense.groupId) ?? null) : null,
     participants: state.participants.map((participant) => {
       const row = balanceMap.get(participant.personId)!;
@@ -485,6 +542,7 @@ function expenseView(state: ExpenseState, ctx: ViewContext) {
       ...payment,
       payer: ctx.people.get(payment.payerPersonId) ?? null,
       receiver: ctx.people.get(payment.receiverPersonId) ?? null,
+      flags: flags.get(payment.id) ?? [],
     })),
     adjustments: state.adjustments,
     balances: ledger.balances.map((row) => ({ ...row, person: personSummary(ctx.people, row.personId) })),
@@ -498,6 +556,8 @@ function expenseView(state: ExpenseState, ctx: ViewContext) {
     collectibleMinor: summary.collectibleMinor,
     collectedMinor: summary.collectedMinor,
     pendingMinor: summary.remainingMinor,
+    outstandingDebtMinor: summary.outstandingDebtMinor,
+    correctionDueMinor: summary.correctionDueMinor,
     settledPercent: summary.settledPercent,
   };
 }
@@ -1101,6 +1161,8 @@ export async function createExpense(env: Env, userId: string, input: ExpenseInpu
     const days = input.reminder.firstReminderDaysBefore ?? 2;
     const due = new Date(`${input.dueDate}T00:00:00.000Z`);
     due.setUTCDate(due.getUTCDate() - days);
+    // A due date closer than the lead time must not produce a reminder that is already in the past.
+    if (due.getTime() < Date.parse(timestamp)) due.setTime(Date.parse(timestamp));
     const channels = input.reminder.channels?.length ? input.reminder.channels : (["in_app"] as const);
     for (const channel of new Set(channels)) {
       reminders.push({
@@ -1638,6 +1700,8 @@ type CurrencyTotals = {
   collectibleMinor: number;
   collectedMinor: number;
   pendingMinor: number;
+  outstandingDebtMinor: number;
+  correctionDueMinor: number;
   overdueMinor: number;
   pendingSettlements: number;
   settledPercent: number;
@@ -1653,6 +1717,8 @@ function emptyTotals(currency: string): CurrencyTotals {
     collectibleMinor: 0,
     collectedMinor: 0,
     pendingMinor: 0,
+    outstandingDebtMinor: 0,
+    correctionDueMinor: 0,
     overdueMinor: 0,
     pendingSettlements: 0,
     settledPercent: 100,
@@ -1670,6 +1736,8 @@ function totalsByCurrency(views: ExpenseView[]) {
     totals.collectibleMinor += view.collectibleMinor;
     totals.collectedMinor += view.collectedMinor;
     totals.pendingMinor += view.pendingMinor;
+    totals.outstandingDebtMinor += view.outstandingDebtMinor;
+    totals.correctionDueMinor += view.correctionDueMinor;
     if (view.status === "overdue") totals.overdueMinor += view.pendingMinor;
     if (view.pendingMinor > 0) totals.pendingSettlements += 1;
     map.set(view.currency, totals);
@@ -1735,6 +1803,8 @@ export async function getDashboard(env: Env, userId: string) {
       currency: view.currency,
       dueDate: view.dueDate,
       pendingMinor: view.pendingMinor,
+      outstandingDebtMinor: view.outstandingDebtMinor,
+      correctionDueMinor: view.correctionDueMinor,
       obligations: view.obligations,
       participants: view.participants
         .filter((participant) => participant.pendingAmountMinor > 0)

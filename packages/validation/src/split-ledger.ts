@@ -76,9 +76,14 @@ export type LedgerSummary = {
   /** Money that must move between people because of the bill. */
   collectibleMinor: number;
   repaymentsRecordedMinor: number;
-  /** Portion of the collectible amount already repaid. */
+  /** Portion of the collectible amount already repaid by the people who originally owed it. */
   collectedMinor: number;
+  /** Everything that must still move, including corrections. */
   remainingMinor: number;
+  /** Original bill debt not yet repaid. */
+  outstandingDebtMinor: number;
+  /** Money that must move only because repayments exceeded or bypassed what was owed (refunds, forwarding). */
+  correctionDueMinor: number;
   /** Basis points of collectible already repaid; 10000 when nothing needs to move. */
   settledBps: number;
   settledPercent: number;
@@ -264,6 +269,8 @@ export function computeSplitLedger(input: LedgerInput): SplitLedger {
 
   let collectibleMinor = 0;
   let remainingMinor = 0;
+  let collectedMinor = 0;
+  let outstandingDebtMinor = 0;
   let hasOverpayment = false;
   for (const row of people.values()) {
     row.netMinor = row.initialNetMinor + row.repaymentSentMinor - row.repaymentReceivedMinor;
@@ -276,6 +283,8 @@ export function computeSplitLedger(input: LedgerInput): SplitLedger {
     if (row.overpaidMinor > 0) hasOverpayment = true;
     collectibleMinor += row.originalDebtMinor;
     remainingMinor += row.owedMinor;
+    collectedMinor += Math.min(row.repaymentSentMinor, row.originalDebtMinor);
+    outstandingDebtMinor += Math.max(0, row.originalDebtMinor - row.repaymentSentMinor);
     if (row.originalDebtMinor > 0) {
       row.status =
         row.overpaidMinor > 0
@@ -293,7 +302,7 @@ export function computeSplitLedger(input: LedgerInput): SplitLedger {
     }
   }
 
-  const collectedMinor = Math.max(0, collectibleMinor - Math.min(collectibleMinor, remainingMinor));
+  const correctionDueMinor = Math.max(0, remainingMinor - outstandingDebtMinor);
   const settledBps =
     collectibleMinor === 0
       ? remainingMinor === 0
@@ -322,6 +331,8 @@ export function computeSplitLedger(input: LedgerInput): SplitLedger {
       repaymentsRecordedMinor,
       collectedMinor,
       remainingMinor,
+      outstandingDebtMinor,
+      correctionDueMinor,
       settledBps,
       settledPercent: settledBps / 100,
       hasOverpayment,
@@ -336,6 +347,7 @@ export type LedgerExpenseStatus =
   | "almost_settled"
   | "settled"
   | "overdue"
+  | "overpaid"
   | "cancelled";
 
 export function ledgerExpenseStatus(input: {
@@ -347,8 +359,9 @@ export function ledgerExpenseStatus(input: {
 }): LedgerExpenseStatus {
   if (input.cancelled) return "cancelled";
   if (input.isDraft) return "draft";
-  const { remainingMinor, collectedMinor, settledBps } = input.summary;
+  const { remainingMinor, collectedMinor, settledBps, correctionDueMinor } = input.summary;
   if (remainingMinor === 0) return "settled";
+  if (correctionDueMinor > 0) return "overpaid";
   if (input.dueDate && input.dueDate < input.today) return "overdue";
   if (collectedMinor === 0) return "pending";
   return settledBps >= 9_000 ? "almost_settled" : "partially_settled";
