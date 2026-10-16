@@ -16,7 +16,7 @@ import { splitKeys } from "../../features/split-money/api/splitMoneyQueries";
 type Props = CompositeScreenProps<BottomTabScreenProps<MainTabParamList, "Split">, NativeStackScreenProps<AppStackParamList>>;
 
 export function SplitMoneyHomeScreen({ navigation }: Props) {
-  const dashboard = useQuery({ queryKey: splitKeys.dashboard, queryFn: splitMoneyApi.dashboard });
+  const dashboard = useQuery({ queryKey: splitKeys.dashboard, queryFn: () => splitMoneyApi.dashboard() });
   const data = dashboard.data;
   if (dashboard.isLoading) return <View style={styles.fill}><LoadingBlock label="Loading shared money…" /></View>;
   if (dashboard.isError || !data) return <View style={styles.fill}><ErrorBlock message="Could not load Split Money." onRetry={() => void dashboard.refetch()} /></View>;

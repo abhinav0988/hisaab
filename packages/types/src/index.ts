@@ -422,6 +422,14 @@ export type SplitParticipantStatus =
 export type SplitRelationship = "friend" | "family" | "colleague" | "other";
 export type SplitPaymentMethod = "upi" | "cash" | "bank_transfer" | "card" | "other";
 
+export interface SplitPersonSummary {
+  id: string;
+  fullName: string;
+  isSelf: boolean;
+  archivedAt?: string | null;
+  photoUrl?: string | null;
+}
+
 export interface SplitPerson {
   id: string;
   fullName: string;
@@ -431,8 +439,78 @@ export interface SplitPerson {
   relationship: SplitRelationship;
   photoUrl: string | null;
   isSelf: boolean;
+  archivedAt?: string | null;
+  existing?: boolean;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface SplitLedgerSummary {
+  totalAmountMinor: number;
+  upfrontPaidMinor: number;
+  sharesMinor: number;
+  absorbedMinor: number;
+  collectibleMinor: number;
+  repaymentsRecordedMinor: number;
+  collectedMinor: number;
+  remainingMinor: number;
+  settledBps: number;
+  settledPercent: number;
+  hasOverpayment: boolean;
+}
+
+export interface SplitObligation {
+  debtorPersonId: string;
+  creditorPersonId: string;
+  amountMinor: number;
+  debtor?: SplitPersonSummary | null;
+  creditor?: SplitPersonSummary | null;
+}
+
+export interface SplitBalance {
+  personId: string;
+  participantId: string | null;
+  upfrontPaidMinor: number;
+  shareMinor: number;
+  adjustedShareMinor: number;
+  absorbedMinor: number;
+  initialNetMinor: number;
+  repaymentSentMinor: number;
+  repaymentReceivedMinor: number;
+  netMinor: number;
+  owedMinor: number;
+  receivableMinor: number;
+  originalDebtMinor: number;
+  originalReceivableMinor: number;
+  overpaidMinor: number;
+  lastPaymentDate: string | null;
+  status: SplitParticipantStatus;
+  person?: SplitPersonSummary | null;
+}
+
+export interface SplitGroupSummary {
+  totalSharedMinor: number;
+  collectibleMinor: number;
+  collectedMinor: number;
+  outstandingMinor: number;
+  settledPercent: number;
+  memberCount: number;
+  activeExpenses: number;
+  settledExpenses: number;
+}
+
+export interface SplitMemberBalance {
+  personId: string;
+  person: SplitPersonSummary | null;
+  isMember: boolean;
+  expenseCount: number;
+  upfrontPaidMinor: number;
+  shareMinor: number;
+  repaymentSentMinor: number;
+  repaymentReceivedMinor: number;
+  netMinor: number;
+  owedMinor: number;
+  receivableMinor: number;
 }
 
 export interface SplitGroup {
@@ -456,6 +534,9 @@ export interface SplitGroup {
     person: SplitPerson | null;
   }>;
   expenses?: SplitExpense[];
+  summary?: SplitGroupSummary;
+  memberBalances?: SplitMemberBalance[];
+  yourNetMinor?: number;
   createdAt: string;
   updatedAt: string;
 }
@@ -468,8 +549,20 @@ export interface SplitParticipant {
   shareValue: number;
   shareAmountMinor: number;
   adjustedShareAmountMinor: number;
+  /** Upfront bill payment for this person (not a repayment). */
+  upfrontPaidMinor?: number;
+  /** Repayments this participant has sent. */
   paidAmountMinor: number;
+  repaymentReceivedMinor?: number;
+  /** Amount this participant still owes. */
   pendingAmountMinor: number;
+  receivableMinor?: number;
+  originalDebtMinor?: number;
+  initialNetMinor?: number;
+  netMinor?: number;
+  overpaidMinor?: number;
+  absorbedMinor?: number;
+  lastPaymentDate?: string | null;
   status: SplitParticipantStatus;
   person?: SplitPerson | null;
 }
@@ -492,6 +585,7 @@ export interface SplitExpense {
   sendNotifications: boolean;
   isDraft: boolean;
   receiptId: string | null;
+  ledgerVersion?: number;
   group?: SplitGroup | null;
   participants?: SplitParticipant[];
   payers?: Array<{
@@ -501,9 +595,36 @@ export interface SplitExpense {
     person?: SplitPerson | null;
   }>;
   payments?: SplitPayment[];
+  adjustments?: Array<{
+    id: string;
+    participantId: string;
+    amountMinor: number;
+    type: string;
+    reason: string | null;
+    createdAt: string;
+  }>;
   activities?: SplitActivity[];
+  reminders?: Array<{
+    id: string;
+    channel: string;
+    scheduledAt: string;
+    /** scheduled | sent | cancelled | failed */
+    status: string;
+    message: string | null;
+    sentAt?: string | null;
+    frequency?: string | null;
+    /** True only for channels the cron can actually deliver (in_app). */
+    deliveryAvailable?: boolean;
+  }>;
+  balances?: SplitBalance[];
+  obligations?: SplitObligation[];
+  originalObligations?: SplitObligation[];
+  ledger?: SplitLedgerSummary;
   yourShareMinor?: number;
   youPaidMinor?: number;
+  youOweMinor?: number;
+  youAreOwedMinor?: number;
+  collectibleMinor?: number;
   collectedMinor?: number;
   pendingMinor?: number;
   settledPercent?: number;
@@ -526,6 +647,8 @@ export interface SplitPayment {
   paymentDate: string;
   status: string;
   isFinalSettlement: boolean;
+  voidedAt?: string | null;
+  voidReason?: string | null;
   payer?: SplitPerson | null;
   receiver?: SplitPerson | null;
   createdAt: string;
@@ -541,28 +664,44 @@ export interface SplitActivity {
   createdAt: string;
 }
 
+export interface SplitCurrencyTotals {
+  currency: Currency | string;
+  expenseCount: number;
+  totalSharedMinor: number;
+  moneyToReceiveMinor: number;
+  moneyToPayMinor: number;
+  collectibleMinor: number;
+  collectedMinor: number;
+  pendingMinor: number;
+  overdueMinor: number;
+  pendingSettlements: number;
+  settledPercent: number;
+}
+
 export interface SplitDashboard {
-  summary: {
-    totalSharedMinor: number;
-    moneyToReceiveMinor: number;
-    moneyToPayMinor: number;
-    pendingSettlements: number;
-    collectedMinor: number;
-    pendingMinor: number;
-    overdueMinor: number;
-    settledPercent: number;
-    totalSharedChangePct: number;
-    receiveChangePct: number;
-    payChangePct: number;
-    pendingChange: number;
+  summary: SplitCurrencyTotals & {
+    totalSharedChangePct: number | null;
+    receiveChangePct: number | null;
+    payChangePct: number | null;
+    pendingChange: number | null;
   };
+  byCurrency?: SplitCurrencyTotals[];
   topCategories: Array<{ name: string; amountMinor: number }>;
   upcomingSettlements: Array<{
     expenseId: string;
     title: string;
+    currency?: string;
     dueDate: string | null;
     pendingMinor: number;
+    obligations?: SplitObligation[];
     participants: Array<{ personId: string; name: string; pendingMinor: number }>;
+  }>;
+  groupBalances?: Array<{
+    groupId: string;
+    name: string;
+    currency: string;
+    yourNetMinor: number;
+    outstandingMinor: number;
   }>;
   recentExpenses: SplitExpense[];
 }
@@ -579,13 +718,18 @@ export interface SplitReceipt {
 }
 export interface SplitHistory {
   summary: {
+    currency?: string;
     totalExpenses: number;
     totalExpensesMinor: number;
     yourShareMinor: number;
     youPaidMinor: number;
     youOweMinor: number;
     youllReceiveMinor: number;
+    repaymentsRecordedMinor?: number;
+    outstandingMinor?: number;
   };
+  byCurrency?: SplitCurrencyTotals[];
+  selfPersonId?: string;
   expenses: SplitExpense[];
 }
 export interface DashboardSummary {

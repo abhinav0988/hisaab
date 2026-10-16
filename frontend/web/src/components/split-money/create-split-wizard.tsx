@@ -121,7 +121,7 @@ const TIPS: Record<number, { title: string; items: Array<[string, string]> }> = 
     items: [
       ["Pick a due date", "Choose when everyone should settle their share."],
       ["Set reminder cadence", "Choose the first reminder and how often to repeat it."],
-      ["Choose channels", "Notify via in-app, email or WhatsApp / SMS."],
+      ["In-app reminders", "In-app reminders are delivered automatically when due; external channels are unavailable in this release."],
     ],
   },
   6: {
@@ -305,23 +305,27 @@ export function CreateSplitWizard({
   const [search, setSearch] = useState("");
   const [dueLater, setDueLater] = useState(false);
   const [previewTab, setPreviewTab] = useState<"in_app" | "email" | "whatsapp">("in_app");
-  const [receipt, setReceipt] = useState<{ name: string; url: string | null } | null>(null);
-  const [calMonth, setCalMonth] = useState(() => {
-    const d = new Date();
+  const [receipt, setReceipt] = useState<{ file: File; name: string; url: string | null } | null>(null);
+  const [calMonth, setCalMonthState] = useState(() => {
+    const d = draft.dueDate ? fromIso(draft.dueDate) : new Date();
     return { y: d.getFullYear(), m: d.getMonth() };
   });
+  // Calendar follows the selected due date; manual month navigation overrides it until the date changes.
+  const [calDueDate, setCalDueDate] = useState(draft.dueDate);
+  if (draft.dueDate !== calDueDate) {
+    setCalDueDate(draft.dueDate);
+    if (draft.dueDate) {
+      const d = fromIso(draft.dueDate);
+      setCalMonthState({ y: d.getFullYear(), m: d.getMonth() });
+    }
+  }
+  const setCalMonth = setCalMonthState;
 
   useEffect(() => {
     return () => {
       if (receipt?.url) URL.revokeObjectURL(receipt.url);
     };
   }, [receipt]);
-
-  useEffect(() => {
-    if (!draft.dueDate) return;
-    const d = fromIso(draft.dueDate);
-    setCalMonth({ y: d.getFullYear(), m: d.getMonth() });
-  }, [draft.dueDate]);
 
   const peopleQuery = useQuery({
     queryKey: ["split-people"],
@@ -344,13 +348,23 @@ export function CreateSplitWizard({
   };
 
   // Keep self in the draft participant list so UI "Added" state and toggles stay in sync.
-  useEffect(() => {
-    if (!self?.id) return;
-    if (draft.participantIds.includes(self.id)) return;
-    if (draft.participantIds.length === 0) {
-      update({ participantIds: [self.id] });
+  // Done during render (not in an effect) so the first paint already shows "You" as added.
+  if (self?.id && draft.participantIds.length === 0) {
+    update({ participantIds: [self.id] });
+  }
+
+  const paramGroupId =
+    typeof window !== "undefined" ? new URLSearchParams(window.location.search).get("groupId") : null;
+  if (paramGroupId && groupsQuery.data && draft.groupId !== paramGroupId) {
+    const group = groupsQuery.data.find((g) => g.id === paramGroupId);
+    if (group) {
+      const memberIds = (group.members ?? []).map((m) => m.personId).filter(Boolean);
+      update({
+        groupId: group.id,
+        participantIds: Array.from(new Set([...draft.participantIds, ...memberIds])),
+      });
     }
-  }, [self?.id, draft.participantIds]);
+  }
 
   const totalMinor = useMemo(() => {
     try {
@@ -360,14 +374,12 @@ export function CreateSplitWizard({
     }
   }, [draft.amountMajor]);
 
-  const participantIds =
-    draft.participantIds.length > 0
-      ? draft.participantIds
-      : self
-        ? [self.id]
-        : [];
+  // The render-time default above guarantees self is in the draft after the first paint,
+  // so the draft is the single source of truth for participants.
+  const participantIds = draft.participantIds;
 
   const sharePreview = useMemo(() => {
+    const participantIds = draft.participantIds;
     if (!participantIds.length || totalMinor <= 0) return [];
     try {
       if (draft.method === "equal") {
@@ -427,11 +439,17 @@ export function CreateSplitWizard({
         shareAmountMinor: 0,
       }));
     }
-  }, [draft, participantIds, totalMinor]);
+  }, [draft, totalMinor]);
 
   const createMutation = useMutation({
-    mutationFn: (isDraft: boolean) => {
+    mutationFn: async (isDraft: boolean) => {
       if (!self) throw new Error("Load people first");
+      let uploadedReceiptId: string | null = null;
+      if (receipt?.file) {
+        const stored = await splitMoneyService.uploadFile(receipt.file);
+        const uploaded = await splitMoneyService.uploadReceipt({ fileId: stored.id });
+        uploadedReceiptId = uploaded.id;
+      }
       const payers =
         draft.payerMode === "single"
           ? [
@@ -460,6 +478,7 @@ export function CreateSplitWizard({
         allowPartialPayments: draft.allowPartialPayments,
         sendNotifications: draft.sendNotifications,
         isDraft,
+        receiptId: uploadedReceiptId,
         payers,
         participants: sharePreview.map((s) => ({
           personId: s.personId,
@@ -480,7 +499,7 @@ export function CreateSplitWizard({
         reminder: draft.remindersEnabled
           ? {
               enabled: true,
-              channels: draft.reminderChannels,
+              channels: ["in_app"],
               firstReminderDaysBefore: draft.firstReminderDays,
               frequencyDays: draft.frequencyDays,
               recurring: draft.recurring,
@@ -947,6 +966,7 @@ export function CreateSplitWizard({
                               return;
                             }
                             setReceipt({
+                              file,
                               name: file.name,
                               url: file.type.startsWith("image/")
                                 ? URL.createObjectURL(file)
@@ -1592,28 +1612,29 @@ export function CreateSplitWizard({
                 </div>
 
                 <h3 className="sm-small-heading">Reminder channels</h3>
-                <p className="sm-rail-sub">Choose how participants should be notified.</p>
+                <p className="sm-rail-sub">In-app reminders are delivered automatically when due. External channels are unavailable in this release.</p>
                 <div className="sm-channels">
                   {(
                     [
-                      ["in_app", "In-app notification", "Send in Hisaab app", <Bell key="b" size={18} />],
-                      ["email", "Email", "Send via email", <Mail key="m" size={18} />],
-                      ["whatsapp", "WhatsApp / SMS", "Send via WhatsApp", <MessageCircle key="w" size={18} />],
+                      ["in_app", "In-app notification", "Send in Hisaab app", <Bell key="b" size={18} />, true],
+                      ["email", "Email", "Unavailable — in-app only", <Mail key="m" size={18} />, false],
+                      ["whatsapp", "WhatsApp / SMS", "Unavailable — in-app only", <MessageCircle key="w" size={18} />, false],
                     ] as const
-                  ).map(([key, label, hint, icon]) => {
-                    const on = draft.reminderChannels.includes(key);
+                  ).map(([key, label, hint, icon, supported]) => {
+                    const on = supported && draft.reminderChannels.includes(key);
                     return (
                       <button
                         key={key}
                         type="button"
+                        disabled={!supported}
+                        title={supported ? undefined : "Unavailable — in-app reminders only"}
                         className={on ? "active" : ""}
-                        onClick={() =>
+                        onClick={() => {
+                          if (!supported) return;
                           update({
-                            reminderChannels: on
-                              ? draft.reminderChannels.filter((c) => c !== key)
-                              : [...draft.reminderChannels, key],
-                          })
-                        }
+                            reminderChannels: ["in_app"],
+                          });
+                        }}
                       >
                         <span className="sm-channel-icon">{icon}</span>
                         <span>
@@ -1639,20 +1660,21 @@ export function CreateSplitWizard({
                   </label>
                   <div className="sm-notif-preview">
                     <h3>Notification Preview</h3>
-                    <p className="sm-rail-sub">Here&apos;s how the reminder will look.</p>
+                    <p className="sm-rail-sub">Here&apos;s how the in-app reminder will look.</p>
                     <div className="sm-tabs-pill compact">
                       {(
                         [
-                          ["in_app", "In-app"],
-                          ["email", "Email"],
-                          ["whatsapp", "WhatsApp"],
+                          ["in_app", "In-app", true],
+                          ["email", "Email (unavailable)", false],
+                          ["whatsapp", "WhatsApp (unavailable)", false],
                         ] as const
-                      ).map(([k, l]) => (
+                      ).map(([k, l, supported]) => (
                         <button
                           key={k}
                           type="button"
+                          disabled={!supported}
                           className={previewTab === k ? "active" : ""}
-                          onClick={() => setPreviewTab(k)}
+                          onClick={() => supported && setPreviewTab(k)}
                         >
                           {l}
                         </button>

@@ -581,7 +581,17 @@ export function SplitReceiptsPanel({ expense, onChanged }: { expense: SplitExpen
                 <strong className="block truncate text-sm">{receipt.fileName ?? "Receipt"}</strong>
                 <span className={muted}>{fileKind(receipt.mimeType)} · Uploaded</span>
               </span>
-              <span className="flex gap-2">
+              <span className="flex items-center gap-2">
+                {receipt.fileUrl ? (
+                  <a
+                    href={receipt.fileUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="rounded-lg border border-[var(--border)] px-2.5 py-1 text-xs font-semibold hover:bg-[var(--surface-hover)]"
+                  >
+                    View
+                  </a>
+                ) : null}
                 {isScannable(receipt.mimeType) && receipt.fileId ? (
                   <Button type="button" variant="secondary" disabled={busy !== null} onClick={() => runScan(receipt)}>{busy === `scan:${receipt.id}` ? "Scanning…" : "Scan"}</Button>
                 ) : <span className={muted}>PDF · not scannable</span>}

@@ -636,6 +636,7 @@ export const splitPeople = sqliteTable(
     relationship: text("relationship").notNull().default("friend"),
     photoUrl: text("photo_url"),
     isSelf: integer("is_self", { mode: "boolean" }).notNull().default(false),
+    archivedAt: text("archived_at"),
     ...timestamps,
   },
   (table) => [
@@ -722,10 +723,12 @@ export const splitExpenses = sqliteTable(
     sendNotifications: integer("send_notifications", { mode: "boolean" }).notNull().default(true),
     isDraft: integer("is_draft", { mode: "boolean" }).notNull().default(false),
     receiptId: text("receipt_id"),
+    ledgerVersion: integer("ledger_version").notNull().default(0),
     ...timestamps,
   },
   (table) => [
     index("split_expenses_user_idx").on(table.userId),
+    index("split_expenses_group_idx").on(table.groupId),
     index("split_expenses_status_idx").on(table.userId, table.status),
     check("split_expenses_amount_positive", sql`${table.totalAmountMinor} > 0`),
     check(
@@ -810,6 +813,8 @@ export const splitPayments = sqliteTable(
     paymentDate: text("payment_date").notNull(),
     status: text("status").notNull().default("completed"),
     isFinalSettlement: integer("is_final_settlement", { mode: "boolean" }).notNull().default(false),
+    voidedAt: text("voided_at"),
+    voidReason: text("void_reason"),
     ...timestamps,
   },
   (table) => [
@@ -1169,7 +1174,11 @@ export const idempotencyKeys = sqliteTable(
     scope: text("scope").notNull(),
     key: text("key").notNull(),
     responseJson: text("response_json").notNull(),
+    requestHash: text("request_hash"),
     createdAt: text("created_at").notNull(),
   },
-  (table) => [primaryKey({ columns: [table.userId, table.scope, table.key] })],
+  (table) => [
+    primaryKey({ columns: [table.userId, table.scope, table.key] }),
+    index("idempotency_keys_created_idx").on(table.createdAt),
+  ],
 );

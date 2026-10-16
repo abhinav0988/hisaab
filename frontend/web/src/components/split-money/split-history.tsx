@@ -59,8 +59,8 @@ export function SplitHistoryView({
       if (tab === "All") return true;
       if (tab === "Ongoing") return !["settled", "cancelled"].includes(e.status);
       if (tab === "Settled") return e.status === "settled";
-      if (tab === "You Owe") return (e.yourShareMinor ?? 0) > (e.youPaidMinor ?? 0);
-      if (tab === "Others Owe") return (e.youPaidMinor ?? 0) > (e.yourShareMinor ?? 0);
+      if (tab === "You Owe") return (e.youOweMinor ?? 0) > 0;
+      if (tab === "Others Owe") return (e.youAreOwedMinor ?? 0) > 0;
       if (tab === "Cancelled") return e.status === "cancelled";
       return true;
     });
@@ -202,7 +202,7 @@ export function SplitHistoryView({
               <p className="sm-empty">No split expenses match this view.</p>
             )}
             {expenses.map((e) => {
-              const balance = (e.youPaidMinor ?? 0) - (e.yourShareMinor ?? 0);
+              const balance = (e.youAreOwedMinor ?? 0) - (e.youOweMinor ?? 0);
               const people = (e.participants ?? []).slice(0, 3);
               const extra = (e.participants?.length ?? 0) - people.length;
               return (
@@ -317,11 +317,12 @@ export function SplitHistoryView({
                 <li key={p.id}>
                   <HandCoins size={16} />
                   <div>
-                    <b>
-                      {p.payer?.fullName ?? "Someone"} paid {money(p.amountMinor)}
+                    <b style={p.status === "voided" ? { textDecoration: "line-through", opacity: 0.65 } : undefined}>
+                      {p.payer?.fullName ?? "Someone"} → {p.receiver?.fullName ?? "Someone"} · {money(p.amountMinor)}
                     </b>
                     <small>
                       {p.paymentDate.slice(0, 10)} · {statusLabel(p.method)}
+                      {p.status === "voided" ? " · (voided)" : ""}
                     </small>
                   </div>
                 </li>

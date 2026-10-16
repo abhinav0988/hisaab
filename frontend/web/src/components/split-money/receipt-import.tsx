@@ -97,11 +97,9 @@ export function ReceiptImportView({
   const people = useMemo(() => peopleQuery.data ?? [], [peopleQuery.data]);
   const self = people.find((p) => p.isSelf) ?? people[0];
 
-  useEffect(() => {
-    if (self && !payerId) setPayerId(self.id);
-    if (self && participantIds.length === 0) setParticipantIds([self.id]);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [self?.id]);
+  // Default payer/participants to "You" as soon as people load (render-time, not an effect).
+  if (self && !payerId) setPayerId(self.id);
+  if (self && participantIds.length === 0) setParticipantIds([self.id]);
 
   useEffect(() => {
     return () => {

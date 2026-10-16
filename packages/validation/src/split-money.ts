@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { allocateByWeights } from "./split-ledger";
 
 const currencySchema = z.enum(["INR", "NPR", "PKR", "BDT", "USD"]);
 const idSchema = z.string().min(8).max(64);
@@ -84,13 +85,19 @@ export const splitParticipantInputSchema = z.object({
   shareAmountMinor: z.number().int().nonnegative().safe().optional(),
 });
 
-export const splitItemInputSchema = z.object({
-  name: z.string().trim().min(1).max(80),
-  quantity: z.number().int().positive().max(9999).optional().default(1),
-  priceMinor: z.number().int().nonnegative().safe(),
-  kind: z.enum(["item", "tax", "tip"]).optional().default("item"),
-  personIds: z.array(idSchema).min(1).max(50),
-});
+export const splitItemInputSchema = z
+  .object({
+    name: z.string().trim().min(1).max(80),
+    quantity: z.number().int().positive().max(9999).optional().default(1),
+    priceMinor: z.number().int().nonnegative().safe(),
+    kind: z.enum(["item", "tax", "tip", "discount"]).optional().default("item"),
+    personIds: z.array(idSchema).max(50),
+  })
+  .superRefine((value, ctx) => {
+    if (value.kind === "item" && value.personIds.length === 0) {
+      ctx.addIssue({ code: "custom", message: "Choose who had this item", path: ["personIds"] });
+    }
+  });
 
 export const splitExpenseSchema = z
   .object({
@@ -145,6 +152,14 @@ export const splitExpenseSchema = z
         path: ["participants"],
       });
     }
+    const payerIds = value.payers.map((p) => p.personId);
+    if (new Set(payerIds).size !== payerIds.length) {
+      ctx.addIssue({
+        code: "custom",
+        message: "Each payer can only be listed once",
+        path: ["payers"],
+      });
+    }
   });
 
 export const splitExpensePatchSchema = z.object({
@@ -153,13 +168,48 @@ export const splitExpensePatchSchema = z.object({
   category: z.string().trim().min(1).max(60).optional(),
   dueDate: isoDateSchema.nullable().optional(),
   noteForParticipants: z.string().trim().max(200).nullable().optional(),
+  /** Only "cancelled" (cancel) or any other value (reopen) is honoured; other statuses are derived. */
   status: splitExpenseStatusSchema.optional(),
+  /** Send false to publish a draft. */
+  isDraft: z.literal(false).optional(),
   sendNotifications: z.boolean().optional(),
   allowPartialPayments: z.boolean().optional(),
 });
 
+export const splitReplaceSchema = z
+  .object({
+    totalAmountMinor: z.number().int().positive().safe(),
+    splitMethod: splitMethodSchema.optional().default("equal"),
+    payers: z.array(splitPayerInputSchema).min(1).max(20),
+    participants: z.array(splitParticipantInputSchema).min(1).max(50),
+    items: z.array(splitItemInputSchema).max(100).optional(),
+  })
+  .superRefine((value, ctx) => {
+    if (value.payers.reduce((sum, p) => sum + p.paidAmountMinor, 0) !== value.totalAmountMinor) {
+      ctx.addIssue({ code: "custom", message: "Payer amounts must equal the expense total", path: ["payers"] });
+    }
+    const people = value.participants.map((p) => p.personId);
+    if (new Set(people).size !== people.length) {
+      ctx.addIssue({ code: "custom", message: "Duplicate participants are not allowed", path: ["participants"] });
+    }
+    const payers = value.payers.map((p) => p.personId);
+    if (new Set(payers).size !== payers.length) {
+      ctx.addIssue({ code: "custom", message: "Each payer can only be listed once", path: ["payers"] });
+    }
+  });
+
+export const splitSettleSchema = z.object({
+  method: splitPaymentMethodSchema.optional(),
+  paymentDate: isoDateSchema.optional(),
+  note: z.string().trim().max(200).nullable().optional(),
+});
+
+export const splitVoidPaymentSchema = z.object({
+  reason: z.string().trim().max(200).nullable().optional(),
+});
+
 export const splitPaymentSchema = z.object({
-  participantId: idSchema,
+  participantId: idSchema.optional(),
   payerPersonId: idSchema,
   receiverPersonId: idSchema,
   amountMinor: z.number().int().positive().safe(),
@@ -174,6 +224,8 @@ export const splitPaymentSchema = z.object({
 export const splitAdjustmentSchema = z.object({
   participantId: idSchema,
   amountMinor: z.number().int().safe(),
+  /** For correction/other: whether the share goes down or up. Discount, waiver and refund always reduce. */
+  direction: z.enum(["reduce", "increase"]).optional(),
   type: splitAdjustmentTypeSchema,
   reason: z.string().trim().max(200).nullable().optional(),
 });
@@ -215,20 +267,7 @@ export function allocateEqual(totalMinor: number, count: number): number[] {
 export function allocateByShares(totalMinor: number, shares: number[]): number[] {
   if (shares.length === 0) throw new Error("Shares required");
   if (shares.some((s) => !Number.isSafeInteger(s) || s <= 0)) throw new Error("Invalid share");
-  const totalShares = shares.reduce((a, b) => a + b, 0);
-  const raw = shares.map((s) => (totalMinor * s) / totalShares);
-  const floors = raw.map((v) => Math.floor(v));
-  let leftover = totalMinor - floors.reduce((a, b) => a + b, 0);
-  const order = raw
-    .map((v, i) => ({ i, frac: v - floors[i]! }))
-    .sort((a, b) => b.frac - a.frac);
-  const result = [...floors];
-  for (const entry of order) {
-    if (leftover <= 0) break;
-    result[entry.i]! += 1;
-    leftover -= 1;
-  }
-  return result;
+  return allocateByWeights(totalMinor, shares);
 }
 
 /** percentages are basis points (10000 = 100%). */
@@ -252,14 +291,15 @@ export type SplitItemAllocationInput = {
   name: string;
   quantity: number;
   priceMinor: number;
-  kind: "item" | "tax" | "tip";
+  kind: "item" | "tax" | "tip" | "discount";
   personIds: string[];
 };
 
 /**
- * Item-wise split. Tax/tip with empty personIds (or kind tax/tip) split among
- * all participants proportional to their item subtotals when mode is proportional,
- * otherwise equally among allParticipants.
+ * Item-wise split. Items are split equally among the people who had them.
+ * Tax, tip and discount lines tagged with people are split equally among them;
+ * untagged lines are spread in proportion to each person's item subtotal
+ * (or equally when taxTipMode is "equal"). Discounts reduce shares.
  */
 export function allocateItemwise(input: {
   items: SplitItemAllocationInput[];
@@ -273,6 +313,13 @@ export function allocateItemwise(input: {
   const itemSubtotals: Record<string, number> = Object.fromEntries(
     input.allPersonIds.map((id) => [id, 0]),
   );
+
+  const known = new Set(input.allPersonIds);
+  for (const item of input.items) {
+    if (item.personIds.some((id) => !known.has(id))) {
+      throw new Error(`"${item.name}" is assigned to someone who is not in this split`);
+    }
+  }
 
   for (const item of input.items) {
     if (item.kind !== "item") continue;
@@ -292,24 +339,23 @@ export function allocateItemwise(input: {
       item.personIds.length > 0
         ? item.personIds
         : input.allPersonIds;
+    const sign = item.kind === "discount" ? -1 : 1;
+    let parts: number[];
     if (mode === "equal" || item.personIds.length > 0) {
-      const parts = allocateEqual(line, ids.length);
-      ids.forEach((id, i) => {
-        totals[id] = (totals[id] ?? 0) + parts[i]!;
-      });
+      parts = allocateEqual(line, ids.length);
     } else {
       const weights = ids.map((id) => Math.max(itemSubtotals[id] ?? 0, 0));
       const weightSum = weights.reduce((a, b) => a + b, 0);
-      const parts =
-        weightSum === 0
-          ? allocateEqual(line, ids.length)
-          : allocateByShares(line, weights.map((w) => (w === 0 ? 1 : w)));
-      ids.forEach((id, i) => {
-        totals[id] = (totals[id] ?? 0) + parts[i]!;
-      });
+      parts = weightSum === 0 ? allocateEqual(line, ids.length) : allocateByWeights(line, weights);
     }
+    ids.forEach((id, i) => {
+      totals[id] = (totals[id] ?? 0) + sign * parts[i]!;
+    });
   }
 
+  for (const [id, amount] of Object.entries(totals)) {
+    if (amount < 0) throw new Error(`Discounts exceed the items assigned to ${id}`);
+  }
   return totals;
 }
 

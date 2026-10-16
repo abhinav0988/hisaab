@@ -46,7 +46,7 @@ export type AppStackParamList = {
   Privacy: undefined;
   Settings: undefined;
   Subscription: undefined;
-  SplitCreate: undefined;
+  SplitCreate: { groupId?: string } | undefined;
   SplitExpense: { id: string };
   SplitPayment: { id: string };
   SplitAdjustment: { id: string };

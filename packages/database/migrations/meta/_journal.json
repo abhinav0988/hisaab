@@ -127,6 +127,13 @@
       "when": 1787907700000,
       "tag": "0017_lend_reminders",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "6",
+      "when": 1787907800000,
+      "tag": "0018_split_ledger_integrity",
+      "breakpoints": true
     }
   ]
 }

@@ -134,7 +134,7 @@ const DEFAULT_SETTINGS: GroupSettings = {
 
 function GroupDetail({ group, onBack }: { group: SplitGroup; onBack: () => void }) {
   const qc = useQueryClient();
-  const [tab, setTab] = useState<"expenses" | "members" | "settings">("expenses");
+  const [tab, setTab] = useState<"expenses" | "balances" | "members" | "settings">("expenses");
   const [settings, setSettings] = useState<GroupSettings>({
     defaultSplitMethod: group.defaultSplitMethod,
     currency: group.currency,
@@ -184,8 +184,12 @@ function GroupDetail({ group, onBack }: { group: SplitGroup; onBack: () => void 
 
   const members = group.members ?? [];
   const expenses = group.expenses ?? [];
-  const totalMinor = expenses.reduce((s, e) => s + e.totalAmountMinor, 0);
+  const currency = group.currency;
+  const summary = group.summary;
+  const totalMinor = summary?.totalSharedMinor ?? expenses.reduce((s, e) => s + e.totalAmountMinor, 0);
+  const balances = group.memberBalances ?? [];
   const addable = (peopleQuery.data ?? []).filter((p) => !members.some((m) => m.personId === p.id));
+  const balanceFor = (personId: string) => balances.find((b) => b.personId === personId);
 
   return (
     <main className="sm-page">
@@ -217,7 +221,7 @@ function GroupDetail({ group, onBack }: { group: SplitGroup; onBack: () => void 
       </section>
 
       <nav className="sm-tabs sm-group-tabs" aria-label="Group sections">
-        {(["expenses", "members", "settings"] as const).map((t) => (
+        {(["expenses", "balances", "members", "settings"] as const).map((t) => (
           <button
             key={t}
             type="button"
@@ -229,50 +233,100 @@ function GroupDetail({ group, onBack }: { group: SplitGroup; onBack: () => void 
         ))}
       </nav>
 
-      <section className="sm-stat-grid" style={{ gridTemplateColumns: "repeat(3, 1fr)" }}>
+      <section className="sm-stat-grid" aria-label="Group summary">
         <article className="sm-stat green">
           <div>
-            <b>{money(totalMinor)}</b>
-            <p>Total Expenses</p>
+            <b>{money(totalMinor, currency)}</b>
+            <p>Total shared expenses</p>
           </div>
         </article>
         <article className="sm-stat blue">
           <div>
-            <b>{members.length}</b>
-            <p>Members</p>
+            <b>{money(summary?.collectedMinor ?? 0, currency)}</b>
+            <p>Repayments completed</p>
           </div>
         </article>
         <article className="sm-stat gold">
           <div>
-            <b>{expenses.length}</b>
-            <p>Expenses</p>
+            <b>{money(summary?.outstandingMinor ?? 0, currency)}</b>
+            <p>Still outstanding</p>
+          </div>
+        </article>
+        <article className="sm-stat">
+          <div>
+            <b>
+              {summary?.activeExpenses ?? expenses.length} active · {summary?.settledExpenses ?? 0} settled
+            </b>
+            <p>
+              {members.length} members · {summary?.settledPercent ?? 0}% settled
+            </p>
           </div>
         </article>
       </section>
+
+      {tab === "balances" && (
+        <section className="sm-form-card" aria-label="Member balances">
+          <h2>Member balances</h2>
+          <p style={{ fontSize: 12, color: "var(--muted-foreground)", marginBottom: 10 }}>
+            Positive = should receive money, negative = owes money. Computed by the server from every
+            expense in this group; upfront bill payments are separate from repayments.
+          </p>
+          {balances.length === 0 && <p className="sm-empty">No balances yet — add an expense to this group.</p>}
+          <div className="sm-breakdown">
+            {balances.map((b, i) => (
+              <div key={b.personId}>
+                <span className={`sm-avatar ${avatarTone(i)} small`}>{initials(b.person?.fullName ?? "?")}</span>
+                <b>
+                  {b.person?.fullName ?? "Unknown"}
+                  {!b.isMember ? " (former member)" : ""}
+                </b>
+                <span>
+                  {b.expenseCount} expense{b.expenseCount === 1 ? "" : "s"} · share {money(b.shareMinor, currency)}
+                </span>
+                <strong style={{ color: b.netMinor > 0 ? "var(--green, #55e7a0)" : b.netMinor < 0 ? "var(--red, #f87171)" : undefined }}>
+                  {b.netMinor > 0 ? `+${money(b.netMinor, currency)}` : b.netMinor < 0 ? `−${money(-b.netMinor, currency)}` : "settled"}
+                </strong>
+                <em>
+                  upfront {money(b.upfrontPaidMinor, currency)} · repaid {money(b.repaymentSentMinor, currency)} · received{" "}
+                  {money(b.repaymentReceivedMinor, currency)}
+                  {b.owedMinor > 0 ? ` · owes ${money(b.owedMinor, currency)}` : ""}
+                  {b.receivableMinor > 0 ? ` · is owed ${money(b.receivableMinor, currency)}` : ""}
+                </em>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
 
       {tab === "expenses" && (
         <section className="sm-form-card">
           <div className="sm-section-row">
             <h2>Recent Expenses</h2>
-            <Link className="sm-primary" href="/split-money/create">
+            <Link className="sm-primary" href={`/split-money/create?groupId=${encodeURIComponent(group.id)}`}>
               <Plus size={16} /> Add Expense
             </Link>
           </div>
           {expenses.length === 0 && <p className="sm-empty">No expenses in this group yet.</p>}
           <div className="sm-group-expenses">
             {expenses.map((e) => (
-              <div key={e.id}>
+              <Link
+                key={e.id}
+                href={`/split-money/expense?id=${encodeURIComponent(e.id)}`}
+                style={{ color: "inherit", textDecoration: "none" }}
+              >
                 <span className="sm-exp-icon food">
                   <Receipt size={16} />
                 </span>
                 <div>
                   <b>{e.title}</b>
                   <small>
-                    {e.expenseDate} · {money(e.totalAmountMinor)}
+                    {e.expenseDate} · {money(e.totalAmountMinor, e.currency)} · repaid{" "}
+                    {money(e.ledger?.collectedMinor ?? e.collectedMinor ?? 0, e.currency)} of{" "}
+                    {money(e.ledger?.collectibleMinor ?? e.collectibleMinor ?? 0, e.currency)}
                   </small>
                 </div>
                 <span className={`sm-status ${statusClass(e.status)}`}>{statusLabel(e.status)}</span>
-              </div>
+              </Link>
             ))}
           </div>
         </section>
@@ -312,14 +366,35 @@ function GroupDetail({ group, onBack }: { group: SplitGroup; onBack: () => void 
                   {initials(m.person?.fullName ?? "?")}
                 </span>
                 <b>{m.person?.fullName ?? "Unknown"}</b>
-                <small>{statusLabel(m.role)}</small>
+                <small>
+                  {statusLabel(m.role)}
+                  {(() => {
+                    const b = balanceFor(m.personId);
+                    if (!b || b.netMinor === 0) return " · settled";
+                    return b.netMinor > 0
+                      ? ` · is owed ${money(b.netMinor, currency)}`
+                      : ` · owes ${money(-b.netMinor, currency)}`;
+                  })()}
+                </small>
                 {!m.person?.isSelf && (
                   <button
                     type="button"
                     className="sm-icon-btn"
                     aria-label={`Remove ${m.person?.fullName ?? "member"}`}
                     disabled={removeMutation.isPending}
-                    onClick={() => removeMutation.mutate(m.id)}
+                    title={
+                      (balanceFor(m.personId)?.netMinor ?? 0) !== 0
+                        ? "Settle this member's balance before removing them"
+                        : undefined
+                    }
+                    onClick={() => {
+                      const b = balanceFor(m.personId);
+                      const warning =
+                        b && b.netMinor !== 0
+                          ? `${m.person?.fullName ?? "This member"} still ${b.netMinor < 0 ? "owes" : "is owed"} ${money(Math.abs(b.netMinor), currency)} in this group. The server will refuse removal until it is settled. Try anyway?`
+                          : `Remove ${m.person?.fullName ?? "this member"} from the group? Their past expenses stay in history.`;
+                      if (window.confirm(warning)) removeMutation.mutate(m.id);
+                    }}
                   >
                     <X size={14} />
                   </button>
@@ -700,8 +775,10 @@ export function PeopleView({ onBack }: { onBack: () => void }) {
   const qc = useQueryClient();
   const [adding, setAdding] = useState(false);
   const [filter, setFilter] = useState<"all" | SplitRelationship>("all");
+  const [showArchived, setShowArchived] = useState(false);
   const [search, setSearch] = useState("");
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [editingPerson, setEditingPerson] = useState(false);
   const [form, setForm] = useState<{
     fullName: string;
     phone: string;
@@ -715,8 +792,8 @@ export function PeopleView({ onBack }: { onBack: () => void }) {
   });
 
   const peopleQuery = useQuery({
-    queryKey: ["split-people"],
-    queryFn: () => splitMoneyService.listPeople(),
+    queryKey: ["split-people", showArchived],
+    queryFn: () => splitMoneyService.listPeople(showArchived),
   });
   const detailQuery = useQuery({
     queryKey: ["split-person", selectedId],
@@ -738,6 +815,41 @@ export function PeopleView({ onBack }: { onBack: () => void }) {
       setAdding(false);
       setForm({ fullName: "", phone: "", email: "", relationship: "friend" });
       void qc.invalidateQueries({ queryKey: ["split-people"] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const refreshPerson = () => {
+    void qc.invalidateQueries({ queryKey: ["split-people"] });
+    void qc.invalidateQueries({ queryKey: ["split-person", selectedId] });
+    void qc.invalidateQueries({ queryKey: ["split-money"] });
+  };
+  const editMutation = useMutation({
+    mutationFn: () => {
+      if (!selectedId) throw new Error("No person selected");
+      if (!form.fullName.trim()) throw new Error("Full name is required");
+      return splitMoneyService.patchPerson(selectedId, {
+        fullName: form.fullName.trim(),
+        phone: form.phone.trim() || null,
+        email: form.email.trim() || null,
+        relationship: form.relationship,
+      });
+    },
+    onSuccess: () => {
+      toast.success("Person updated.");
+      setEditingPerson(false);
+      refreshPerson();
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+  const archiveMutation = useMutation({
+    mutationFn: (restore: boolean) => {
+      if (!selectedId) throw new Error("No person selected");
+      return restore ? splitMoneyService.restorePerson(selectedId) : splitMoneyService.archivePerson(selectedId);
+    },
+    onSuccess: (_, restore) => {
+      toast.success(restore ? "Person restored." : "Person archived. Their history is kept.");
+      refreshPerson();
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -863,39 +975,135 @@ export function PeopleView({ onBack }: { onBack: () => void }) {
           </div>
           <div className="sm-chip-row">
             <span className="sm-chip">{statusLabel(d.person.relationship)}</span>
+            {d.person.archivedAt ? <span className="sm-chip">Archived</span> : null}
           </div>
         </section>
-        <section className="sm-stat-grid" style={{ gridTemplateColumns: "repeat(2, 1fr)" }}>
-          <article className="sm-stat red">
-            <div>
-              <small>You owe</small>
-              <b>{money(d.youOweMinor)}</b>
-            </div>
-          </article>
-          <article className="sm-stat green">
-            <div>
-              <small>You are owed</small>
-              <b>{money(d.youAreOwedMinor)}</b>
-            </div>
-          </article>
-        </section>
+        {(d.balances?.length
+          ? d.balances
+          : [{ currency: d.currency ?? "INR", youOweMinor: d.youOweMinor, youAreOwedMinor: d.youAreOwedMinor }]
+        ).map((b) => (
+          <section key={b.currency} className="sm-stat-grid" style={{ gridTemplateColumns: "repeat(2, 1fr)" }}>
+            <article className="sm-stat red">
+              <div>
+                <small>You owe {d.balances && d.balances.length > 1 ? `(${b.currency})` : ""}</small>
+                <b>{money(b.youOweMinor, b.currency)}</b>
+              </div>
+            </article>
+            <article className="sm-stat green">
+              <div>
+                <small>You are owed {d.balances && d.balances.length > 1 ? `(${b.currency})` : ""}</small>
+                <b>{money(b.youAreOwedMinor, b.currency)}</b>
+              </div>
+            </article>
+          </section>
+        ))}
+        {!d.person.isSelf ? (
+          <section className="sm-form-card" style={{ marginBottom: 16 }}>
+            {editingPerson ? (
+              <>
+                <h2>Edit person</h2>
+                <div className="sm-fields">
+                  <label className="wide">
+                    Full Name *
+                    <input value={form.fullName} maxLength={80} onChange={(e) => setForm({ ...form, fullName: e.target.value })} />
+                  </label>
+                  <label>
+                    Phone Number
+                    <input inputMode="tel" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
+                  </label>
+                  <label>
+                    Email
+                    <input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
+                  </label>
+                  <div className="wide">
+                    <b style={{ fontSize: 12 }}>Relationship</b>
+                    <div className="sm-rel-chips">
+                      {RELATIONSHIPS.map((r) => (
+                        <button
+                          key={r.id}
+                          type="button"
+                          className={form.relationship === r.id ? "selected" : ""}
+                          onClick={() => setForm({ ...form, relationship: r.id })}
+                        >
+                          {r.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+                <footer className="sm-wizard-footer">
+                  <button className="sm-outline" type="button" disabled={editMutation.isPending} onClick={() => setEditingPerson(false)}>
+                    Discard
+                  </button>
+                  <button className="sm-primary" type="button" disabled={editMutation.isPending} onClick={() => editMutation.mutate()}>
+                    {editMutation.isPending ? "Saving…" : "Save changes"}
+                  </button>
+                </footer>
+              </>
+            ) : (
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                <button
+                  className="sm-outline"
+                  type="button"
+                  disabled={archiveMutation.isPending}
+                  onClick={() => {
+                    setForm({
+                      fullName: d.person.fullName,
+                      phone: d.person.phone ?? "",
+                      email: d.person.email ?? "",
+                      relationship: d.person.relationship,
+                    });
+                    setEditingPerson(true);
+                  }}
+                >
+                  Edit person
+                </button>
+                {d.person.archivedAt ? (
+                  <button className="sm-outline" type="button" disabled={archiveMutation.isPending} onClick={() => archiveMutation.mutate(true)}>
+                    {archiveMutation.isPending ? "Restoring…" : "Restore person"}
+                  </button>
+                ) : (
+                  <button
+                    className="sm-outline"
+                    type="button"
+                    disabled={archiveMutation.isPending}
+                    onClick={() => {
+                      if (
+                        window.confirm(
+                          "Archive this person? They are hidden from new splits; every past expense and repayment stays in history. You can restore them later.",
+                        )
+                      )
+                        archiveMutation.mutate(false);
+                    }}
+                  >
+                    {archiveMutation.isPending ? "Archiving…" : "Archive person"}
+                  </button>
+                )}
+              </div>
+            )}
+          </section>
+        ) : null}
         <section className="sm-form-card">
           <h2>Expenses ({d.expenses.length})</h2>
           {d.expenses.length === 0 && <p className="sm-empty">No shared expenses yet.</p>}
           <div className="sm-group-expenses">
             {d.expenses.map((e) => (
-              <div key={e.id}>
+              <Link
+                key={e.id}
+                href={`/split-money/expense?id=${encodeURIComponent(e.id)}`}
+                style={{ color: "inherit", textDecoration: "none" }}
+              >
                 <span className="sm-exp-icon food">
                   <Receipt size={16} />
                 </span>
                 <div>
                   <b>{e.title}</b>
                   <small>
-                    {e.expenseDate} · {money(e.totalAmountMinor)}
+                    {e.expenseDate} · {money(e.totalAmountMinor, e.currency)}
                   </small>
                 </div>
                 <span className={`sm-status ${statusClass(e.status)}`}>{statusLabel(e.status)}</span>
-              </div>
+              </Link>
             ))}
           </div>
         </section>
@@ -944,6 +1152,13 @@ export function PeopleView({ onBack }: { onBack: () => void }) {
             {label} ({countFor(f)})
           </button>
         ))}
+        <button
+          type="button"
+          className={showArchived ? "selected" : ""}
+          onClick={() => setShowArchived((prev) => !prev)}
+        >
+          {showArchived ? "Showing archived" : "Show archived"}
+        </button>
       </div>
       <section className="sm-contact-list sm-people-list">
         {people.map((p, i) => (
@@ -953,6 +1168,7 @@ export function PeopleView({ onBack }: { onBack: () => void }) {
               <b>
                 {p.fullName}
                 {p.isSelf ? " (You)" : ""}
+                {p.archivedAt ? " (Archived)" : ""}
               </b>
               <small>{p.phone || p.email || "—"}</small>
             </div>

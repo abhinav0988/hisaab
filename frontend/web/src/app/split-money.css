@@ -2173,6 +2173,19 @@ button.sm-row:hover {
     flex-wrap: wrap;
     gap: 8px;
   }
+  /* Expense detail header actions: wrap instead of clipping off-screen on phones. */
+  .sm-create-head .sm-tools {
+    flex: 1 1 100%;
+    flex-wrap: wrap;
+    justify-content: flex-start;
+    gap: 6px;
+    min-width: 0;
+  }
+  .sm-create-head .sm-tools > button {
+    flex: 1 1 calc(50% - 3px);
+    min-width: 0;
+    white-space: nowrap;
+  }
   .sm-filters {
     gap: 6px;
   }

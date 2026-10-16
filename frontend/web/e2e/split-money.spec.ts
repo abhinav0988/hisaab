@@ -9,6 +9,11 @@ async function openSplitMoney(page: Page) {
   await hideDevOverlay(page);
 }
 
+/** Wizard footer primary — the header also has a "Continue", so target the footer explicitly. */
+function wizardNext(page: Page) {
+  return page.locator(".sm-wizard-footer .sm-primary");
+}
+
 async function shot(page: Page, name: string) {
   await hideDevOverlay(page);
   await page.screenshot({
@@ -23,10 +28,10 @@ async function addPerson(page: Page, name: string, phone: string) {
     timeout: 15_000,
   });
   await page.getByRole("button", { name: /^Add Person$/ }).click();
-  const form = page.locator("section.sm-form-card").filter({ hasText: "Add Person" });
-  await expect(form.getByRole("heading", { name: "Add Person" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Add Person", level: 1 })).toBeVisible();
+  const form = page.locator("section.sm-form-card").filter({ hasText: "Full Name" });
   await form.locator("label").filter({ hasText: "Full Name" }).locator("input").fill(name);
-  await form.locator("label").filter({ hasText: /^Phone$/ }).locator("input").fill(phone);
+  await form.locator("label").filter({ hasText: /Phone Number/ }).locator("input").fill(phone);
   await Promise.all([
     page.waitForResponse(
       (r) =>
@@ -49,8 +54,13 @@ test.describe("Split Money", () => {
     test.setTimeout(240_000);
     await register(page, "split-qa");
 
-    // Sidebar presence (finance tools section)
-    const tools = page.getByRole("navigation", { name: "More finance tools" });
+    // Navigation entry: desktop sidebar "More finance tools" section, or the mobile "More" sheet.
+    const desktopTools = page.getByRole("navigation", { name: "More finance tools" });
+    const isDesktop = (await desktopTools.count()) > 0 && (await desktopTools.isVisible());
+    if (!isDesktop) {
+      await page.getByRole("navigation", { name: "Primary" }).getByRole("button", { name: "More" }).click();
+    }
+    const tools = isDesktop ? desktopTools : page.getByRole("navigation", { name: "More" });
     const splitLink = tools.getByRole("link", { name: /Split Money/i });
     await splitLink.scrollIntoViewIfNeeded();
     await expect(splitLink).toBeVisible();
@@ -127,7 +137,7 @@ test.describe("Split Money", () => {
     await shot(page, "04-create-step1");
 
     // Invalid step 1
-    await page.getByRole("button", { name: /^Continue/ }).click();
+    await wizardNext(page).click();
     await expect(page.getByText(/Title is required|Amount must be greater/i).first()).toBeVisible();
 
     await page.locator('label:has-text("Expense title") input').fill("Dinner at Restaurant");
@@ -136,7 +146,7 @@ test.describe("Split Money", () => {
     await page.locator('label:has-text("Date") input').fill("2026-10-05");
     await page.locator('label:has-text("Time") input').fill("20:30");
     await page.locator('label:has-text("Description") textarea').fill("Dinner with friends");
-    await page.getByRole("button", { name: /^Continue/ }).click();
+    await wizardNext(page).click();
 
     // Step 2 who paid
     await expect(page.getByRole("heading", { name: "Who Paid?" })).toBeVisible();
@@ -144,7 +154,7 @@ test.describe("Split Money", () => {
     await page.getByRole("button", { name: /Multiple payers/i }).click();
     await shot(page, "06-who-paid-multiple");
     await page.getByRole("button", { name: /Single payer/i }).click();
-    await page.getByRole("button", { name: /^Continue/ }).click();
+    await wizardNext(page).click();
 
     // Step 3 split with — ensure all people selected (self + 3 friends)
     await expect(page.getByRole("heading", { name: "Split With" })).toBeVisible();
@@ -158,20 +168,23 @@ test.describe("Split Money", () => {
     }
     await expect(page.locator(".sm-contact-list button").filter({ hasText: "Added" })).toHaveCount(4);
     await shot(page, "07-split-with");
-    await page.getByRole("button", { name: /^Continue/ }).click();
+    await wizardNext(page).click();
 
     // Step 4 equal split — ₹6,000 / 4 = ₹1,500.00
     await expect(page.getByText(/How do you want to split/i)).toBeVisible();
     await page.getByRole("button", { name: /Equal Split/i }).click();
     await expect(page.getByText("₹1,500.00").first()).toBeVisible();
     await shot(page, "08-equal-split");
-    await page.getByRole("button", { name: /^Continue/ }).click();
+    await wizardNext(page).click();
 
-    // Step 5 reminders
+    // Step 5 reminders — verify unsupported external channels are disabled (in-app only)
     await expect(page.getByRole("heading", { name: /Due Date/i })).toBeVisible();
-    await page.locator('label:has-text("Settlement due date") input').fill("2026-10-15");
+    await expect(page.locator(".sm-channels button").filter({ hasText: "Email" })).toBeDisabled();
+    await expect(page.locator(".sm-channels button").filter({ hasText: "WhatsApp / SMS" })).toBeDisabled();
+    await page.locator('label.sm-date-input input[type="date"]').fill("2026-10-15");
+    await expect(page.locator(".sm-cal-grid button.sel")).toHaveText("15");
     await shot(page, "09-due-reminder");
-    await page.getByRole("button", { name: /^Continue/ }).click();
+    await wizardNext(page).click();
 
     // Step 6 review + create
     await expect(page.getByRole("heading", { name: /Review/i })).toBeVisible();
@@ -195,41 +208,155 @@ test.describe("Split Money", () => {
     });
     await shot(page, "12-expense-detail");
 
-    // Record partial payment against a non-self pending participant
-    const select = page.locator('label:has-text("Person") select');
+    // Record a partial repayment on a debtor → creditor obligation edge.
+    // Single payer (self) and 4 equal shares → 3 obligations of ₹1,500 each, all owed to "You".
+    const select = page.locator('label:has-text("Who pays whom") select');
     await expect(select).toBeVisible();
     const options = await select.locator("option").allTextContents();
-    const pendingOption = options.find(
-      (o) =>
-        /pending/i.test(o) &&
-        !/Select participant/i.test(o) &&
-        !/^You\b/i.test(o.trim()),
-    );
-    expect(pendingOption, `expected non-self pending participant, got ${options.join("|")}`).toBeTruthy();
-    await select.selectOption({ label: pendingOption! });
-    await page.locator("label").filter({ hasText: /^Amount$/ }).locator("input").fill("500");
+    expect(options.length, `expected 3 obligations, got ${options.join("|")}`).toBe(3);
+    const edge = options.find((o) => /Rohit Sharma/.test(o));
+    expect(edge, `expected Rohit's obligation, got ${options.join("|")}`).toBeTruthy();
+    expect(edge).toMatch(/₹1,500\.00 left/);
+    await select.selectOption({ label: edge! });
+    // Scope to the repayment form (the adjustment form below also has an "Amount" field).
+    const payFields = page.locator(".sm-fields").filter({ hasText: "Who pays whom" });
+    await payFields.locator("label").filter({ hasText: /^Amount$/ }).locator("input").fill("500");
     const payResp = page.waitForResponse(
       (r) =>
         r.url().includes("/api/v1/split-money/expenses/") &&
         r.url().includes("/payments") &&
         r.request().method() === "POST",
     );
-    await page.getByRole("button", { name: "Record Payment" }).click();
+    await page.getByRole("button", { name: "Record repayment" }).click();
     const paid = await payResp;
     expect(paid.ok(), `payment failed: ${paid.status()}`).toBe(true);
-    await expect(page.getByText(/Payment recorded/i)).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByText(/Repayment recorded/i)).toBeVisible({ timeout: 15_000 });
     await expect(page.getByText(/Partially Paid|partially_paid/i).first()).toBeVisible();
+    // Ledger: Rohit's edge drops to ₹1,000; history shows the manual record.
+    await expect(select.locator("option").filter({ hasText: "Rohit Sharma" })).toHaveText(/₹1,000\.00 left/);
+    await expect(page.getByText(/Rohit Sharma → .* ₹500\.00 via upi/i)).toBeVisible();
     await shot(page, "13-partial-payment");
 
-    // History
+    // Void (reverse) the repayment — record stays as voided and the edge is restored.
+    const onDialog = (d: import("@playwright/test").Dialog) =>
+      d.type() === "prompt" ? d.accept("test reversal") : d.accept();
+    page.on("dialog", onDialog);
+    const voidResp = page.waitForResponse(
+      (r) => /\/payments\/[^/]+\/void$/.test(new URL(r.url()).pathname) && r.request().method() === "POST",
+    );
+    await page.getByRole("button", { name: /Reverse repayment of ₹500\.00/ }).click();
+    const voided = await voidResp;
+    expect(voided.ok(), `void failed: ${voided.status()}`).toBe(true);
+    await expect(page.getByText(/\(voided\)/).first()).toBeVisible({ timeout: 15_000 });
+    await expect(select.locator("option").filter({ hasText: "Rohit Sharma" })).toHaveText(/₹1,500\.00 left/);
+    page.off("dialog", onDialog);
+    await shot(page, "13b-voided-payment");
+
+    // Schedule an in-app reminder → honest "within ~15 minutes" copy, listed as scheduled with a Cancel button.
+    const reminderResp = page.waitForResponse(
+      (r) => r.url().includes("/reminders") && r.request().method() === "POST",
+    );
+    await page.getByRole("button", { name: "Schedule Reminder" }).click();
+    expect((await reminderResp).ok()).toBe(true);
+    await expect(page.getByText(/In-app reminder scheduled/i)).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByRole("heading", { name: "Reminders" })).toBeVisible();
+    // Wizard step 5 already scheduled a due-date reminder, so expect the manual one in addition.
+    await expect(page.getByRole("button", { name: "Cancel reminder" })).toHaveCount(2, { timeout: 15_000 });
+    await expect(page.getByText(/in-app · scheduled/i)).toHaveCount(2);
+    await shot(page, "13c-reminder");
+
+    // Cancel one scheduled reminder
+    await page.getByRole("button", { name: "Cancel reminder" }).first().click();
+    await expect(page.getByRole("button", { name: "Cancel reminder" })).toHaveCount(1, { timeout: 15_000 });
+
+    // Edit expense details
+    await page.getByRole("button", { name: "Edit details" }).click();
+    const editSection = page.locator('section[aria-label="Edit expense details"]');
+    await expect(editSection).toBeVisible();
+    await editSection.locator("label").filter({ hasText: "Expense title" }).locator("input").fill("Dinner at Restaurant (Edited)");
+    await editSection.getByRole("button", { name: "Save details" }).click();
+    await expect(page.getByRole("heading", { name: "Dinner at Restaurant (Edited)", level: 1 })).toBeVisible({
+      timeout: 15_000,
+    });
+
+    // Apply a waiver/adjustment on Aman Gupta's share (₹500 waiver reduces ₹1,500 -> ₹1,000)
+    const adjFields = page.locator(".sm-fields").filter({ hasText: "Select participant" });
+    const adjSelect = adjFields.locator("label").filter({ hasText: "Person" }).locator("select");
+    const amanOpt = (await adjSelect.locator("option").allTextContents()).find((o) => /Aman Gupta/.test(o));
+    expect(amanOpt).toBeTruthy();
+    await adjSelect.selectOption({ label: amanOpt! });
+    await adjFields.locator("label").filter({ hasText: "Type" }).locator("select").selectOption("waived");
+    await adjFields.locator("label").filter({ hasText: /^Amount$/ }).locator("input").fill("500");
+    await page.getByRole("button", { name: "Apply adjustment" }).click();
+    await expect(select.locator("option").filter({ hasText: "Aman Gupta" })).toHaveText(/₹1,000\.00 left/, {
+      timeout: 15_000,
+    });
+
+    // Upload and view receipt on ExpenseDetail
+    const receiptSection = page.locator('section[aria-label="Receipts"]');
+    const pngBase64 =
+      "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=";
+    await receiptSection.locator('input[type="file"]').setInputFiles({
+      name: "dinner-receipt.png",
+      mimeType: "image/png",
+      buffer: Buffer.from(pngBase64, "base64"),
+    });
+    await expect(receiptSection.getByText("dinner-receipt.png")).toBeVisible({ timeout: 15_000 });
+    await expect(receiptSection.getByRole("link", { name: "View" })).toBeVisible();
+
+    // Preview Borrow/Lend suggestions via Convert button (preview-only; does not create duplicate debt)
+    const convertResp = page.waitForResponse(
+      (r) => r.url().includes("/convert-lend") && r.request().method() === "POST",
+    );
+    await page.getByRole("button", { name: "Convert" }).click();
+    expect((await convertResp).ok()).toBe(true);
+
+    // Mark all remaining obligations settled atomically
+    page.once("dialog", (d) => d.accept());
+    const settleResp = page.waitForResponse(
+      (r) => r.url().includes("/settle") && r.request().method() === "POST",
+    );
+    await page.getByRole("button", { name: "Mark Settled" }).click();
+    expect((await settleResp).ok()).toBe(true);
+    await expect(page.getByText("Nothing is outstanding on this expense.")).toBeVisible({ timeout: 15_000 });
+
+    // Confirm persisted D1 database state via fresh API fetch
+    const createdBody = (await created.json()) as { data?: { id?: string }; id?: string };
+    const createdExpenseId = createdBody.data?.id ?? createdBody.id;
+    expect(createdExpenseId).toBeTruthy();
+    const apiBase = process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "") || "http://localhost:8787";
+    const persisted = await page.evaluate(
+      async ({ id, api }) => {
+        const res = await fetch(`${api}/api/v1/split-money/expenses/${id}`, { credentials: "include" });
+        const json = await res.json();
+        return json.data ?? json;
+      },
+      { id: createdExpenseId, api: apiBase },
+    );
+    expect(persisted.status).toBe("settled");
+    expect(persisted.ledger?.remainingMinor).toBe(0);
+    expect(persisted.ledger?.collectibleMinor).toBe(400_000); // ₹4,500 initial external share − ₹500 Aman waiver = ₹4,000
+    expect(persisted.ledger?.collectedMinor).toBe(400_000);
+    expect(persisted.obligations).toEqual([]);
+    expect(persisted.payments.some((p: { status: string }) => p.status === "voided")).toBe(true);
+    expect(persisted.adjustments.some((a: { type: string; amountMinor: number }) => a.type === "waived" && a.amountMinor === -50_000)).toBe(true);
+    expect(persisted.receipts.length).toBeGreaterThanOrEqual(1);
+    expect(persisted.ledgerVersion).toBeGreaterThanOrEqual(5);
+
+    // History + filter tabs + detail drawer
     await page.goto("/split-money/history");
     await expect(page.getByRole("heading", { name: "Split History", level: 1 })).toBeVisible();
-    await expect(page.getByText("Dinner at Restaurant").first()).toBeVisible();
+    await expect(page.getByText("Dinner at Restaurant (Edited)").first()).toBeVisible();
+    await page.getByRole("button", { name: "Settled", exact: true }).click();
+    await expect(page.getByText("Dinner at Restaurant (Edited)").first()).toBeVisible();
+    await page.locator(".sm-hist-row").filter({ hasText: "Dinner at Restaurant (Edited)" }).first().click();
+    await expect(page.getByRole("heading", { name: "Payment History" })).toBeVisible();
+    await expect(page.getByText(/\(voided\)/).first()).toBeVisible();
     await shot(page, "14-history");
 
     // Dashboard populated
     await openSplitMoney(page);
-    await expect(page.getByText("Dinner at Restaurant").first()).toBeVisible();
+    await expect(page.getByText("Dinner at Restaurant (Edited)").first()).toBeVisible();
     await expect(page.getByText("No split expenses yet")).toHaveCount(0);
     await shot(page, "15-dashboard-populated");
 
@@ -243,7 +370,7 @@ test.describe("Split Money", () => {
     await page.goto("/split-money/create");
     await page.locator('label:has-text("Expense title") input').fill("Trip Snacks");
     await page.locator('label:has-text("Total amount") input').fill("6000");
-    await page.getByRole("button", { name: /^Continue/ }).click();
+    await wizardNext(page).click();
     await page.getByRole("button", { name: /Multiple payers/i }).click();
     // Select two people as payers
     const payerCards = page.locator(".sm-people-grid button");
@@ -253,10 +380,114 @@ test.describe("Split Money", () => {
     if ((await payerInputs.count()) >= 2) {
       await payerInputs.nth(0).fill("4000");
       await payerInputs.nth(1).fill("1500");
-      await page.getByRole("button", { name: /^Continue/ }).click();
+      await wizardNext(page).click();
       await expect(page.getByText(/must equal the expense total/i)).toBeVisible();
       await payerInputs.nth(1).fill("2000");
     }
+  });
+
+  test("people edit/archive/restore, group balances & members, cancel/reopen & delete expense", async ({
+    page,
+  }) => {
+    test.setTimeout(240_000);
+    await register(page, "split-lifecycle");
+
+    await addPerson(page, "Karan Mehta", "9811112222");
+    await addPerson(page, "Sneha Nair", "9811113333");
+
+    // Open Sneha Nair -> Edit person -> Archive person -> Show archived -> Restore person
+    await page.locator(".sm-people-list button").filter({ hasText: "Sneha Nair" }).click();
+    await expect(page.getByRole("heading", { name: "Sneha Nair", level: 1 })).toBeVisible();
+    await page.getByRole("button", { name: "Edit person" }).click();
+    await page.locator("label").filter({ hasText: "Full Name" }).locator("input").fill("Sneha Nair Updated");
+    await page.getByRole("button", { name: "Save changes" }).click();
+    await expect(page.getByRole("heading", { name: "Sneha Nair Updated", level: 1 })).toBeVisible({
+      timeout: 15_000,
+    });
+
+    page.once("dialog", (d) => d.accept());
+    await page.getByRole("button", { name: "Archive person" }).click();
+    await expect(page.locator(".sm-chip").filter({ hasText: "Archived" })).toBeVisible({ timeout: 15_000 });
+
+    // Back to People list: hidden until "Show archived" is toggled
+    await page.getByRole("button", { name: /People/ }).first().click();
+    await expect(page.locator(".sm-people-list").getByText("Sneha Nair Updated")).toHaveCount(0);
+    await page.getByRole("button", { name: "Show archived" }).click();
+    await expect(page.locator(".sm-people-list").getByText(/Sneha Nair Updated \(Archived\)/)).toBeVisible({
+      timeout: 15_000,
+    });
+    await page.locator(".sm-people-list button").filter({ hasText: "Sneha Nair Updated" }).click();
+    await page.getByRole("button", { name: "Restore person" }).click();
+    await expect(page.getByRole("button", { name: "Archive person" })).toBeVisible({ timeout: 15_000 });
+
+    // Create group with Karan Mehta, then manage group members, balances, and settings
+    await page.goto("/split-money/groups");
+    await page.getByRole("button", { name: /Create Group/i }).click();
+    await page.locator('label:has-text("Group Name") input').fill("Office Lunch Group");
+    const groupPrimary = page.locator(".sm-wizard-footer .sm-primary");
+    await groupPrimary.click();
+    await page.locator(".sm-contact-list button").filter({ hasText: "Karan Mehta" }).click();
+    await groupPrimary.click();
+    await groupPrimary.click();
+    await groupPrimary.click();
+    await expect(page.getByText("Office Lunch Group").first()).toBeVisible({ timeout: 15_000 });
+
+    // Open group detail
+    await page.getByRole("button", { name: /Office Lunch Group/ }).click();
+    await expect(page.getByRole("heading", { name: "Office Lunch Group", level: 1 })).toBeVisible();
+
+    // Members tab: add and remove Sneha Nair Updated (settled balance = 0)
+    await page.getByRole("button", { name: "Members", exact: true }).click();
+    await page.getByLabel("Add member").selectOption({ label: "Sneha Nair Updated" });
+    await page.getByRole("button", { name: /^Add$/ }).click();
+    await expect(page.locator(".sm-member-row").filter({ hasText: "Sneha Nair Updated" })).toBeVisible({
+      timeout: 15_000,
+    });
+    page.once("dialog", (d) => d.accept());
+    await page.getByRole("button", { name: "Remove Sneha Nair Updated" }).click();
+    await expect(page.locator(".sm-member-row").filter({ hasText: "Sneha Nair Updated" })).toHaveCount(0, {
+      timeout: 15_000,
+    });
+
+    // Balances and Settings tabs
+    await page.getByRole("button", { name: "Balances", exact: true }).click();
+    await expect(page.getByRole("heading", { name: "Member balances" })).toBeVisible();
+    await page.getByRole("button", { name: "Settings", exact: true }).click();
+    await page.getByRole("button", { name: "Save Settings" }).click();
+
+    // Create a clean expense, then exercise Cancel -> Reopen -> Delete
+    await page.goto("/split-money/create");
+    await page.evaluate(() => localStorage.removeItem("hisaab.split-expense.draft.v1"));
+    await page.reload();
+    await page.locator('label:has-text("Expense title") input').fill("Quick Snack");
+    await page.locator('label:has-text("Total amount") input').fill("400");
+    await wizardNext(page).click();
+    await wizardNext(page).click();
+    const karanRow = page.locator(".sm-contact-list button").filter({ hasText: "Karan Mehta" });
+    if (!/Added/i.test(await karanRow.locator("span").last().innerText())) {
+      await karanRow.click();
+    }
+    await wizardNext(page).click();
+    await wizardNext(page).click();
+    await wizardNext(page).click();
+    await page.getByRole("button", { name: /Create Split Expense/i }).click();
+    await expect(page.getByRole("heading", { name: "Expense Created Successfully!", level: 1 })).toBeVisible({
+      timeout: 20_000,
+    });
+    await page.getByRole("button", { name: /View Expense/i }).click();
+    await expect(page.getByRole("heading", { name: "Quick Snack", level: 1 })).toBeVisible({ timeout: 15_000 });
+
+    // Cancel expense -> Reopen expense -> Delete expense
+    page.once("dialog", (d) => d.accept());
+    await page.getByRole("button", { name: "Cancel expense" }).dispatchEvent("click");
+    await expect(page.getByRole("button", { name: "Reopen expense" })).toBeVisible({ timeout: 15_000 });
+    page.once("dialog", (d) => d.accept());
+    await page.getByRole("button", { name: "Reopen expense" }).dispatchEvent("click");
+    await expect(page.getByRole("button", { name: "Cancel expense" })).toBeVisible({ timeout: 15_000 });
+
+    page.once("dialog", (d) => d.accept());
+    await page.getByRole("button", { name: "Delete", exact: true }).dispatchEvent("click");
+    await expect(page).toHaveURL(/\/split-money$/, { timeout: 15_000 });
   });
 
   test("mobile split money dashboard has no horizontal overflow", async ({ page }) => {
@@ -291,8 +522,8 @@ test.describe("Split Money authz API", () => {
     await pageA.goto("/split-money/create");
     await pageA.locator('label:has-text("Expense title") input').fill("Private Dinner");
     await pageA.locator('label:has-text("Total amount") input').fill("1000");
-    await pageA.getByRole("button", { name: /^Continue/ }).click();
-    await pageA.getByRole("button", { name: /^Continue/ }).click();
+    await wizardNext(pageA).click();
+    await wizardNext(pageA).click();
     const contacts = pageA.locator(".sm-contact-list button");
     const n = await contacts.count();
     for (let i = 0; i < n; i += 1) {
@@ -300,9 +531,9 @@ test.describe("Split Money authz API", () => {
       const label = await btn.locator("span").last().innerText();
       if (/Add/i.test(label) && !/Added/i.test(label)) await btn.click();
     }
-    await pageA.getByRole("button", { name: /^Continue/ }).click();
-    await pageA.getByRole("button", { name: /^Continue/ }).click();
-    await pageA.getByRole("button", { name: /^Continue/ }).click();
+    await wizardNext(pageA).click();
+    await wizardNext(pageA).click();
+    await wizardNext(pageA).click();
     const createResp = pageA.waitForResponse(
       (r) => r.url().includes("/api/v1/split-money/expenses") && r.request().method() === "POST",
     );
@@ -318,7 +549,7 @@ test.describe("Split Money authz API", () => {
 
     // Must hit the gateway origin (not Next.js). Cookies are set for the API host.
     const apiBase =
-      process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "") || "http://localhost:8797";
+      process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "") || "http://localhost:8787";
     const status = await pageB.evaluate(
       async ({ id, api }) => {
         const res = await fetch(`${api}/api/v1/split-money/expenses/${id}`, {

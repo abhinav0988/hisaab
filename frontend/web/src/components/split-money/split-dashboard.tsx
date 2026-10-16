@@ -135,7 +135,7 @@ export function SplitDashboard({
   });
 
   const summary = dashQuery.data?.summary;
-  const expenses = dashQuery.data?.recentExpenses ?? [];
+  const expenses = useMemo(() => dashQuery.data?.recentExpenses ?? [], [dashQuery.data?.recentExpenses]);
   const categories = dashQuery.data?.topCategories ?? [];
   const upcoming = dashQuery.data?.upcomingSettlements ?? [];
   const hasActivity = (summary?.totalSharedMinor ?? 0) > 0;
@@ -149,8 +149,9 @@ export function SplitDashboard({
         (x.group?.name ?? "").toLowerCase().includes(query.toLowerCase());
       if (!matchesQuery) return false;
       if (filter === "All") return true;
-      if (filter === "You Owe") return (x.yourShareMinor ?? 0) > (x.youPaidMinor ?? 0);
-      if (filter === "You Are Owed") return (x.youPaidMinor ?? 0) > (x.yourShareMinor ?? 0);
+      // Ledger-derived: what you still owe / are still owed after repayments.
+      if (filter === "You Owe") return (x.youOweMinor ?? 0) > 0;
+      if (filter === "You Are Owed") return (x.youAreOwedMinor ?? 0) > 0;
       if (filter === "Partially Paid")
         return x.status === "partially_paid" || x.status === "partially_settled";
       if (filter === "Settled") return x.status === "settled";
@@ -343,9 +344,11 @@ export function SplitDashboard({
           title="Total shared expenses"
           value={money(summary?.totalSharedMinor ?? 0)}
           note={
-            hasActivity
-              ? `${(summary?.totalSharedChangePct ?? 0) >= 0 ? "+" : ""}${summary?.totalSharedChangePct ?? 0}%`
-              : null
+            hasActivity && summary?.totalSharedChangePct != null
+              ? `${summary.totalSharedChangePct >= 0 ? "+" : ""}${summary.totalSharedChangePct}% vs last month`
+              : hasActivity
+                ? "This month vs last month"
+                : null
           }
           noteTone={(summary?.totalSharedChangePct ?? 0) < 0 ? "down" : "up"}
         />
@@ -355,9 +358,11 @@ export function SplitDashboard({
           title="Money to receive"
           value={money(summary?.moneyToReceiveMinor ?? 0)}
           note={
-            hasActivity
-              ? `${(summary?.receiveChangePct ?? 0) >= 0 ? "+" : ""}${summary?.receiveChangePct ?? 0}%`
-              : null
+            hasActivity && summary?.receiveChangePct != null
+              ? `${summary.receiveChangePct >= 0 ? "+" : ""}${summary.receiveChangePct}%`
+              : hasActivity
+                ? `${summary?.pendingSettlements ?? 0} open settlement${(summary?.pendingSettlements ?? 0) === 1 ? "" : "s"}`
+                : null
           }
           noteTone={(summary?.receiveChangePct ?? 0) < 0 ? "down" : "up"}
         />
@@ -367,9 +372,11 @@ export function SplitDashboard({
           title="Money to pay"
           value={money(summary?.moneyToPayMinor ?? 0)}
           note={
-            hasActivity
-              ? `${(summary?.payChangePct ?? 0) >= 0 ? "+" : ""}${summary?.payChangePct ?? 0}%`
-              : null
+            hasActivity && summary?.payChangePct != null
+              ? `${summary.payChangePct >= 0 ? "+" : ""}${summary.payChangePct}%`
+              : hasActivity
+                ? `${money(summary?.pendingMinor ?? 0)} still outstanding`
+                : null
           }
           noteTone={(summary?.payChangePct ?? 0) < 0 ? "down" : "up"}
         />
