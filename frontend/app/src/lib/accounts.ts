@@ -35,7 +35,19 @@ export function paymentMethodChannels(channels: Account[]) {
   return channels.filter((item) => isPaymentMethodType(item.type));
 }
 
-export function bankAccountLabel(account: Account) {
+export function bankAccountLabel(account: Account, currency = account.currency ?? "INR") {
+  const institution = account.institutionName?.trim();
+  const base = institution ? `${account.name} · ${institution}` : account.name;
+  const available = (account.currentBalanceMinor / 100).toLocaleString("en-IN", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+  const symbol = currency === "INR" ? "₹" : `${currency} `;
+  return `${base} · ${symbol}${available} available`;
+}
+
+/** Short bank chip label without balance (lists / previews that already show money). */
+export function bankAccountName(account: Account) {
   const institution = account.institutionName?.trim();
   return institution ? `${account.name} · ${institution}` : account.name;
 }

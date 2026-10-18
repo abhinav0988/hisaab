@@ -1,5 +1,5 @@
 import { Alert, Pressable, StyleSheet, Text, View } from "react-native";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { majorToMinor, recurringSchema } from "@hisaab/validation";
 import type { TransactionType } from "@hisaab/types";
@@ -13,6 +13,13 @@ import { Card } from "../../components/ui/card";
 import { Field } from "../../components/ui/field";
 import { DateField } from "../../components/ui/date-field";
 import { EmptyBlock, ErrorBlock, LoadingBlock } from "../../components/ui/states";
+import {
+  bankAccountLabel,
+  channelLabel,
+  isPaymentMethodType,
+  type PaymentMethodType,
+  uniqueCatalogChannels,
+} from "../../lib/accounts";
 import { money } from "../../lib/format";
 import { combineLocalDateTime, localDateKey } from "../../lib/datetime";
 import { colors } from "../../theme/tokens";
@@ -23,7 +30,211 @@ export function RecurringListScreen({ navigation }: any) { const q = useQuery({ 
 export function RecurringDetailScreen({ navigation, route }: any) { const client = useQueryClient(); const q = useQuery({ queryKey: ["recurring"], queryFn: () => recurringService.list<Recurring>() }); const item = q.data?.find((row) => row.id === route.params.id); const toggle = useMutation({ mutationFn: () => item?.isActive ? recurringService.pause(item.id) : recurringService.resume(route.params.id), onSuccess: () => refresh(client), onError: failure("Could not update recurring bill") }); const remove = useMutation({ mutationFn: () => recurringService.remove(route.params.id), onSuccess: () => refresh(client).then(() => navigation.goBack()), onError: failure("Could not delete recurring bill") }); if (q.isLoading) return <Page navigation={navigation}><LoadingBlock /></Page>; if (!item) return <Page navigation={navigation}><ErrorBlock message="Recurring bill not found." onRetry={() => void q.refetch()} /></Page>; return <Page navigation={navigation}><Title text={item.merchant ?? "Recurring transaction"} /><Card style={styles.summary}><Text style={styles.big}>{money(item.amountMinor, item.currency)}</Text><Text style={styles.muted}>{item.type} · {item.frequency}</Text><Text style={styles.muted}>Next occurrence: {item.nextRunAt.slice(0, 10)}</Text><Text style={styles.muted}>{item.isActive ? "ACTIVE" : "PAUSED"}</Text></Card><AppButton label="Edit recurring bill" onPress={() => navigation.navigate("EditRecurring", { id: item.id })} /><AppButton outline label={toggle.isPending ? "Updating…" : item.isActive ? "Pause" : "Resume"} onPress={() => { if (!toggle.isPending) Alert.alert(item.isActive ? "Pause bill?" : "Resume bill?", "You can change this later.", [{ text: "Cancel", style: "cancel" }, { text: "Confirm", onPress: () => toggle.mutate() }]); }} /><AppButton outline label={remove.isPending ? "Deleting…" : "Delete recurring bill"} onPress={() => Alert.alert("Delete recurring bill?", "Future occurrences will stop.", [{ text: "Cancel", style: "cancel" }, { text: "Delete", style: "destructive", onPress: () => remove.mutate() }])} /><AppButton outline label="Occurrence history" onPress={() => navigation.navigate("RecurringHistory", { id: item.id })} /></Page>; }
 export function CreateRecurringScreen({ navigation }: any) { return <RecurringForm navigation={navigation} />; } export function EditRecurringScreen({ navigation, route }: any) { return <RecurringForm navigation={navigation} id={route.params.id} />; }
 const FREQUENCIES = ["DAILY", "WEEKLY", "MONTHLY", "YEARLY"] as const;
-function RecurringForm({ navigation, id }: { navigation: any; id?: string }) { const client = useQueryClient(); const list = useQuery({ queryKey: ["recurring"], queryFn: () => recurringService.list<Recurring>() }); const accounts = useQuery({ queryKey: ["accounts"], queryFn: accountService.list }); const categories = useQuery({ queryKey: ["categories"], queryFn: categoryService.list }); const old = list.data?.find((item) => item.id === id); const [merchant, setMerchant] = useState(""); const [amount, setAmount] = useState(""); const [accountId, setAccountId] = useState(""); const [categoryId, setCategoryId] = useState(""); const [frequency, setFrequency] = useState<(typeof FREQUENCIES)[number]>("MONTHLY"); const [startDate, setStartDate] = useState(localDateKey()); const [hydrated, setHydrated] = useState(!id); useEffect(() => { if (!id || !old || hydrated) return; setMerchant(old.merchant ?? ""); setAmount(String(old.amountMinor / 100)); setAccountId(old.accountId); setCategoryId(old.categoryId); setFrequency((FREQUENCIES.includes(old.frequency as (typeof FREQUENCIES)[number]) ? old.frequency : "MONTHLY") as (typeof FREQUENCIES)[number]); setStartDate(localDateKey(old.startAt)); setHydrated(true); }, [id, old, hydrated]); const expenseCategories = (categories.data ?? []).filter((category) => category.type === (old?.type ?? "EXPENSE")); const save = useMutation({ mutationFn: () => { const parsed = recurringSchema.safeParse({ accountId, categoryId, type: old?.type ?? "EXPENSE", amountMinor: majorToMinor(amount), currency: old?.currency ?? "INR", merchant: merchant || null, notes: old?.notes ?? null, frequency, startAt: combineLocalDateTime(startDate, "09:00") }); if (!parsed.success) throw new Error(parsed.error.issues[0]?.message ?? "Check the recurring bill values."); return id ? recurringService.update(id, parsed.data) : recurringService.create(parsed.data); }, onSuccess: () => refresh(client).then(() => navigation.goBack()), onError: failure("Could not save recurring bill") }); return <Page navigation={navigation}><Title text={id ? "Edit recurring bill" : "New recurring bill"} /><Card style={styles.form}><Field label="Merchant / title" placeholder="Internet provider" value={merchant} onChangeText={setMerchant} /><Field label="Amount" placeholder="0.00" value={amount} onChangeText={setAmount} keyboardType="decimal-pad" /><Text style={styles.label}>ACCOUNT</Text><View style={styles.chips}>{accounts.data?.map((account) => <Choice key={account.id} active={accountId === account.id} label={account.name} onPress={() => setAccountId(account.id)} />)}</View><Text style={styles.label}>CATEGORY</Text><View style={styles.chips}>{expenseCategories.map((category) => <Choice key={category.id} active={categoryId === category.id} label={category.name} onPress={() => setCategoryId(category.id)} />)}</View><Text style={styles.label}>FREQUENCY</Text><View style={styles.chips}>{FREQUENCIES.map((item) => <Choice key={item} active={frequency === item} label={item} onPress={() => setFrequency(item)} />)}</View><DateField label="Start date" value={startDate} onChange={setStartDate} /><AppButton label={save.isPending ? "Saving…" : "Save recurring bill"} onPress={() => { if (save.isPending || (id && !hydrated)) return; if (!amount.trim() || !accountId || !categoryId) return Alert.alert("Check the bill","Amount, account, and category are required."); save.mutate(); }} /></Card></Page>; }
+function RecurringForm({ navigation, id }: { navigation: any; id?: string }) {
+  const client = useQueryClient();
+  const list = useQuery({ queryKey: ["recurring"], queryFn: () => recurringService.list<Recurring>() });
+  const accounts = useQuery({ queryKey: ["accounts"], queryFn: accountService.list });
+  const banks = useQuery({ queryKey: ["account-banks"], queryFn: () => accountService.listBanks() });
+  const categories = useQuery({ queryKey: ["categories"], queryFn: categoryService.list });
+  const old = list.data?.find((item) => item.id === id);
+  const [merchant, setMerchant] = useState("");
+  const [amount, setAmount] = useState("");
+  const [type, setType] = useState<"EXPENSE" | "INCOME">("EXPENSE");
+  const [channelAccountId, setChannelAccountId] = useState<string | null>(null);
+  const [bankAccountId, setBankAccountId] = useState<string | null>(null);
+  const [categoryId, setCategoryId] = useState("");
+  const [frequency, setFrequency] = useState<(typeof FREQUENCIES)[number]>("MONTHLY");
+  const [startDate, setStartDate] = useState(localDateKey());
+  const [hydrated, setHydrated] = useState(!id);
+
+  const channelOptions = useMemo(() => uniqueCatalogChannels(accounts.data ?? []), [accounts.data]);
+  const bankAccounts = useMemo(() => (banks.data ?? []).filter((item) => item.isActive), [banks.data]);
+  const selectedChannel =
+    channelOptions.find((item) => item.id === channelAccountId) ??
+    channelOptions.find((item) => item.type === "CASH") ??
+    channelOptions[0] ??
+    null;
+  const isBankChannel = selectedChannel?.type === "BANK";
+  const activeBankId = isBankChannel ? bankAccountId ?? bankAccounts[0]?.id ?? null : null;
+  const selectedAccount = isBankChannel ? activeBankId : selectedChannel?.id ?? null;
+  const paymentMethod: PaymentMethodType | "" =
+    selectedChannel && isPaymentMethodType(selectedChannel.type) ? selectedChannel.type : "";
+
+  useEffect(() => {
+    if (!id || !old || hydrated || !accounts.data) return;
+    setMerchant(old.merchant ?? "");
+    setAmount(String(old.amountMinor / 100));
+    setType(old.type === "INCOME" ? "INCOME" : "EXPENSE");
+    setCategoryId(old.categoryId);
+    setFrequency(
+      (FREQUENCIES.includes(old.frequency as (typeof FREQUENCIES)[number])
+        ? old.frequency
+        : "MONTHLY") as (typeof FREQUENCIES)[number],
+    );
+    setStartDate(localDateKey(old.startAt));
+    const bankMatch = bankAccounts.find((item) => item.id === old.accountId);
+    const accountMatch = (accounts.data ?? []).find((item) => item.id === old.accountId);
+    if (bankMatch || accountMatch?.type === "BANK") {
+      setChannelAccountId(channelOptions.find((item) => item.type === "BANK")?.id ?? null);
+      setBankAccountId(old.accountId);
+    } else {
+      const byType = accountMatch
+        ? channelOptions.find((item) => item.type === accountMatch.type)
+        : null;
+      setChannelAccountId(byType?.id ?? channelOptions[0]?.id ?? null);
+      setBankAccountId(null);
+    }
+    setHydrated(true);
+  }, [id, old, hydrated, accounts.data, bankAccounts, channelOptions]);
+
+  const matchingCategories = (categories.data ?? []).filter((category) => category.type === type);
+  const selectPaymentMethod = (method: PaymentMethodType | "") => {
+    if (!method) {
+      const fallback =
+        channelOptions.find((item) => item.type === "CASH") ??
+        channelOptions.find((item) => item.type === "DEBIT_CARD") ??
+        channelOptions.find((item) => !isPaymentMethodType(item.type)) ??
+        null;
+      setChannelAccountId(fallback?.id ?? null);
+      setBankAccountId(null);
+      return;
+    }
+    const match = channelOptions.find((item) => item.type === method);
+    if (!match) return;
+    setChannelAccountId(match.id);
+    if (method === "BANK" && bankAccounts[0]) setBankAccountId(bankAccounts[0].id);
+    else setBankAccountId(null);
+  };
+
+  const save = useMutation({
+    mutationFn: () => {
+      if (!selectedAccount) throw new Error("Choose an account.");
+      if (isBankChannel && !activeBankId) throw new Error("Select a saved bank account.");
+      const parsed = recurringSchema.safeParse({
+        accountId: selectedAccount,
+        categoryId,
+        type,
+        amountMinor: majorToMinor(amount),
+        currency: old?.currency ?? "INR",
+        merchant: merchant || null,
+        notes: old?.notes ?? null,
+        frequency,
+        startAt: combineLocalDateTime(startDate, "09:00"),
+      });
+      if (!parsed.success) {
+        throw new Error(parsed.error.issues[0]?.message ?? "Check the recurring bill values.");
+      }
+      return id ? recurringService.update(id, parsed.data) : recurringService.create(parsed.data);
+    },
+    onSuccess: () => refresh(client).then(() => navigation.goBack()),
+    onError: failure("Could not save recurring bill"),
+  });
+
+  return (
+    <Page navigation={navigation}>
+      <Title text={id ? "Edit recurring bill" : "New recurring bill"} />
+      <Card style={styles.form}>
+        <Field label="Merchant / title" placeholder="Internet provider" value={merchant} onChangeText={setMerchant} />
+        <Field label="Amount" placeholder="0.00" value={amount} onChangeText={setAmount} keyboardType="decimal-pad" />
+        <Text style={styles.label}>TYPE</Text>
+        <View style={styles.chips}>
+          {(["EXPENSE", "INCOME"] as const).map((item) => (
+            <Choice
+              key={item}
+              active={type === item}
+              label={item}
+              onPress={() => {
+                setType(item);
+                setCategoryId("");
+              }}
+            />
+          ))}
+        </View>
+        <Text style={styles.label}>ACCOUNT</Text>
+        <View style={styles.chips}>
+          {channelOptions.map((account) => (
+            <Choice
+              key={account.id}
+              active={selectedChannel?.id === account.id}
+              label={channelLabel(account)}
+              onPress={() => {
+                setChannelAccountId(account.id);
+                if (account.type === "BANK" && bankAccounts[0]) setBankAccountId(bankAccounts[0].id);
+                else setBankAccountId(null);
+              }}
+            />
+          ))}
+        </View>
+        <Text style={styles.label}>PAYMENT METHOD</Text>
+        <View style={styles.chips}>
+          {(
+            [
+              { value: "" as const, label: "Normal" },
+              { value: "BANK" as const, label: "Bank" },
+              { value: "UPI" as const, label: "UPI" },
+              { value: "CREDIT_CARD" as const, label: "Credit card" },
+            ] as const
+          )
+            .filter(
+              (item) =>
+                item.value === "" || channelOptions.some((channel) => channel.type === item.value),
+            )
+            .map((item) => (
+              <Choice
+                key={item.label}
+                active={paymentMethod === item.value}
+                label={item.label}
+                onPress={() => selectPaymentMethod(item.value)}
+              />
+            ))}
+        </View>
+        {isBankChannel ? (
+          <>
+            <Text style={styles.label}>BANK ACCOUNT</Text>
+            <View style={styles.chips}>
+              {bankAccounts.map((account) => (
+                <Choice
+                  key={account.id}
+                  active={activeBankId === account.id}
+                  label={bankAccountLabel(account)}
+                  onPress={() => setBankAccountId(account.id)}
+                />
+              ))}
+            </View>
+          </>
+        ) : null}
+        <Text style={styles.label}>CATEGORY</Text>
+        <View style={styles.chips}>
+          {matchingCategories.map((category) => (
+            <Choice
+              key={category.id}
+              active={categoryId === category.id}
+              label={category.name}
+              onPress={() => setCategoryId(category.id)}
+            />
+          ))}
+        </View>
+        <Text style={styles.label}>FREQUENCY</Text>
+        <View style={styles.chips}>
+          {FREQUENCIES.map((item) => (
+            <Choice key={item} active={frequency === item} label={item} onPress={() => setFrequency(item)} />
+          ))}
+        </View>
+        <DateField label="Start date" value={startDate} onChange={setStartDate} />
+        <AppButton
+          label={save.isPending ? "Saving…" : "Save recurring bill"}
+          onPress={() => {
+            if (save.isPending || (id && !hydrated)) return;
+            if (!amount.trim() || !selectedAccount || !categoryId) {
+              return Alert.alert("Check the bill", "Amount, account, and category are required.");
+            }
+            save.mutate();
+          }}
+        />
+      </Card>
+    </Page>
+  );
+}
 export function RecurringHistoryScreen({ navigation, route }: any) {
   const list = useQuery({ queryKey: ["recurring"], queryFn: () => recurringService.list<Recurring>() });
   const item = list.data?.find((row) => row.id === route.params.id);

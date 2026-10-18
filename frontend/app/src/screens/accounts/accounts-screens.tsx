@@ -27,6 +27,135 @@ export function AccountDetailScreen({ navigation, route }: NativeStackScreenProp
   const refresh = async () => { await Promise.all([client.invalidateQueries({ queryKey: ["accounts"] }), client.invalidateQueries({ queryKey: ["account", route.params.id] }), client.invalidateQueries({ queryKey: ["transactions"] }), client.invalidateQueries({ queryKey: ["dashboard"] })]); };
   const update = useMutation({ mutationFn: () => accountService.update(route.params.id, { name, institutionName: institution || null }), onSuccess: async () => { await refresh(); setEditing(false); }, onError: e => Alert.alert("Could not update account", e instanceof Error ? e.message : "Try again.") }); const archive = useMutation({ mutationFn: () => accountService.archive(route.params.id), onSuccess: async () => { await refresh(); navigation.goBack(); }, onError: e => Alert.alert("Could not archive account", e instanceof Error ? e.message : "Try again.") });
   if (account.isLoading) return <View style={styles.fill}><LoadingBlock /></View>; if (!account.data) return <View style={styles.fill}><ErrorBlock message="Could not load account." onRetry={() => void account.refetch()} /></View>; const item = account.data;
-  return <Screen onBack={() => navigation.goBack()}><Text style={styles.title}>{item.name}</Text><Card style={styles.summary}><Text style={styles.label}>{item.type}</Text><Text style={styles.big}>{money(item.currentBalanceMinor, item.currency)}</Text><Text style={styles.muted}>{item.institutionName ?? "No institution"} · opened {item.createdAt.slice(0, 10)}</Text></Card>{editing ? <Card style={styles.form}><Field label="Name" placeholder="Account name" value={name} onChangeText={setName}/><Field label="Institution" placeholder="Bank" value={institution} onChangeText={setInstitution}/><AppButton label={update.isPending ? "Saving…" : "Save account"} onPress={() => { if (!update.isPending) update.mutate(); }}/></Card> : <><AppButton label="Edit account" icon="create-outline" onPress={() => { setName(item.name); setInstitution(item.institutionName ?? ""); setEditing(true); }}/><AppButton label={archive.isPending ? "Archiving…" : "Archive account"} outline icon="archive-outline" onPress={() => Alert.alert("Archive account?", "It will no longer be available for new transactions.", [{ text: "Cancel", style: "cancel" }, { text: "Archive", style: "destructive", onPress: () => archive.mutate() }])}/></>}<Text style={styles.label}>RECENT TRANSACTIONS</Text>{history.isLoading ? <LoadingBlock/> : history.data?.length ? history.data.map(tx => <Card key={tx.id} style={styles.row}><View style={{ flex: 1 }}><Text style={styles.name}>{tx.merchant ?? tx.categoryName ?? "Transaction"}</Text><Text style={styles.muted}>{tx.transactionAt.slice(0, 10)}</Text></View><Text style={styles.amount}>{money(tx.amountMinor, tx.currency)}</Text></Card>) : <EmptyBlock title="No transactions"/>}</Screen>;
+  return (
+    <Screen onBack={() => navigation.goBack()}>
+      <Text style={styles.title}>{item.name}</Text>
+      <Card style={styles.summary}>
+        <Text style={styles.label}>{item.type}</Text>
+        <Text style={styles.big}>{money(item.currentBalanceMinor, item.currency)}</Text>
+        <Text style={styles.muted}>
+          {item.institutionName ?? "No institution"} · opened {item.createdAt.slice(0, 10)}
+        </Text>
+      </Card>
+      {editing ? (
+        <Card style={styles.form}>
+          <Field label="Name" placeholder="Account name" value={name} onChangeText={setName} />
+          <Field
+            label="Institution"
+            placeholder="Bank"
+            value={institution}
+            onChangeText={setInstitution}
+          />
+          <AppButton
+            label={update.isPending ? "Saving…" : "Save account"}
+            onPress={() => {
+              if (!update.isPending) update.mutate();
+            }}
+          />
+        </Card>
+      ) : (
+        <>
+          <View style={styles.quickRow}>
+            <AppButton
+              label="Add money"
+              icon="arrow-down"
+              onPress={() =>
+                navigation.navigate("AddTransaction", {
+                  kind: "INCOME",
+                  accountId: item.id,
+                })
+              }
+            />
+            <AppButton
+              label="Record expense"
+              icon="arrow-up"
+              outline
+              onPress={() =>
+                navigation.navigate("AddTransaction", {
+                  kind: "EXPENSE",
+                  accountId: item.id,
+                })
+              }
+            />
+          </View>
+          <AppButton
+            label="Transfer"
+            icon="swap-horizontal"
+            outline
+            onPress={() =>
+              navigation.navigate("AddTransaction", {
+                kind: "TRANSFER",
+                accountId: item.id,
+              })
+            }
+          />
+          <AppButton
+            label="Edit account"
+            icon="create-outline"
+            outline
+            onPress={() => {
+              setName(item.name);
+              setInstitution(item.institutionName ?? "");
+              setEditing(true);
+            }}
+          />
+          <AppButton
+            label={archive.isPending ? "Archiving…" : "Archive account"}
+            outline
+            icon="archive-outline"
+            onPress={() =>
+              Alert.alert(
+                "Archive account?",
+                "It will no longer be available for new transactions.",
+                [
+                  { text: "Cancel", style: "cancel" },
+                  { text: "Archive", style: "destructive", onPress: () => archive.mutate() },
+                ],
+              )
+            }
+          />
+        </>
+      )}
+      <Text style={styles.label}>RECENT TRANSACTIONS</Text>
+      {history.isLoading ? (
+        <LoadingBlock />
+      ) : history.data?.length ? (
+        history.data.map((tx) => (
+          <Card key={tx.id} style={styles.row}>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.name}>{tx.merchant ?? tx.categoryName ?? "Transaction"}</Text>
+              <Text style={styles.muted}>{tx.transactionAt.slice(0, 10)}</Text>
+            </View>
+            <Text style={styles.amount}>{money(tx.amountMinor, tx.currency)}</Text>
+          </Card>
+        ))
+      ) : (
+        <EmptyBlock title="No transactions" />
+      )}
+    </Screen>
+  );
 }
-const styles = StyleSheet.create({ fill: { flex: 1, backgroundColor: colors.bg }, page: { padding: 18, gap: 12 }, title: { color: colors.white, fontSize: 29, fontWeight: "900" }, form: { gap: 12 }, label: { color: colors.muted, fontWeight: "900", fontSize: 10, letterSpacing: .7 }, chips: { flexDirection: "row", flexWrap: "wrap", gap: 6 }, chip: { borderWidth: 1, borderColor: colors.line, borderRadius: 14, paddingHorizontal: 10, paddingVertical: 8 }, active: { backgroundColor: colors.green, borderColor: colors.green }, chipText: { color: colors.white, fontSize: 11, fontWeight: "800" }, row: { flexDirection: "row", alignItems: "center", padding: 14, gap: 10 }, name: { color: colors.white, fontWeight: "800" }, muted: { color: colors.muted, fontSize: 12 }, amount: { color: colors.white, fontWeight: "900" }, summary: { gap: 7, backgroundColor: colors.panel2 }, big: { color: colors.green, fontSize: 31, fontWeight: "900" } });
+const styles = StyleSheet.create({
+  fill: { flex: 1, backgroundColor: colors.bg },
+  page: { padding: 18, gap: 12 },
+  title: { color: colors.white, fontSize: 29, fontWeight: "900" },
+  form: { gap: 12 },
+  label: { color: colors.muted, fontWeight: "900", fontSize: 10, letterSpacing: 0.7 },
+  chips: { flexDirection: "row", flexWrap: "wrap", gap: 6 },
+  chip: {
+    borderWidth: 1,
+    borderColor: colors.line,
+    borderRadius: 14,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+  },
+  active: { backgroundColor: colors.green, borderColor: colors.green },
+  chipText: { color: colors.white, fontSize: 11, fontWeight: "800" },
+  row: { flexDirection: "row", alignItems: "center", padding: 14, gap: 10 },
+  quickRow: { gap: 8 },
+  name: { color: colors.white, fontWeight: "800" },
+  muted: { color: colors.muted, fontSize: 12 },
+  amount: { color: colors.white, fontWeight: "900" },
+  summary: { gap: 7, backgroundColor: colors.panel2 },
+  big: { color: colors.green, fontSize: 31, fontWeight: "900" },
+});

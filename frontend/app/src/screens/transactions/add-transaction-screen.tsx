@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Alert, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -67,9 +67,7 @@ export function AddTransactionScreen({ navigation, route }: Props) {
   const [merchant, setMerchant] = useState(route.params?.note ?? "");
   const [note, setNote] = useState("");
   const [tags, setTags] = useState<string[]>([]);
-  const [channelAccountId, setChannelAccountId] = useState<string | null>(
-    route.params?.accountId ?? null,
-  );
+  const [channelAccountId, setChannelAccountId] = useState<string | null>(null);
   const [bankAccountId, setBankAccountId] = useState<string | null>(null);
   const [categoryId, setCategoryId] = useState<string | null>(null);
   const [destinationId, setDestinationId] = useState<string | null>(null);
@@ -79,6 +77,7 @@ export function AddTransactionScreen({ navigation, route }: Props) {
   const [categoryQuery, setCategoryQuery] = useState("");
   const [pendingFiles, setPendingFiles] = useState<PickedNativeFile[]>([]);
   const [attachBusy, setAttachBusy] = useState(false);
+  const [prefillsReady, setPrefillsReady] = useState(!route.params?.accountId);
 
   const profile = useQuery({ queryKey: ["profile"], queryFn: () => profileService.get() });
   const accounts = useQuery({ queryKey: ["accounts"], queryFn: () => accountService.list() });
@@ -111,6 +110,34 @@ export function AddTransactionScreen({ navigation, route }: Props) {
     () => (banks.data ?? []).filter((item) => item.isActive),
     [banks.data],
   );
+
+  useEffect(() => {
+    if (prefillsReady || !accounts.data) return;
+    const prefillsId = route.params?.accountId;
+    if (!prefillsId) {
+      setPrefillsReady(true);
+      return;
+    }
+    const bankMatch = bankAccounts.find((item) => item.id === prefillsId);
+    const accountMatch = (accounts.data ?? []).find((item) => item.id === prefillsId);
+    if (bankMatch || accountMatch?.type === "BANK") {
+      setChannelAccountId(channelOptions.find((item) => item.type === "BANK")?.id ?? null);
+      setBankAccountId(prefillsId);
+    } else {
+      const byType = accountMatch
+        ? channelOptions.find((item) => item.type === accountMatch.type)
+        : null;
+      setChannelAccountId(byType?.id ?? channelOptions[0]?.id ?? null);
+      setBankAccountId(null);
+    }
+    setPrefillsReady(true);
+  }, [
+    accounts.data,
+    bankAccounts,
+    channelOptions,
+    prefillsReady,
+    route.params?.accountId,
+  ]);
   const transferAccounts = useMemo(() => {
     const channels = channelOptions.filter((item) => item.type !== "BANK");
     const merged = [...channels, ...bankAccounts];
