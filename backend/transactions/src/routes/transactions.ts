@@ -14,6 +14,12 @@ import {
 } from "../services/service";
 import { attachToTransaction, listAttachments, removeAttachment } from "../services/attachments";
 import { fileAttachSchema } from "@hisaab/validation";
+import {
+  parseIdempotencyKey,
+  readIdempotent,
+  requestHash,
+  storeIdempotentResponse,
+} from "../idempotency";
 
 export const transactionRoutes = new Hono<{ Bindings: Env; Variables: { userId: string } }>();
 transactionRoutes.get("/", async (c) => {
@@ -23,9 +29,23 @@ transactionRoutes.get("/", async (c) => {
   return ok(c, result.items, result.meta);
 });
 transactionRoutes.post("/", async (c) => {
-  const parsed = transactionSchema.safeParse(await c.req.json());
+  const body = await c.req.json();
+  const parsed = transactionSchema.safeParse(body);
   if (!parsed.success) throw fromZod(parsed.error);
-  return created(c, await createTransaction(c.env, c.get("userId"), parsed.data));
+  const userId = c.get("userId");
+  const key = parseIdempotencyKey(c.req.header("Idempotency-Key"));
+  const hash = key ? await requestHash(parsed.data) : null;
+  const previous = await readIdempotent<Awaited<ReturnType<typeof createTransaction>>>(
+    c.env,
+    userId,
+    "transactions:create",
+    key,
+    hash,
+  );
+  if (previous) return created(c, previous);
+  const createdRow = await createTransaction(c.env, userId, parsed.data);
+  await storeIdempotentResponse(c.env, userId, "transactions:create", key, createdRow, hash);
+  return created(c, createdRow);
 });
 transactionRoutes.get("/:id/attachments", async (c) =>
   ok(c, await listAttachments(c.env, c.get("userId"), c.req.param("id"))),

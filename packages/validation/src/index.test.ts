@@ -292,6 +292,23 @@ describe("transfer validation", () => {
       }).success,
     ).toBe(true);
   });
+
+  it("accepts null destinationAccountId on expense patch (clear transfer dest)", async () => {
+    const { transactionPatchSchema } = await import("./index");
+    expect(
+      transactionPatchSchema.safeParse({
+        type: "EXPENSE",
+        amountMinor: 26500,
+        destinationAccountId: null,
+      }).success,
+    ).toBe(true);
+    expect(
+      transactionPatchSchema.safeParse({
+        type: "EXPENSE",
+        amountMinor: 26500,
+      }).success,
+    ).toBe(true);
+  });
 });
 
 describe("uploads, tags, repayments, and OCR normalization", () => {

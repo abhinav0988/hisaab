@@ -5,7 +5,6 @@ import { useEffect, useState } from "react";
 import type { AppStackParamList } from "../../navigation/types";
 import { profileService } from "../../services/profile.service";
 import { Screen } from "../../components/ui/screen";
-import { BackLink } from "../../components/ui/back-link";
 import { Field } from "../../components/ui/field";
 import { AppButton } from "../../components/ui/button";
 import { LoadingBlock } from "../../components/ui/states";
@@ -48,10 +47,9 @@ export function EditProfileScreen({ navigation }: NativeStackScreenProps<AppStac
     },
     onError: (e) => Alert.alert("Could not save", e instanceof Error ? e.message : "Try again."),
   });
-  if (!q.data || !hydrated) return <Screen><LoadingBlock /></Screen>;
+  if (!q.data || !hydrated) return <Screen onBack={() => navigation.goBack()}><LoadingBlock /></Screen>;
   return (
-    <Screen>
-      <BackLink onPress={() => navigation.goBack()} />
+    <Screen onBack={() => navigation.goBack()}>
       <Text style={s.title}>Edit profile</Text>
       <Field label="Name" placeholder="Your name" value={name} onChangeText={setName} />
       <Field label="Email" placeholder="" value={q.data.email} editable={false} />

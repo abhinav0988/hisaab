@@ -6,12 +6,17 @@ export type SavedTransaction = Transaction & { credit?: CreditSpendImpact | null
 export const transactionService = {
   list: (query: string) => apiWithMeta<Transaction[]>(`/api/v1/transactions?${query}`),
   get: (id: string) => api<Transaction>(`/api/v1/transactions/${id}`),
-  create: (body: unknown) =>
-    api<SavedTransaction>("/api/v1/transactions", { method: "POST", body: JSON.stringify(body) }),
-  update: (id: string, body: unknown) =>
+  create: (body: unknown, idempotencyKey?: string) =>
+    api<SavedTransaction>("/api/v1/transactions", {
+      method: "POST",
+      body: JSON.stringify(body),
+      headers: idempotencyKey ? { "Idempotency-Key": idempotencyKey } : undefined,
+    }),
+  update: (id: string, body: unknown, idempotencyKey?: string) =>
     api<SavedTransaction>(`/api/v1/transactions/${id}`, {
       method: "PATCH",
       body: JSON.stringify(body),
+      headers: idempotencyKey ? { "Idempotency-Key": idempotencyKey } : undefined,
     }),
   remove: (id: string) => api(`/api/v1/transactions/${id}`, { method: "DELETE" }),
   listAttachments: (id: string) => api<import("@hisaab/types").TransactionAttachment[]>(`/api/v1/transactions/${id}/attachments`),

@@ -134,6 +134,13 @@
       "when": 1787907800000,
       "tag": "0018_split_ledger_integrity",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "6",
+      "when": 1787907900000,
+      "tag": "0019_category_parent",
+      "breakpoints": true
     }
   ]
 }

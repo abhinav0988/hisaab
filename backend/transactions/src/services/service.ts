@@ -198,35 +198,49 @@ export async function updateTransaction(
   input: PatchTransaction,
 ) {
   const existing = await getTransaction(env, userId, id);
+  const nextType = input.type ?? existing.type;
+  const nextCategoryId =
+    nextType === "TRANSFER"
+      ? (await ensureTransferCategory(env, userId)).id
+      : (input.categoryId ?? existing.categoryId);
+  const nextDestinationId =
+    nextType === "TRANSFER"
+      ? (input.destinationAccountId ?? existing.destinationAccountId)
+      : null;
   const merged = {
     accountId: input.accountId ?? existing.accountId,
-    categoryId: input.categoryId ?? existing.categoryId,
-    type: input.type ?? existing.type,
+    categoryId: nextCategoryId,
+    type: nextType,
     currency: input.currency ?? existing.currency,
-    destinationAccountId:
-      input.destinationAccountId ?? existing.destinationAccountId,
+    destinationAccountId: nextDestinationId,
   };
   await validateReferences(env, userId, merged);
   const db = createDatabase(env.DB);
   const { tags: tagNames, tagIds, creditFacilityId, ...data } = input;
   delete data.recurring;
   const nextFacilityId =
-    creditFacilityId ??
-    (input.accountId === undefined || input.accountId === existing.accountId
-      ? existing.creditFacilityId
-      : null);
+    creditFacilityId !== undefined
+      ? creditFacilityId
+      : input.accountId === undefined || input.accountId === existing.accountId
+        ? existing.creditFacilityId
+        : null;
   await db
     .update(transactions)
-    .set({ ...data, creditFacilityId: nextFacilityId, updatedAt: now() })
+    .set({
+      ...data,
+      type: nextType,
+      categoryId: nextCategoryId,
+      destinationAccountId: nextDestinationId,
+      creditFacilityId: nextFacilityId,
+      updatedAt: now(),
+    })
     .where(and(eq(transactions.id, id), eq(transactions.userId, userId)));
   if (tagNames || tagIds) await assignTransactionTags(db, userId, id, tagNames, tagIds);
+  // Always reverse spend on the previous facility/account, then apply the new delta.
   await adjustCreditSpend(db, {
     userId,
     accountId: existing.accountId,
-    facilityId:
-      existing.accountId === merged.accountId
-        ? (creditFacilityId ?? existing.creditFacilityId)
-        : existing.creditFacilityId,
+    facilityId: existing.creditFacilityId,
     deltaMinor: -creditSpendDelta(existing.type, existing.amountMinor),
   });
   const credit = await adjustCreditSpend(db, {

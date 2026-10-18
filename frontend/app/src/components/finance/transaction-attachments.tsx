@@ -19,27 +19,42 @@ export function TransactionAttachments({ transactionId }: { transactionId: strin
   const flight = useSingleFlight();
   const refresh = () => client.invalidateQueries({ queryKey: key });
 
+  const uploadPicked = async (source: "camera" | "gallery" | "document") => {
+    setBusy("attach");
+    setMessage("");
+    try {
+      const picked =
+        source === "camera"
+          ? await nativePickerService.takePhoto()
+          : source === "gallery"
+            ? await nativePickerService.pickImage()
+            : await nativePickerService.pickDocument();
+      if (!picked) return;
+      if (picked.size != null && picked.size > 8 * 1024 * 1024) {
+        throw new Error("File is larger than 8 MB.");
+      }
+      setMessage("Uploading…");
+      const stored = await fileService.upload(picked);
+      setMessage("Attaching…");
+      await transactionService.attach(transactionId, stored.id);
+      await refresh();
+      setMessage(`Attached ${stored.originalName}`);
+    } catch (error) {
+      setMessage(friendlyError(error, "Could not attach this file."));
+    } finally {
+      setBusy(null);
+      flight.end();
+    }
+  };
+
   const attach = () =>
     flight.run(busy !== null, () => {
-      setBusy("attach");
-      setMessage("");
-      void (async () => {
-        try {
-          const picked = await nativePickerService.pickDocument();
-          if (!picked) return;
-          setMessage("Uploading…");
-          const stored = await fileService.upload(picked);
-          setMessage("Attaching…");
-          await transactionService.attach(transactionId, stored.id);
-          await refresh();
-          setMessage(`Attached ${stored.originalName}`);
-        } catch (error) {
-          setMessage(friendlyError(error, "Could not attach this file."));
-        } finally {
-          setBusy(null);
-          flight.end();
-        }
-      })();
+      Alert.alert("Add attachment", "Choose where the receipt comes from.", [
+        { text: "Camera", onPress: () => void uploadPicked("camera") },
+        { text: "Gallery", onPress: () => void uploadPicked("gallery") },
+        { text: "Documents", onPress: () => void uploadPicked("document") },
+        { text: "Cancel", style: "cancel", onPress: () => flight.end() },
+      ]);
     });
 
   const open = (fileId: string, name: string, mimeType: string) => {

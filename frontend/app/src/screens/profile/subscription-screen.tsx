@@ -5,7 +5,6 @@ import { colors } from "../../theme/tokens";
 import type { AppStackParamList } from "../../navigation/types";
 import { premiumBenefits } from "../../data/fixtures";
 import { AppButton } from "../../components/ui/button";
-import { BackLink } from "../../components/ui/back-link";
 import { Card } from "../../components/ui/card";
 import { Header } from "../../components/ui/header";
 import { Icon } from "../../components/ui/icon";
@@ -21,8 +20,7 @@ export function SubscriptionScreen({ navigation }: Props) {
   const name = profile.data?.name?.split(" ")[0] ?? "you";
 
   return (
-    <Screen>
-      <BackLink onPress={() => navigation.goBack()} />
+    <Screen onBack={() => navigation.goBack()}>
       <Header title="Hisaab Premium" subtitle={`Deeper clarity for ${name}`} />
       {profile.isLoading ? <LoadingBlock /> : null}
       <Card style={styles.premium}>
@@ -42,10 +40,20 @@ export function SubscriptionScreen({ navigation }: Props) {
           <Text style={styles.itemTitle}>{item}</Text>
         </View>
       ))}
+      <Card style={styles.note}>
+        <Text style={styles.noteTitle}>Billing unavailable on this build</Text>
+        <Text style={styles.subtitle}>
+          Google Play Billing is not connected in the local Android QA build. Premium features that
+          require entitlement show an unavailable state instead of a fake purchase success.
+        </Text>
+      </Card>
       <AppButton
         label="Start 14-day free trial"
         onPress={() =>
-          Alert.alert("Premium", "14-day trial will start once billing is connected.")
+          Alert.alert(
+            "Billing unavailable",
+            "Play Billing is not configured for this build. No charge was made and no trial started.",
+          )
         }
       />
       <AppButton
@@ -54,7 +62,7 @@ export function SubscriptionScreen({ navigation }: Props) {
         onPress={() =>
           Alert.alert(
             "Plans",
-            "Free: core tracking, budgets, goals.\nPremium: analytics, coach, automation, forecasts.",
+            "Free: core tracking, budgets, goals.\nPremium: analytics, coach, automation, forecasts.\n\nPurchases are blocked until billing infrastructure is connected.",
           )
         }
       />
@@ -64,6 +72,8 @@ export function SubscriptionScreen({ navigation }: Props) {
 
 const styles = StyleSheet.create({
   premium: { borderColor: colors.gold, backgroundColor: colors.premium },
+  note: { gap: 8, borderColor: colors.line },
+  noteTitle: { color: colors.white, fontWeight: "800", fontSize: 15 },
   pro: {
     fontSize: 10,
     color: colors.goldInk,

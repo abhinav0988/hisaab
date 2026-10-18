@@ -2,6 +2,7 @@ import { StyleSheet, Text, View } from "react-native";
 import type { ReactNode } from "react";
 import { colors } from "../../theme/tokens";
 
+/** Title row only — put Back on `Screen` via `onBack` so it stays pinned while scrolling. */
 export function Header({
   title,
   subtitle,
@@ -10,6 +11,9 @@ export function Header({
   title: string;
   subtitle?: string;
   action?: ReactNode;
+  /** @deprecated Prefer Screen `onBack` so Back does not scroll away. */
+  onBack?: () => void;
+  backLabel?: string;
 }) {
   return (
     <View style={styles.header}>
@@ -27,7 +31,6 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    marginBottom: 4,
     gap: 12,
   },
   title: {

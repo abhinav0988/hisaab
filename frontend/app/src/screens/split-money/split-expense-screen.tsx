@@ -2,6 +2,7 @@ import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from "react-nati
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
+import { SafeAreaView } from "react-native-safe-area-context";
 import type { SplitObligation, SplitPaymentMethod } from "@hisaab/types";
 import { colors } from "../../theme/tokens";
 import type { AppStackParamList } from "../../navigation/types";
@@ -9,6 +10,7 @@ import { BackLink } from "../../components/ui/back-link";
 import { Card } from "../../components/ui/card";
 import { AppButton } from "../../components/ui/button";
 import { Field } from "../../components/ui/field";
+import { DateField } from "../../components/ui/date-field";
 import { ErrorBlock, LoadingBlock } from "../../components/ui/states";
 import { money, localDateKey } from "../../lib/format";
 import { splitMoneyApi } from "../../features/split-money/api/splitMoneyApi";
@@ -163,9 +165,20 @@ export function SplitExpenseScreen({ navigation, route }: Props) {
       { text: label, style: destructive ? "destructive" : "default", onPress: action },
     ]);
 
+  const goBack = () => {
+    if (navigation.canGoBack()) navigation.goBack();
+    else navigation.navigate("Tabs");
+  };
+
   return (
-    <ScrollView style={styles.fill} contentContainerStyle={styles.page} keyboardShouldPersistTaps="handled">
-      <BackLink onPress={() => navigation.goBack()} />
+    <SafeAreaView style={styles.fill} edges={["top", "bottom"]}>
+      <BackLink onPress={goBack} pinTop />
+      <ScrollView
+        style={styles.flex}
+        contentContainerStyle={styles.page}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
+      >
       <Text style={styles.title}>{item.title}</Text>
       <Text style={styles.sub}>
         {item.category} · {item.expenseDate} · {item.status.replaceAll("_", " ")}
@@ -182,7 +195,7 @@ export function SplitExpenseScreen({ navigation, route }: Props) {
           <Field label="Title" placeholder="Dinner, rent, trip…" value={edit.title} onChangeText={(v) => setEdit({ ...edit, title: v })} />
           <Field label="Category" placeholder="General" value={edit.category} onChangeText={(v) => setEdit({ ...edit, category: v })} />
           <Field label="Description" placeholder="Optional" value={edit.description} onChangeText={(v) => setEdit({ ...edit, description: v })} />
-          <Field label="Due date (YYYY-MM-DD)" placeholder="Optional" value={edit.dueDate} onChangeText={(v) => setEdit({ ...edit, dueDate: v })} />
+          <DateField label="Due date" value={edit.dueDate} onChange={(v) => setEdit({ ...edit, dueDate: v })} optional />
           <AppButton
             label={editMutation.isPending ? "Saving…" : "Save details"}
             icon="checkmark"
@@ -517,7 +530,8 @@ export function SplitExpenseScreen({ navigation, route }: Props) {
       ) : (
         <Text style={styles.sub}>No activity has been recorded.</Text>
       )}
-    </ScrollView>
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 
@@ -573,9 +587,15 @@ export function SplitPaymentScreen({
   const currency = query.data.currency;
 
   return (
-    <View style={styles.fill}>
-      <ScrollView contentContainerStyle={styles.page} keyboardShouldPersistTaps="handled">
-        <BackLink onPress={() => navigation.goBack()} />
+    <SafeAreaView style={styles.fill} edges={["top", "bottom"]}>
+      <BackLink
+        onPress={() => {
+          if (navigation.canGoBack()) navigation.goBack();
+          else navigation.navigate("Tabs");
+        }}
+        pinTop
+      />
+      <ScrollView style={styles.flex} contentContainerStyle={styles.page} keyboardShouldPersistTaps="handled">
         <Text style={styles.title}>Record repayment</Text>
         <Text style={styles.sub}>
           Choose the exact debtor and creditor. Leave the amount blank to settle the full remaining balance on that edge.
@@ -648,12 +668,13 @@ export function SplitPaymentScreen({
           </>
         )}
       </ScrollView>
-    </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   fill: { flex: 1, backgroundColor: colors.bg },
+  flex: { flex: 1 },
   page: { padding: 18, gap: 13, paddingBottom: 28 },
   title: { color: colors.white, fontWeight: "900", fontSize: 29 },
   sub: { color: colors.muted, fontSize: 12, lineHeight: 18 },

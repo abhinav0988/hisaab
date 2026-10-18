@@ -5,7 +5,6 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { colors } from "../../theme/tokens";
 import type { AppStackParamList } from "../../navigation/types";
 import type { IconName } from "../../config/finance-tools";
-import { BackLink } from "../../components/ui/back-link";
 import { Header } from "../../components/ui/header";
 import { IconBox } from "../../components/ui/icon-box";
 import { MenuGroup } from "../../components/ui/menu-group";
@@ -86,8 +85,7 @@ export function SettingsScreen({ navigation }: Props) {
 
   if (profile.isLoading) {
     return (
-      <Screen>
-        <BackLink onPress={() => navigation.goBack()} />
+      <Screen onBack={() => navigation.goBack()}>
         <Header title="Settings" subtitle="Control your Hisaab experience" />
         <LoadingBlock />
       </Screen>
@@ -96,8 +94,7 @@ export function SettingsScreen({ navigation }: Props) {
 
   if (profile.isError || !profile.data) {
     return (
-      <Screen>
-        <BackLink onPress={() => navigation.goBack()} />
+      <Screen onBack={() => navigation.goBack()}>
         <Header title="Settings" subtitle="Control your Hisaab experience" />
         <ErrorBlock message="Could not load settings." onRetry={() => void profile.refetch()} />
       </Screen>
@@ -107,8 +104,7 @@ export function SettingsScreen({ navigation }: Props) {
   const data = profile.data;
 
   return (
-    <Screen>
-      <BackLink onPress={() => navigation.goBack()} />
+    <Screen onBack={() => navigation.goBack()}>
       <Header title="Settings" subtitle="Control your Hisaab experience" />
       <MenuGroup
         title="GENERAL"

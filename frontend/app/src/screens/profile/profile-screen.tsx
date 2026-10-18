@@ -74,7 +74,11 @@ export function ProfileScreen({ navigation }: Props) {
           { name: "Security & Privacy", icon: "shield-checkmark-outline" },
           { name: "Settings", icon: "settings-outline" },
         ]}
-        onPress={(item) => item === "Personal Information" ? navigation.navigate("EditProfile") : item === "Settings" && navigation.navigate("Settings")}
+        onPress={(item) => {
+          if (item === "Personal Information") navigation.navigate("EditProfile");
+          else if (item === "Settings" || item === "Security & Privacy") navigation.navigate("Settings");
+          else if (item === "Linked Accounts") navigation.navigate("Accounts");
+        }}
       />
       <MenuGroup
         title="PREFERENCES"
@@ -88,6 +92,12 @@ export function ProfileScreen({ navigation }: Props) {
           { name: "Language", icon: "globe-outline", value: profile.data?.language ?? "en" },
           { name: "Currency", icon: "cash-outline", value: currency },
         ]}
+        onPress={(item) => {
+          if (item === "Notifications") navigation.navigate("Settings");
+          else if (item === "Appearance" || item === "Language" || item === "Currency") {
+            navigation.navigate("EditProfile");
+          }
+        }}
       />
       <MenuGroup
         title="SUPPORT"
@@ -98,6 +108,14 @@ export function ProfileScreen({ navigation }: Props) {
         ]}
         onPress={(item) => {
           if (item === "Terms & Privacy") navigation.navigate("Terms");
+          else if (item === "Help & Support") {
+            Alert.alert(
+              "Help & Support",
+              "Email support@hisaab.app with your account email. In-app chat is not available in this build.",
+            );
+          } else if (item === "About Hisaab") {
+            Alert.alert("About Hisaab", "Hisaab mobile — personal finance ledger for India & South Asia.");
+          }
         }}
       />
       <Pressable onPress={() => navigation.navigate("Terms")} style={styles.button}>

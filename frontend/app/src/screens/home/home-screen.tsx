@@ -144,8 +144,14 @@ export function HomeScreen({ navigation }: Props) {
 
   const cashSpark = useMemo(() => {
     const points = summary?.sevenDaySpending ?? [];
-    if (points.length < 2) return [18, 24, 20, 32, 28, 40, 36, 48, 42, 56];
-    return points.map((item) => Math.max(4, (item.income || 0) - (item.amount || 0) + 20));
+    if (!points.length) return [0, 0];
+    // Net cashflow per day (income − spend). Keep non-negative for spark shape; zeros stay visible as flat.
+    const series = points.map((item) => Math.max(0, (item.income || 0) - (item.amount || 0)));
+    if (series.every((v) => v === 0)) {
+      // Flat real zero — not demo data.
+      return series.length >= 2 ? series : [0, 0];
+    }
+    return series.length >= 2 ? series : [series[0]!, series[0]!];
   }, [summary]);
 
   const noticeCount = useMemo(() => {
@@ -318,7 +324,11 @@ export function HomeScreen({ navigation }: Props) {
               key={action.title}
               style={styles.quickItem}
               onPress={() => {
-                if (action.add) navigation.navigate("AddTransaction");
+                if (action.add) {
+                  navigation.navigate("AddTransaction", {
+                    kind: action.title === "Send Money" ? "TRANSFER" : "INCOME",
+                  });
+                }
                 else if (action.destination) navigation.navigate(action.destination as any);
               }}
             >
@@ -395,7 +405,12 @@ export function HomeScreen({ navigation }: Props) {
             <Text style={styles.seeAll}>See All</Text>
           </Pressable>
         </View>
-        <TransactionList items={recent} limit={5} currency={currency} />
+        <TransactionList
+          items={recent}
+          limit={5}
+          currency={currency}
+          onPress={(item) => navigation.navigate("TransactionDetail", { id: item.id })}
+        />
       </ScrollView>
     </SafeAreaView>
   );

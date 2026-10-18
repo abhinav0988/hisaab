@@ -72,7 +72,7 @@ const FEATURED_CATEGORY_NAMES = [
   "Healthcare",
 ];
 
-function periodBounds(period: string) {
+function periodBounds(period: string, customFrom = "", customTo = "") {
   const now = new Date();
   const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   if (period === "today") {
@@ -87,6 +87,14 @@ function periodBounds(period: string) {
   if (period === "month") {
     const from = new Date(now.getFullYear(), now.getMonth(), 1);
     return { from: localDateKey(from), to: localDateKey(startOfDay) };
+  }
+  if (period === "last_month") {
+    const from = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const to = new Date(now.getFullYear(), now.getMonth(), 0);
+    return { from: localDateKey(from), to: localDateKey(to) };
+  }
+  if (period === "custom" && customFrom && customTo) {
+    return { from: customFrom, to: customTo };
   }
   return { from: "", to: "" };
 }
@@ -221,6 +229,8 @@ export function TransactionsView() {
   const [tag, setTag] = useState("");
   const tagList = useQuery({ queryKey: ["tags"], queryFn: transactionService.listTags });
   const [period, setPeriod] = useState("all");
+  const [customFrom, setCustomFrom] = useState("");
+  const [customTo, setCustomTo] = useState("");
   const [sort, setSort] = useState("newest");
   const [page, setPage] = useState(1);
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
@@ -240,7 +250,7 @@ export function TransactionsView() {
       router.replace(qs ? `/transactions?${qs}` : "/transactions");
     }
   };
-  const { from, to } = periodBounds(period);
+  const { from, to } = periodBounds(period, customFrom, customTo);
   const today = localDateKey(new Date());
   const lookbackStart = localDateKey(
     new Date(new Date().getFullYear(), new Date().getMonth(), new Date().getDate() - 19),
@@ -313,6 +323,8 @@ export function TransactionsView() {
       void queryClient.invalidateQueries({ queryKey: ["dashboard"] });
       void queryClient.invalidateQueries({ queryKey: ["credit-facilities"] });
       void queryClient.invalidateQueries({ queryKey: ["credit-dashboard"] });
+      void queryClient.invalidateQueries({ queryKey: ["budgets"] });
+      void queryClient.invalidateQueries({ queryKey: ["budgets-pace"] });
     },
   });
   const shellReady = Boolean(accounts.data && bankAccounts.data && categories.data && profile.data);
@@ -356,6 +368,8 @@ export function TransactionsView() {
     void queryClient.invalidateQueries({ queryKey: ["bank-accounts"] });
     void queryClient.invalidateQueries({ queryKey: ["credit-facilities"] });
     void queryClient.invalidateQueries({ queryKey: ["credit-dashboard"] });
+    void queryClient.invalidateQueries({ queryKey: ["budgets"] });
+    void queryClient.invalidateQueries({ queryKey: ["budgets-pace"] });
   };
   const resetFilters = () => {
     setSearch("");
@@ -364,6 +378,8 @@ export function TransactionsView() {
     setAccount("");
     setTag("");
     setPeriod("all");
+    setCustomFrom("");
+    setCustomTo("");
     setPage(1);
   };
   const rows = transactions.data?.data ?? [];
@@ -389,7 +405,9 @@ export function TransactionsView() {
   const totalPages = Number(transactions.data?.meta?.totalPages ?? 1);
   const showingFrom = total ? (page - 1) * 20 + 1 : 0;
   const showingTo = Math.min(page * 20, total);
-  const filtered = Boolean(debouncedSearch || type || category || account || period !== "all");
+  const filtered = Boolean(
+    debouncedSearch || type || category || account || tag || period !== "all",
+  );
   const chartLoading = lookbackRows.isPending && !lookbackRows.data;
   const listRefreshing = transactions.isFetching;
   const listWaiting = transactions.isFetching && !transactions.data;
@@ -549,9 +567,33 @@ export function TransactionsView() {
             <Select aria-label="Period" value={period} onChange={(event) => { setPeriod(event.target.value); setPage(1); }}>
               <option value="all">All dates</option>
               <option value="month">This month</option>
+              <option value="last_month">Last month</option>
               <option value="week">This week</option>
               <option value="today">Today</option>
+              <option value="custom">Custom range</option>
             </Select>
+            {period === "custom" ? (
+              <>
+                <input
+                  type="date"
+                  aria-label="From date"
+                  value={customFrom}
+                  onChange={(event) => {
+                    setCustomFrom(event.target.value);
+                    setPage(1);
+                  }}
+                />
+                <input
+                  type="date"
+                  aria-label="To date"
+                  value={customTo}
+                  onChange={(event) => {
+                    setCustomTo(event.target.value);
+                    setPage(1);
+                  }}
+                />
+              </>
+            ) : null}
             <Select aria-label="Transaction type" value={type} onChange={(event) => { setType(event.target.value); setPage(1); }}>
               <option value="">All types</option>
               <option value="EXPENSE">Expense</option>
@@ -687,13 +729,23 @@ export function TransactionsView() {
                             </div>
                             <div className="tx16-account">
                               <b>{resolveAccountLabel(allAccounts, item.accountId, item.accountName)}</b>
-                              <small>{accountRow ? accountTypeLabel(accountRow.type) : "Account"}</small>
+                              <small>
+                                {item.type === "TRANSFER" && item.destinationAccountName
+                                  ? `→ ${item.destinationAccountName}`
+                                  : accountRow
+                                    ? accountTypeLabel(accountRow.type)
+                                    : "Account"}
+                              </small>
                             </div>
                             <div className="tx16-pay">
-                              <b>{pay.method}</b>
+                              <b>{item.type === "TRANSFER" ? "Transfer" : pay.method}</b>
                               <small>{pay.provider}</small>
                             </div>
-                            <div className={`tx16-amt ${item.type === "INCOME" ? "in" : "out"}`}>
+                            <div
+                              className={`tx16-amt ${
+                                item.type === "INCOME" ? "in" : item.type === "TRANSFER" ? "xfer" : "out"
+                              }`}
+                            >
                               {signedMoney(item.amountMinor, item.currency, item.type)}
                               <button
                                 type="button"
@@ -756,7 +808,15 @@ export function TransactionsView() {
                 >
                   <ChevronRight size={14} />
                 </button>
-                <Select className="w-[132px]" aria-label="Sort" value={sort} onChange={(event) => setSort(event.target.value)}>
+                <Select
+                  className="w-[132px]"
+                  aria-label="Sort"
+                  value={sort}
+                  onChange={(event) => {
+                    setSort(event.target.value);
+                    setPage(1);
+                  }}
+                >
                   <option value="newest">Newest first</option>
                   <option value="oldest">Oldest first</option>
                   <option value="amount_desc">Highest amount</option>

@@ -6,12 +6,12 @@ import type { AppStackParamList } from "../../navigation/types";
 import { toolById } from "../../config/finance-tools";
 import { Metric } from "../../components/finance/metric";
 import { TransactionList } from "../../components/finance/transaction-list";
-import { BackLink } from "../../components/ui/back-link";
 import { Card } from "../../components/ui/card";
 import { Icon } from "../../components/ui/icon";
 import { Screen } from "../../components/ui/screen";
 import { SectionTitle } from "../../components/ui/section-title";
-import { ErrorBlock, LoadingBlock } from "../../components/ui/states";
+import { EmptyBlock, ErrorBlock, LoadingBlock } from "../../components/ui/states";
+import { AppButton } from "../../components/ui/button";
 import { money } from "../../lib/format";
 import { ApiError } from "../../services/api-client";
 import { accountService } from "../../services/account.service";
@@ -433,9 +433,45 @@ export function FeatureScreen({ navigation, route }: Props) {
     return [];
   })();
 
+  if (toolId === "coach") {
+    return (
+      <Screen onBack={() => navigation.goBack()}>
+        <View style={styles.hero}>
+          <View style={styles.icon}>
+            <Icon name={tool?.icon ?? "sparkles-outline"} size={44} />
+          </View>
+          <Text style={styles.h1}>AI Financial Coach</Text>
+          <Text style={styles.subtitle}>
+            Personal guidance is a Premium feature. The coach API and entitlement checks are not
+            available in this local Android build.
+          </Text>
+        </View>
+        <EmptyBlock
+          title="Coach unavailable"
+          body="Connect Premium billing and the coach service to enable requests, loading, and error handling here."
+        />
+        <AppButton label="View Premium" icon="diamond-outline" onPress={() => navigation.navigate("Subscription")} />
+      </Screen>
+    );
+  }
+
+  if (toolId === "premium") {
+    return (
+      <Screen onBack={() => navigation.goBack()}>
+        <View style={styles.hero}>
+          <View style={styles.icon}>
+            <Icon name={tool?.icon ?? "diamond-outline"} size={44} />
+          </View>
+          <Text style={styles.h1}>Premium</Text>
+          <Text style={styles.subtitle}>Upgrade tools and entitlements.</Text>
+        </View>
+        <AppButton label="Open subscription" icon="diamond-outline" onPress={() => navigation.navigate("Subscription")} />
+      </Screen>
+    );
+  }
+
   return (
-    <Screen>
-      <BackLink onPress={() => navigation.goBack()} />
+    <Screen onBack={() => navigation.goBack()}>
       <View style={styles.hero}>
         <View style={styles.icon}>
           <Icon name={tool?.icon ?? "wallet-outline"} size={44} />

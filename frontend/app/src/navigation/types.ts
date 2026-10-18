@@ -55,14 +55,21 @@ export type AppStackParamList = {
   SplitGroups: undefined;
   SplitGroupDetail: { id: string };
   SplitHistory: undefined;
-  AddTransaction: { amount?: string; note?: string } | undefined;
+  AddTransaction:
+    | {
+        amount?: string;
+        note?: string;
+        kind?: "EXPENSE" | "INCOME" | "TRANSFER";
+        accountId?: string;
+      }
+    | undefined;
   TransactionDetail: { id: string };
   Categories: undefined;
   Accounts: undefined;
   AccountDetail: { id: string };
   Budgets: undefined;
   BudgetDetail: { id: string };
-  CreateBudget: undefined;
+  CreateBudget: { month?: string } | undefined;
   EditBudget: { id: string };
   Goals: undefined;
   GoalDetail: { id: string };

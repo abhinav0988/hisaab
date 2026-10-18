@@ -158,6 +158,7 @@ export const categories = sqliteTable(
   {
     id: text("id").primaryKey(),
     userId: text("user_id").references(() => users.id, { onDelete: "cascade" }),
+    parentId: text("parent_id"),
     name: text("name").notNull(),
     type: text("type").notNull(),
     icon: text("icon").notNull(),
@@ -167,6 +168,7 @@ export const categories = sqliteTable(
   },
   (table) => [
     index("categories_user_idx").on(table.userId),
+    index("categories_parent_idx").on(table.parentId),
     uniqueIndex("categories_owner_name_type_unique").on(table.userId, table.name, table.type),
   ],
 );

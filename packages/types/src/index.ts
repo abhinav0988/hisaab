@@ -58,6 +58,8 @@ export interface Category {
   icon: string;
   colour: string;
   isSystem: boolean;
+  /** Null/undefined for top-level categories; set for subcategories. */
+  parentId?: string | null;
 }
 export interface Transaction {
   id: string;
@@ -70,6 +72,7 @@ export interface Transaction {
   notes: string | null;
   transactionAt: string;
   destinationAccountId?: string | null;
+  creditFacilityId?: string | null;
   accountName?: string;
   destinationAccountName?: string;
   categoryName?: string;

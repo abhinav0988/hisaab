@@ -8,7 +8,10 @@ export function money(minor: number, currency = "INR") {
 }
 
 export function signedMoney(minor: number, currency: string, type: "INCOME" | "EXPENSE" | "TRANSFER") {
-  return `${type === "INCOME" ? "+ " : "− "}${money(minor, currency)}`;
+  const value = money(minor, currency);
+  if (type === "INCOME") return `+ ${value}`;
+  if (type === "EXPENSE") return `− ${value}`;
+  return value;
 }
 
 function asDate(value: string | Date) {

@@ -1,11 +1,11 @@
-import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Alert, Pressable, StyleSheet, Text, View } from "react-native";
 import { useState, type ReactNode } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import type { SplitRelationship } from "@hisaab/types";
 import { colors } from "../../theme/tokens";
 import type { AppStackParamList } from "../../navigation/types";
-import { BackLink } from "../../components/ui/back-link";
+import { Screen } from "../../components/ui/screen";
 import { Card } from "../../components/ui/card";
 import { AppButton } from "../../components/ui/button";
 import { Field } from "../../components/ui/field";
@@ -563,11 +563,10 @@ function Avatar({ name }: { name: string }) {
 
 function Directory({ title, onBack, loading, error, retry, children }: { title: string; onBack: () => void; loading: boolean; error: boolean; retry: () => void; children: ReactNode }) {
   return (
-    <ScrollView style={styles.fill} contentContainerStyle={styles.page} keyboardShouldPersistTaps="handled">
-      <BackLink onPress={onBack} />
+    <Screen onBack={onBack}>
       <Text style={styles.title}>{title}</Text>
       {loading ? <LoadingBlock /> : error ? <ErrorBlock message={`Could not load ${title.toLowerCase()}.`} onRetry={retry} /> : children}
-    </ScrollView>
+    </Screen>
   );
 }
 

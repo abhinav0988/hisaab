@@ -70,6 +70,7 @@ export const categorySchema = z.object({
   type: transactionTypeSchema,
   icon: z.string().trim().min(1).max(40),
   colour: z.string().regex(/^#[0-9a-fA-F]{6}$/),
+  parentId: idSchema.nullable().optional(),
 });
 export const categoryPatchSchema = categorySchema.partial();
 
@@ -86,8 +87,9 @@ export const transactionSchema = z
     tags: z.array(z.string().trim().min(1).max(30)).max(10).optional(),
     tagIds: z.array(idSchema).max(10).optional(),
     recurring: z.boolean().optional(),
-    creditFacilityId: idSchema.optional(),
-    destinationAccountId: idSchema.optional(),
+    creditFacilityId: idSchema.nullable().optional(),
+    // null allowed so PATCH can clear a transfer destination (or omit the key).
+    destinationAccountId: idSchema.nullable().optional(),
   })
   .superRefine((value, ctx) => {
     if (value.type !== "TRANSFER") return;

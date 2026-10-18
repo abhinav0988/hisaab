@@ -785,6 +785,9 @@ html[data-theme="dark"] .tx16-add {
 .tx16-amt.in {
   color: var(--success);
 }
+.tx16-amt.xfer {
+  color: var(--gold, #d4a84b);
+}
 .tx16-amt.out {
   color: var(--foreground);
 }

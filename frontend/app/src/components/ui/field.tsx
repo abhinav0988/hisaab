@@ -1,5 +1,12 @@
 import type { ReactNode } from "react";
-import { StyleSheet, Text, TextInput, View, type KeyboardTypeOptions } from "react-native";
+import {
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+  type KeyboardTypeOptions,
+  type ReturnKeyTypeOptions,
+} from "react-native";
 import { colors, radius } from "../../theme/tokens";
 import { Icon } from "./icon";
 import type { IconName } from "../../config/finance-tools";
@@ -16,7 +23,10 @@ export function Field({
   right,
   keyboardType,
   autoCapitalize = "none",
+  autoCorrect = false,
   editable = true,
+  onSubmitEditing,
+  returnKeyType,
 }: {
   label?: string;
   placeholder: string;
@@ -29,7 +39,10 @@ export function Field({
   right?: ReactNode;
   keyboardType?: KeyboardTypeOptions;
   autoCapitalize?: "none" | "words" | "sentences";
+  autoCorrect?: boolean;
   editable?: boolean;
+  onSubmitEditing?: () => void;
+  returnKeyType?: ReturnKeyTypeOptions;
 }) {
   const light = variant === "light";
   return (
@@ -46,8 +59,11 @@ export function Field({
           placeholderTextColor={light ? colors.lightMuted : colors.muted}
           secureTextEntry={secure}
           autoCapitalize={autoCapitalize}
+          autoCorrect={autoCorrect}
           keyboardType={keyboardType}
           editable={editable}
+          onSubmitEditing={onSubmitEditing}
+          returnKeyType={returnKeyType}
           style={[styles.input, light && styles.inputLight]}
         />
         {right}

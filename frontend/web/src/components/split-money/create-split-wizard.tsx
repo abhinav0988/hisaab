@@ -383,7 +383,10 @@ export function CreateSplitWizard({
   if (paramGroupId && groupsQuery.data && draft.groupId !== paramGroupId) {
     const group = groupsQuery.data.find((g) => g.id === paramGroupId);
     if (group) {
-      const memberIds = (group.members ?? []).map((m) => m.personId).filter(Boolean);
+      const active = new Set((peopleQuery.data ?? []).filter((p) => !p.archivedAt).map((p) => p.id));
+      const memberIds = (group.members ?? [])
+        .map((m) => m.personId)
+        .filter((id): id is string => Boolean(id) && active.has(id));
       update({
         groupId: group.id,
         participantIds: Array.from(new Set([...draft.participantIds, ...memberIds])),
@@ -782,7 +785,8 @@ export function CreateSplitWizard({
 
   const pickGroup = (groupId: string) => {
     const group = groups.find((g) => g.id === groupId);
-    const members = group?.members?.map((m) => m.personId) ?? [];
+    const active = new Set(people.filter((p) => !p.archivedAt).map((p) => p.id));
+    const members = (group?.members?.map((m) => m.personId) ?? []).filter((id) => active.has(id));
     const next = [...new Set([...(self ? [self.id] : []), ...members])];
     update({ groupId, participantIds: next.length ? next : draft.participantIds });
   };
@@ -993,12 +997,11 @@ export function CreateSplitWizard({
                         value={draft.groupId}
                         onChange={(e) => {
                           const groupId = e.target.value;
-                          const group = groups.find((g) => g.id === groupId);
-                          update({
-                            groupId,
-                            participantIds:
-                              group?.members?.map((m) => m.personId) ?? draft.participantIds,
-                          });
+                          if (!groupId) {
+                            update({ groupId: "" });
+                            return;
+                          }
+                          pickGroup(groupId);
                         }}
                       >
                         <option value="">No group</option>

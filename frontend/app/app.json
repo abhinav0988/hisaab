@@ -6,7 +6,10 @@
     "version": "1.0.0",
     "orientation": "portrait",
     "userInterfaceStyle": "dark",
+    "icon": "./assets/icon.png",
     "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
       "backgroundColor": "#021612"
     },
     "ios": {
@@ -15,6 +18,11 @@
     },
     "android": {
       "package": "com.hisaab.mobile",
+      "icon": "./assets/icon.png",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#01160F"
+      },
       "edgeToEdgeEnabled": true
     },
     "plugins": [
@@ -26,7 +34,8 @@
           "photosPermission": "Allow Hisaab to access your photos to select a receipt.",
           "microphonePermission": false
         }
-      ]
+      ],
+      "@react-native-community/datetimepicker"
     ]
   }
 }

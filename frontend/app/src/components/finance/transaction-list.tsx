@@ -2,6 +2,7 @@ import type { Transaction } from "@hisaab/types";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { colors } from "../../theme/tokens";
 import { money, signedMoney } from "../../lib/format";
+import { formatCompactDateTime } from "../../lib/datetime";
 import { IconBox } from "../ui/icon-box";
 import { EmptyBlock } from "../ui/states";
 import type { IconName } from "../../config/finance-tools";
@@ -41,7 +42,12 @@ export function TransactionList({
             <Text style={styles.title}>{row.merchant || row.categoryName || "Transaction"}</Text>
             <Text style={styles.small}>
               {row.accountName ?? "Account"}
-              {row.categoryName ? ` · ${row.categoryName}` : ""}
+              {row.type === "TRANSFER" && row.destinationAccountName
+                ? ` → ${row.destinationAccountName}`
+                : row.categoryName
+                  ? ` · ${row.categoryName}`
+                  : ""}
+              {row.transactionAt ? ` · ${formatCompactDateTime(row.transactionAt)}` : ""}
             </Text>
             {row.tags?.length ? (
               <Text style={styles.small} numberOfLines={1}>

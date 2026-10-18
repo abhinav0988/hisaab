@@ -321,6 +321,10 @@ export async function archivePerson(env: Env, userId: string, id: string, restor
     .update(splitPeople)
     .set({ archivedAt: restore ? null : now(), updatedAt: now() })
     .where(and(eq(splitPeople.id, id), eq(splitPeople.userId, userId)));
+  // Drop archived contacts from groups so new splits never preselect them.
+  if (!restore) {
+    await db.delete(splitGroupMembers).where(eq(splitGroupMembers.personId, id));
+  }
   return getPerson(env, userId, id);
 }
 
